@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(curl -sS -i \"https://api.anthropic.com/v1/design/h/WbcxdCIw2lTJ7Up0Tg1iew?open_file=EcoGuia+Galapagos.html\")",
+      "Bash(flutter analyze *)",
+      "Bash(flutter test *)"
+    ]
+  }
+}
