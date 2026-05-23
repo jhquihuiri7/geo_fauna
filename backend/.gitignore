@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
