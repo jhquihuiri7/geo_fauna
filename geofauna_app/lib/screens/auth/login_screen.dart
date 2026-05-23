@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/eco_widgets.dart';
+import '../../widgets/animations.dart';
 import '../../widgets/painters.dart';
 import '../../pages/auth/forgot_password_page.dart';
 import 'signup_screen.dart';
@@ -86,22 +87,26 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: [
                   // Brand
-                  Container(
-                    width: 76,
-                    height: 76,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: eco.organicGradient,
-                      borderRadius: BorderRadius.circular(26),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF006948).withValues(alpha: 0.25),
-                          blurRadius: 40,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
+                  FadeInUp(
+                    child: Container(
+                      width: 76,
+                      height: 76,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient: eco.organicGradient,
+                        borderRadius: BorderRadius.circular(26),
+                        boxShadow: [
+                          BoxShadow(
+                            color: eco.primary.withValues(alpha: 0.35),
+                            blurRadius: 40,
+                            spreadRadius: -4,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
+                      child:
+                          const Icon(Icons.eco, color: Colors.white, size: 42),
                     ),
-                    child: const Icon(Icons.eco, color: Colors.white, size: 42),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -126,7 +131,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 40),
                   // Card
-                  EcoCard(
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 140),
+                    child: EcoCard(
                     radius: 36,
                     padding: const EdgeInsets.all(28),
                     soft: true,
@@ -261,6 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
+                  ),
                   ),
                   const SizedBox(height: 32),
                   Opacity(

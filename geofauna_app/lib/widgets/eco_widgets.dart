@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'animations.dart';
 import 'painters.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,6 +68,13 @@ class Avatar extends StatelessWidget {
                 colors: [Colors.white.withValues(alpha: 0.10), colors[0]],
                 stops: const [0, 0.6],
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: colors[0].withValues(alpha: 0.35),
+                  blurRadius: size * 0.28,
+                  offset: Offset(0, size * 0.12),
+                ),
+              ],
             ),
             child: emoji != null
                 ? Text(emoji!, style: TextStyle(fontSize: size * 0.55))
@@ -718,15 +726,33 @@ class EcoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? eco.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: [
-          BoxShadow(
-            color: dark
-                ? Colors.black.withValues(alpha: soft ? 0.5 : 0.45)
-                : eco.primary.withValues(alpha: soft ? 0.05 : 0.04),
-            blurRadius: soft ? 45 : 24,
-            offset: Offset(0, soft ? 12 : 4),
-          ),
-        ],
+        // Layered shadow: a wide soft ambient glow + a tight contact shadow,
+        // for a more dimensional, "floating" feel.
+        boxShadow: dark
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: soft ? 0.55 : 0.5),
+                  blurRadius: soft ? 48 : 28,
+                  offset: Offset(0, soft ? 16 : 8),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: eco.primary.withValues(alpha: soft ? 0.08 : 0.06),
+                  blurRadius: soft ? 48 : 28,
+                  offset: Offset(0, soft ? 18 : 10),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: child,
     );
@@ -751,7 +777,20 @@ class GradientPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    return ClipRRect(
+    return DecoratedBox(
+      // Coloured glow projected behind the panel.
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: eco.primary.withValues(alpha: 0.30),
+            blurRadius: 30,
+            spreadRadius: -4,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: DecoratedBox(
         decoration: BoxDecoration(gradient: eco.organicGradient),
@@ -770,6 +809,7 @@ class GradientPanel extends StatelessWidget {
             Padding(padding: padding, child: child),
           ],
         ),
+      ),
       ),
     );
   }
@@ -797,7 +837,7 @@ class GradientButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    return GestureDetector(
+    return PressableScale(
       onTap: loading ? null : onPressed,
       child: Container(
         height: height,
@@ -805,10 +845,17 @@ class GradientButton extends StatelessWidget {
           gradient: eco.organicGradient,
           borderRadius: BorderRadius.circular(999),
           boxShadow: [
+            // Coloured glow that bleeds beyond the pill for a luminous CTA.
             BoxShadow(
-              color: const Color(0xFF006948).withValues(alpha: 0.30),
-              blurRadius: 25,
-              offset: const Offset(0, 8),
+              color: eco.primary.withValues(alpha: 0.38),
+              blurRadius: 28,
+              spreadRadius: -2,
+              offset: const Offset(0, 12),
+            ),
+            BoxShadow(
+              color: eco.primaryContainer.withValues(alpha: 0.22),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -867,8 +914,10 @@ class CircleIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    return GestureDetector(
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return PressableScale(
       onTap: onTap,
+      pressedScale: 0.9,
       child: Container(
         width: size,
         height: size,
@@ -876,6 +925,15 @@ class CircleIconButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg ?? eco.surfaceContainerLowest,
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: dark
+                  ? Colors.black.withValues(alpha: 0.35)
+                  : eco.primary.withValues(alpha: 0.10),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Icon(icon, color: iconColor ?? eco.primary, size: 22),
       ),

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
@@ -7,6 +9,47 @@ import '../widgets/painters.dart';
 import 'settings_screen.dart';
 import 'integridad_screen.dart';
 
+/// Datos del perfil resueltos a partir de Firestore + Firebase Auth.
+class _Profile {
+  _Profile(Map<String, dynamic>? data, User? user)
+      : name = _firstNonEmpty(
+            [data?['name'] as String?, user?.displayName, 'Investigador'])!,
+        userType = _firstNonEmpty([data?['userType'] as String?]) ?? '—',
+        rangerId = _firstNonEmpty([data?['rangerId'] as String?]) ?? '—',
+        specialty = _firstNonEmpty([data?['specialty'] as String?]) ?? '—',
+        email =
+            _firstNonEmpty([data?['email'] as String?, user?.email]) ?? '—',
+        photoUrl = _firstNonEmpty([data?['photoUrl'] as String?, user?.photoURL]);
+
+  final String name;
+  final String userType;
+  final String rangerId;
+  final String specialty;
+  final String email;
+  final String? photoUrl;
+
+  String get initials {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    return parts.take(2).map((w) => w.isEmpty ? '' : w[0]).join().toUpperCase();
+  }
+
+  /// Subtítulo del encabezado: "Guía Naturalista · GNPS-2024-001".
+  String get roleLine {
+    final bits = [
+      if (userType != '—') userType,
+      if (rangerId != '—') rangerId,
+    ];
+    return bits.isEmpty ? 'Perfil de campo' : bits.join(' · ');
+  }
+
+  static String? _firstNonEmpty(List<String?> values) {
+    for (final v in values) {
+      if (v != null && v.trim().isNotEmpty) return v.trim();
+    }
+    return null;
+  }
+}
+
 /// Perfil — agent profile: digital ID, stats, personal wall (screens-main2.jsx).
 class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
@@ -14,60 +57,87 @@ class PerfilScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
+    final auth = AuthService();
+    final user = auth.currentUser;
+
     return Container(
       color: eco.surface,
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 120),
-        children: [
-          EcoTopBar(
-            title: 'Mi Bitácora',
-            leading: const Avatar(
-                size: 40,
-                tone: AvatarTone.forest,
-                emoji: '🦫',
-                status: AvatarStatus.on),
-            trailing: [Icon(Icons.cloud_done, color: eco.primary)],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('PERFIL DEL AGENTE',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.8,
-                        color: eco.primary)),
-                const SizedBox(height: 4),
-                Text('Carlos Jaramillo',
-                    style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1.5,
-                        height: 1,
-                        color: eco.onSurface)),
-                const SizedBox(height: 8),
-                Text('Guía Nacional GN-2024',
-                    style:
-                        TextStyle(fontSize: 14, color: eco.onSurfaceVariant)),
-                const SizedBox(height: 24),
-                _idCard(eco),
-                const SizedBox(height: 24),
-                _stats(eco),
-                const SizedBox(height: 24),
-                _wall(eco),
-                const SizedBox(height: 24),
-                _actions(context, eco),
-              ],
-            ),
-          ),
-        ],
+      child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: user != null ? auth.userDoc(user.uid) : null,
+        builder: (context, snap) {
+          final p = _Profile(snap.data?.data(), user);
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 120),
+            children: [
+              EcoTopBar(
+                title: 'Mi Bitácora',
+                leading: _avatar(p, 40),
+                trailing: [Icon(Icons.cloud_done, color: eco.primary)],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('PERFIL DEL AGENTE',
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.8,
+                            color: eco.primary)),
+                    const SizedBox(height: 4),
+                    Text(p.name,
+                        style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1.5,
+                            height: 1,
+                            color: eco.onSurface)),
+                    const SizedBox(height: 8),
+                    Text(p.roleLine,
+                        style: TextStyle(
+                            fontSize: 14, color: eco.onSurfaceVariant)),
+                    const SizedBox(height: 24),
+                    _idCard(eco, p),
+                    const SizedBox(height: 24),
+                    _stats(eco),
+                    const SizedBox(height: 24),
+                    _wall(eco),
+                    const SizedBox(height: 24),
+                    _actions(context, eco),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _idCard(AppColors eco) {
+  /// Avatar con foto real si existe; si no, iniciales del usuario.
+  Widget _avatar(_Profile p, double size) {
+    if (p.photoUrl != null) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          image: DecorationImage(
+            image: NetworkImage(p.photoUrl!),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+    return Avatar(
+        name: p.name,
+        size: size,
+        tone: AvatarTone.forest,
+        status: AvatarStatus.on);
+  }
+
+  Widget _idCard(AppColors eco, _Profile p) {
     Widget cell(String label, String value) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -112,15 +182,15 @@ class PerfilScreen extends StatelessWidget {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    Expanded(child: cell('Sector', 'Isla Santa Cruz')),
-                    Expanded(child: cell('Rango', 'Especialista III')),
+                    Expanded(child: cell('Tipo', p.userType)),
+                    Expanded(child: cell('Especialidad', p.specialty)),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: cell('Asignado', 'Charles Darwin')),
-                    Expanded(child: cell('ID', '8829-XJ-2024')),
+                    Expanded(child: cell('ID', p.rangerId)),
+                    Expanded(child: cell('Correo', p.email)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -169,13 +239,15 @@ class PerfilScreen extends StatelessWidget {
   }
 
   Widget _stats(AppColors eco) {
+    // Métricas de actividad: aún no se registran en backend, por eso van en
+    // cero/neutro en lugar de valores inventados.
     final cells = const [
-      [Icons.visibility, 'Avistamientos', '1,204', false],
-      [Icons.eco, 'Especies', '87', false],
-      [Icons.verified, 'Precisión', '98%', false],
-      [Icons.timer, 'En Campo', '42h', false],
-      [Icons.map, 'Recorrido', '482km', false],
-      [Icons.workspace_premium, 'Destacado', 'P. Carola', true],
+      [Icons.visibility, 'Avistamientos', '0', false],
+      [Icons.eco, 'Especies', '0', false],
+      [Icons.verified, 'Precisión', '—', false],
+      [Icons.timer, 'En Campo', '0h', false],
+      [Icons.map, 'Recorrido', '0km', false],
+      [Icons.workspace_premium, 'Destacado', '—', true],
     ];
     return GridView.count(
       crossAxisCount: 3,
@@ -183,7 +255,7 @@ class PerfilScreen extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: 0.92,
+      childAspectRatio: 0.78,
       children: [
         for (final c in cells)
           _StatCell(
@@ -205,44 +277,39 @@ class PerfilScreen extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.8,
                 color: eco.primary)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Column(
-              children: [
-                Text('Recientes',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: eco.primary)),
-                const SizedBox(height: 4),
-                Container(width: 18, height: 2, color: eco.primary),
-              ],
-            ),
-            const SizedBox(width: 20),
-            Text('Populares',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: eco.outline)),
-          ],
-        ),
         const SizedBox(height: 16),
-        const _MiniSighting(
-            emoji: '🐢',
-            name: 'Tortuga Gigante',
-            place: 'Reserva El Chato',
-            likes: '24',
-            comments: '8',
-            tone: 3),
-        const SizedBox(height: 12),
-        const _MiniSighting(
-            emoji: '🐦',
-            name: 'Piquero Patas Azules',
-            place: 'Playa de los Perros',
-            likes: '18',
-            comments: '5',
-            tone: 2),
+        // Estado vacío: aún no hay avistamientos registrados por el usuario.
+        EcoCard(
+          radius: 24,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+          child: Column(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: eco.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.photo_camera_outlined,
+                    color: eco.primary, size: 26),
+              ),
+              const SizedBox(height: 12),
+              Text('Aún no tienes avistamientos',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: eco.onSurface)),
+              const SizedBox(height: 4),
+              Text(
+                'Registra tu primer hallazgo desde la pestaña "Nuevo".',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: eco.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -370,79 +437,3 @@ class _StatCell extends StatelessWidget {
   }
 }
 
-class _MiniSighting extends StatelessWidget {
-  const _MiniSighting({
-    required this.emoji,
-    required this.name,
-    required this.place,
-    required this.likes,
-    required this.comments,
-    required this.tone,
-  });
-
-  final String emoji;
-  final String name;
-  final String place;
-  final String likes;
-  final String comments;
-  final int tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final eco = context.eco;
-    return EcoCard(
-      radius: 24,
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 72,
-            height: 72,
-            child: PhotoPlaceholder(
-                tone: tone, label: '', emoji: emoji, aspectRatio: 1, borderRadius: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: eco.onSurface)),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 12, color: eco.primary),
-                    const SizedBox(width: 4),
-                    Text(place,
-                        style: TextStyle(
-                            fontSize: 11, color: eco.onSurfaceVariant)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.favorite, size: 14, color: eco.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text(likes,
-                        style: TextStyle(
-                            fontSize: 12, color: eco.onSurfaceVariant)),
-                    const SizedBox(width: 16),
-                    Icon(Icons.chat_bubble,
-                        size: 14, color: eco.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text(comments,
-                        style: TextStyle(
-                            fontSize: 12, color: eco.onSurfaceVariant)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

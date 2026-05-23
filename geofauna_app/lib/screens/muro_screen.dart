@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
+import '../widgets/user_avatar.dart';
 
 /// Muro — community wall with upcoming events + sighting feed (screens-main.jsx).
 class MuroScreen extends StatefulWidget {
@@ -25,12 +26,7 @@ class _MuroScreenState extends State<MuroScreen> {
           EcoTopBar(
             large: true,
             title: 'EcoGuía',
-            leading: const Avatar(
-                name: 'Carlos J',
-                tone: AvatarTone.forest,
-                size: 42,
-                emoji: '🦫',
-                status: AvatarStatus.on),
+            leading: const UserAvatar(size: 42, status: AvatarStatus.on),
             subtitle: Row(
               mainAxisSize: MainAxisSize.min,
               children: const [

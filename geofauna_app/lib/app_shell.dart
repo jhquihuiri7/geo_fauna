@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'theme/app_colors.dart';
 import 'widgets/eco_widgets.dart';
+import 'widgets/animations.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/agenda_screen.dart';
 import 'screens/nuevo_hub_screen.dart';
@@ -20,14 +21,30 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  // dashboard, agenda, nuevo, muro, perfil
-  final _screens = const [
-    DashboardScreen(),
-    AgendaScreen(),
-    NuevoHubScreen(),
-    MuroScreen(),
-    PerfilScreen(),
-  ];
+  // Tabs already built. Only the Dashboard (0) is built on login; the rest are
+  // built lazily on first tap so we don't pay for 5 heavy screens in one frame.
+  final Set<int> _visited = {0};
+
+  // dashboard, agenda, nuevo, muro, perfil — builders, not instances, so a tab
+  // costs nothing until it is visited.
+  Widget _buildScreen(int i) {
+    final Widget screen = switch (i) {
+      0 => const DashboardScreen(),
+      1 => const AgendaScreen(),
+      2 => const NuevoHubScreen(),
+      3 => const MuroScreen(),
+      _ => const PerfilScreen(),
+    };
+    // Each tab fades + slides in the first time it is shown.
+    return FadeInUp(offset: 16, child: screen);
+  }
+
+  void _onTap(int i) {
+    setState(() {
+      _index = i;
+      _visited.add(i);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +54,29 @@ class _AppShellState extends State<AppShell> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: IndexedStack(index: _index, children: _screens),
+            // Keep screen content clear of the status bar / notch at the top.
+            // Bottom is handled by the nav bar's own inset padding, so the
+            // screens can scroll behind it.
+            child: SafeArea(
+              bottom: false,
+              // Lazy IndexedStack: unvisited tabs render nothing (never built
+              // or laid out); visited-but-inactive tabs stay alive offstage so
+              // their scroll position and form state are preserved.
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  for (var i = 0; i < 5; i++)
+                    if (_visited.contains(i))
+                      Offstage(
+                        offstage: _index != i,
+                        child: TickerMode(
+                          enabled: _index == i,
+                          child: _buildScreen(i),
+                        ),
+                      ),
+                ],
+              ),
+            ),
           ),
           Positioned(
             left: 0,
@@ -45,7 +84,7 @@ class _AppShellState extends State<AppShell> {
             bottom: 0,
             child: _BottomNav(
               active: _index,
-              onTap: (i) => setState(() => _index = i),
+              onTap: _onTap,
             ),
           ),
         ],
@@ -78,26 +117,90 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    return Glass(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-      child: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: eco.primary.withValues(alpha: 0.08),
-              blurRadius: 40,
-              offset: const Offset(0, -8),
+    // Space taken by the system navigation bar / gesture area, so the nav
+    // items aren't hidden behind it.
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    // The raised center FAB is drawn as an overlay (Clip.none) so it isn't
+    // clipped by the glass bar's rounded ClipRRect.
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Glass(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+          child: Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: eco.primary.withValues(alpha: 0.08),
+                  blurRadius: 40,
+                  offset: const Offset(0, -8),
+                ),
+              ],
             ),
-          ],
+            padding: EdgeInsets.fromLTRB(8, 10, 8, 12 + bottomInset),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < _items.length; i++)
+                  Expanded(child: _buildItem(context, eco, i)),
+              ],
+            ),
+          ),
         ),
-        padding: const EdgeInsets.fromLTRB(8, 10, 8, 28),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (var i = 0; i < _items.length; i++)
-              Expanded(child: _buildItem(context, eco, i)),
-          ],
+        Positioned(
+          top: -22,
+          left: 0,
+          right: 0,
+          child: Center(child: _centerFab(context, eco)),
         ),
+      ],
+    );
+  }
+
+  Widget _centerFab(BuildContext context, AppColors eco) {
+    final active = this.active == 2;
+    return PressableScale(
+      onTap: () => onTap(2),
+      pressedScale: 0.88,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedScale(
+            scale: active ? 1.08 : 1,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: eco.organicGradient,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  // Luminous double glow so the FAB reads as the hero action.
+                  BoxShadow(
+                    color: eco.primary.withValues(alpha: 0.45),
+                    blurRadius: 24,
+                    spreadRadius: -2,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: eco.primaryFixedDim.withValues(alpha: 0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 32),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text('NUEVO',
+              style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: eco.primary)),
+        ],
       ),
     );
   }
@@ -107,42 +210,9 @@ class _BottomNav extends StatelessWidget {
     final isActive = active == i;
 
     if (i == 2) {
-      // Raised center FAB
-      return GestureDetector(
-        onTap: () => onTap(2),
-        behavior: HitTestBehavior.opaque,
-        child: Transform.translate(
-          offset: const Offset(0, -28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: eco.organicGradient,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: eco.primary.withValues(alpha: 0.25),
-                      blurRadius: 25,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.add, color: Colors.white, size: 32),
-              ),
-              const SizedBox(height: 4),
-              Text(item.label.toUpperCase(),
-                  style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      color: eco.primary)),
-            ],
-          ),
-        ),
-      );
+      // Slot reserved for the raised center FAB, which is drawn as an overlay
+      // in build() so it can extend above the bar without being clipped.
+      return const SizedBox.shrink();
     }
 
     final color = isActive ? eco.primary : eco.outline;
@@ -154,10 +224,18 @@ class _BottomNav extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
+            AnimatedScale(
+              scale: isActive ? 1.18 : 1,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutBack,
+              child: Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(item.icon, color: color, size: 24),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(item.icon,
+                      key: ValueKey(isActive), color: color, size: 24),
+                ),
                 if (item.badge != null)
                   Positioned(
                     top: -4,
@@ -180,13 +258,17 @@ class _BottomNav extends StatelessWidget {
                   ),
               ],
             ),
+            ),
             const SizedBox(height: 4),
-            Text(item.label.toUpperCase(),
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5,
-                    color: color)),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: color),
+              child: Text(item.label.toUpperCase()),
+            ),
           ],
         ),
       ),

@@ -17,6 +17,40 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
+  // ── Perfil en Firestore ───────────────────────────────────────────────────
+
+  /// Stream del documento del usuario; lo usa AuthWrapper para decidir si el
+  /// perfil está completo y enrutar al shell o a "completar perfil".
+  Stream<DocumentSnapshot<Map<String, dynamic>>> userDoc(String uid) =>
+      _firestore.collection('users').doc(uid).snapshots();
+
+  /// Un perfil se considera completo cuando se han llenado los datos
+  /// obligatorios (marcado explícitamente al enviar el formulario).
+  bool isProfileComplete(Map<String, dynamic>? data) =>
+      data != null && data['profileCompleted'] == true;
+
+  /// Guarda los datos obligatorios del perfil (cualquier método de ingreso) y
+  /// marca el perfil como completo.
+  Future<void> completeProfile({
+    required String uid,
+    required String name,
+    required String rangerId,
+    required String userType,
+    required String specialty,
+  }) {
+    final user = _auth.currentUser;
+    return _firestore.collection('users').doc(uid).set({
+      'uid': uid,
+      'name': name,
+      if (user?.email != null) 'email': user!.email,
+      'rangerId': rangerId,
+      'userType': userType,
+      'specialty': specialty,
+      'profileCompleted': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   // ── Email / Contraseña ──────────────────────────────────────────────────────
 
   Future<UserCredential> signInWithEmail(String email, String password) {

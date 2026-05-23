@@ -4,7 +4,15 @@
       "WebFetch(domain:api.anthropic.com)",
       "Bash(curl -sS -i \"https://api.anthropic.com/v1/design/h/WbcxdCIw2lTJ7Up0Tg1iew?open_file=EcoGuia+Galapagos.html\")",
       "Bash(flutter analyze *)",
-      "Bash(flutter test *)"
+      "Bash(flutter test *)",
+      "Bash(./gradlew signingReport)",
+      "Bash(flutter clean *)",
+      "Bash(flutter pub *)",
+      "Bash(git -C c:/geofauna/geofauna_app status --short)",
+      "Bash(git -C c:/geofauna/geofauna_app diff --stat)",
+      "Bash(git -C c:/geofauna/geofauna_app ls-files --others --exclude-standard)",
+      "Bash(git -C c:/geofauna/geofauna_app diff pubspec.yaml lib/services/auth_service.dart android/app/src/main/AndroidManifest.xml)",
+      "Bash(git -C c:/geofauna/geofauna_app diff lib/main.dart)"
     ]
   }
 }

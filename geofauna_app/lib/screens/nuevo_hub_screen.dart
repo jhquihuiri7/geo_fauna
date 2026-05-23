@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
-import '../widgets/painters.dart';
+import '../widgets/live_map.dart';
+import '../widgets/user_avatar.dart';
 
 /// Nuevo — capture hub with three segmented sub-screens: Monitoreo (field
 /// record), Agenda (tour), Evento (create event) — port of screens-forms.jsx.
@@ -26,14 +27,10 @@ class _NuevoHubScreenState extends State<NuevoHubScreen> {
       color: eco.surface,
       child: Column(
         children: [
-          const EcoTopBar(
+          EcoTopBar(
             title: 'EcoGuía Galápagos',
-            leading: Avatar(
-                size: 40,
-                tone: AvatarTone.forest,
-                emoji: '🦫',
-                status: AvatarStatus.on),
-            trailing: [
+            leading: const UserAvatar(size: 40, status: AvatarStatus.on),
+            trailing: const [
               Avatar(size: 36, tone: AvatarTone.primary, emoji: '🐢'),
             ],
           ),
@@ -132,37 +129,11 @@ class _FieldRecordState extends State<_FieldRecord> {
         const SizedBox(height: 24),
         _sectionLabel(eco, 'Ubicación del Registro'),
         const SizedBox(height: 8),
-        TopoMap(
-          minHeight: 168,
+        LiveMap(
+          height: 168,
           borderRadius: 28,
-          children: [
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    shape: BoxShape.circle),
-                child: Icon(Icons.explore, color: eco.primary, size: 20),
-              ),
-            ),
-            Center(
-              child: Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: eco.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
-                ),
-                child: const Icon(Icons.location_on,
-                    color: Colors.white, size: 16),
-              ),
-            ),
+          zoom: 15,
+          overlays: [
             Positioned(
               bottom: 12,
               left: 12,
@@ -170,19 +141,16 @@ class _FieldRecordState extends State<_FieldRecord> {
                 borderRadius: BorderRadius.circular(18),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    Icon(Icons.my_location, size: 14, color: eco.primary),
+                    const SizedBox(width: 6),
                     Text('UBICACIÓN ACTUAL',
                         style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1,
-                            color: eco.onSurfaceVariant)),
-                    Text('Canal de Itabaca',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
                             color: eco.onSurface)),
                   ],
                 ),

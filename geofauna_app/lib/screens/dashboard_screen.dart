@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
-import '../widgets/painters.dart';
+import '../widgets/live_map.dart';
+import '../widgets/user_avatar.dart';
+import '../widgets/weather_header.dart';
 import 'reporte_screen.dart';
 
 /// Dashboard (Inicio) — weather, live map, leaderboards, community monitor.
@@ -27,7 +29,7 @@ class DashboardScreen extends StatelessWidget {
               onTap: () {},
             ),
             trailing: const [
-              Avatar(tone: AvatarTone.forest, emoji: '🦫', size: 40, status: AvatarStatus.on),
+              UserAvatar(size: 40, status: AvatarStatus.on),
             ],
           ),
           Padding(
@@ -35,7 +37,7 @@ class DashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _weatherMini(eco),
+                const WeatherHeader(),
                 const SizedBox(height: 32),
                 _map(eco),
                 const SizedBox(height: 32),
@@ -59,68 +61,10 @@ class DashboardScreen extends StatelessWidget {
           letterSpacing: 1.8,
           color: eco.primary));
 
-  Widget _weatherMini(AppColors eco) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(eco, 'Estado del Tiempo'),
-        const SizedBox(height: 4),
-        Text('Puerto Ayora, SC',
-            style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.5,
-                height: 1,
-                color: eco.onSurface)),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Icon(Icons.location_on, size: 16, color: eco.primary),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text('Isla Santa Cruz · Estación Charles Darwin',
-                  style:
-                      TextStyle(fontSize: 14, color: eco.onSurfaceVariant)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        EcoCard(
-          radius: 28,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          child: Row(
-            children: [
-              const Text('☀️', style: TextStyle(fontSize: 32)),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('28°C',
-                      style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                          color: eco.onSurface)),
-                  const SizedBox(height: 4),
-                  Text('HUMEDAD 64% · UV 11+',
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                          color: eco.onSurfaceVariant)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _map(AppColors eco) {
-    return TopoMap(
-      minHeight: 240,
-      children: [
+    return LiveMap(
+      height: 240,
+      overlays: [
         Positioned(
           top: 16,
           left: 16,
@@ -130,9 +74,9 @@ class DashboardScreen extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.location_on, size: 16, color: eco.primary),
+                Icon(Icons.my_location, size: 16, color: eco.primary),
                 const SizedBox(width: 8),
-                Text('12 Guías Activos',
+                Text('Tu ubicación',
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -152,44 +96,6 @@ class DashboardScreen extends StatelessWidget {
                         color: eco.onSurfaceVariant)),
               ],
             ),
-          ),
-        ),
-        for (final p in const [
-          [0.32, 0.30, '🐢'],
-          [0.58, 0.44, '🦎'],
-          [0.44, 0.62, '🦅'],
-          [0.22, 0.52, '📍'],
-        ])
-          Positioned(
-            left: (p[0] as double) * 320,
-            top: (p[1] as double) * 220,
-            child: Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-                border: Border.all(color: eco.primary, width: 3),
-              ),
-              child: Text(p[2] as String, style: const TextStyle(fontSize: 16)),
-            ),
-          ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FilledButton.icon(
-            onPressed: () {},
-            style: FilledButton.styleFrom(
-              backgroundColor: eco.primary,
-              foregroundColor: eco.onPrimary,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999)),
-            ),
-            icon: const Icon(Icons.open_in_full, size: 14),
-            label: const Text('Expandir Mapa',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
           ),
         ),
       ],

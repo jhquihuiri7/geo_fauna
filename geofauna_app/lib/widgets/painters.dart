@@ -88,11 +88,16 @@ class TopoMap extends StatelessWidget {
     final lo = dark ? const Color(0xFF14271A) : const Color(0xFF2C4734);
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: Container(
-        constraints: BoxConstraints(minHeight: minHeight),
-        color: base,
-        child: Stack(
-          children: [
+      child: SizedBox(
+        // A concrete height: inside a ListView the incoming height is unbounded,
+        // and this Stack has only positioned children, so it can't derive its
+        // own size. Without this the Stack tries to be infinitely tall.
+        height: minHeight,
+        child: Container(
+          color: base,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -124,6 +129,7 @@ class TopoMap extends StatelessWidget {
             ),
             ...children,
           ],
+          ),
         ),
       ),
     );

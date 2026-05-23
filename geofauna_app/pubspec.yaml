@@ -45,6 +45,13 @@ dependencies:
   # Image picker para foto de perfil
   image_picker: ^1.1.0
 
+  # Clima por ubicación actual
+  http: ^1.2.0
+  geolocator: ^13.0.0
+  geocoding: ^3.0.0
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
