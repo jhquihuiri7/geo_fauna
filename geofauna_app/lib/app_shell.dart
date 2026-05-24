@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'services/app_navigation_service.dart';
 import 'theme/app_colors.dart';
 import 'widgets/eco_widgets.dart';
 import 'widgets/animations.dart';
@@ -20,10 +21,39 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+  String? _wallHighlightSourceKey;
 
   // Tabs already built. Only the Dashboard (0) is built on login; the rest are
   // built lazily on first tap so we don't pay for 5 heavy screens in one frame.
   final Set<int> _visited = {0};
+
+  @override
+  void initState() {
+    super.initState();
+    AppNavigationService.wallPostTarget.addListener(_openWallPostTarget);
+    final pending = AppNavigationService.wallPostTarget.value;
+    if (pending != null) {
+      _index = 3;
+      _visited.add(3);
+      _wallHighlightSourceKey = pending.sourceKey;
+    }
+  }
+
+  @override
+  void dispose() {
+    AppNavigationService.wallPostTarget.removeListener(_openWallPostTarget);
+    super.dispose();
+  }
+
+  void _openWallPostTarget() {
+    final target = AppNavigationService.wallPostTarget.value;
+    if (target == null || !mounted) return;
+    setState(() {
+      _index = 3;
+      _visited.add(3);
+      _wallHighlightSourceKey = target.sourceKey;
+    });
+  }
 
   // dashboard, agenda, nuevo, muro, perfil — builders, not instances, so a tab
   // costs nothing until it is visited.
@@ -32,7 +62,7 @@ class _AppShellState extends State<AppShell> {
       0 => const DashboardScreen(),
       1 => const AgendaScreen(),
       2 => const NuevoHubScreen(),
-      3 => const MuroScreen(),
+      3 => MuroScreen(highlightSourceKey: _wallHighlightSourceKey),
       _ => const PerfilScreen(),
     };
     // Each tab fades + slides in the first time it is shown.
@@ -82,10 +112,7 @@ class _AppShellState extends State<AppShell> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: _BottomNav(
-              active: _index,
-              onTap: _onTap,
-            ),
+            child: _BottomNav(active: _index, onTap: _onTap),
           ),
         ],
       ),
@@ -94,10 +121,9 @@ class _AppShellState extends State<AppShell> {
 }
 
 class _NavItem {
-  const _NavItem(this.label, this.icon, {this.badge});
+  const _NavItem(this.label, this.icon);
   final String label;
   final IconData icon;
-  final int? badge;
 }
 
 class _BottomNav extends StatelessWidget {
@@ -110,7 +136,7 @@ class _BottomNav extends StatelessWidget {
     _NavItem('Inicio', Icons.dashboard),
     _NavItem('Agenda', Icons.event_note),
     _NavItem('Nuevo', Icons.add), // center FAB
-    _NavItem('Muro', Icons.forum, badge: 3),
+    _NavItem('Muro', Icons.forum),
     _NavItem('Perfil', Icons.person),
   ];
 
@@ -194,12 +220,15 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text('NUEVO',
-              style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                  color: eco.primary)),
+          Text(
+            'NUEVO',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+              color: eco.primary,
+            ),
+          ),
         ],
       ),
     );
@@ -228,45 +257,25 @@ class _BottomNav extends StatelessWidget {
               scale: isActive ? 1.18 : 1,
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutBack,
-              child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(item.icon,
-                      key: ValueKey(isActive), color: color, size: 24),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  item.icon,
+                  key: ValueKey(isActive),
+                  color: color,
+                  size: 24,
                 ),
-                if (item.badge != null)
-                  Positioned(
-                    top: -4,
-                    right: -8,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDC2626),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: eco.surface, width: 2),
-                      ),
-                      child: Text('${item.badge}',
-                          style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white)),
-                    ),
-                  ),
-              ],
-            ),
+              ),
             ),
             const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                  color: color),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+                color: color,
+              ),
               child: Text(item.label.toUpperCase()),
             ),
           ],

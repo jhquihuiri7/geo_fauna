@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "Bash(firebase --version)",
+      "Bash(cd /c/geofauna && find . -name \"firebase.json\" -o -name \".firebaserc\" 2>/dev/null | grep -v node_modules | head; echo \"--- backend ---\"; ls backend/ 2>&1)",
+      "Read(//c/c/**)",
+      "Bash(firebase deploy *)",
+      "Bash(firebase functions:list)",
+      "Bash(firebase functions:log --only on_public_feed_created)"
+    ]
+  }
+}

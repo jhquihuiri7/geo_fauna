@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
@@ -28,9 +29,7 @@ class DashboardScreen extends StatelessWidget {
               iconColor: eco.onSurface,
               onTap: () {},
             ),
-            trailing: const [
-              UserAvatar(size: 40, status: AvatarStatus.on),
-            ],
+            trailing: const [UserAvatar(size: 40, status: AvatarStatus.on)],
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -41,11 +40,7 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 32),
                 _map(eco),
                 const SizedBox(height: 32),
-                _recognition(context, eco),
-                const SizedBox(height: 32),
-                _leaders(eco),
-                const SizedBox(height: 32),
-                _monitor(context, eco),
+                _realDataSections(context, eco),
               ],
             ),
           ),
@@ -54,12 +49,15 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _label(AppColors eco, String t) => Text(t.toUpperCase(),
-      style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.8,
-          color: eco.primary));
+  Widget _label(AppColors eco, String t) => Text(
+    t.toUpperCase(),
+    style: TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 1.8,
+      color: eco.primary,
+    ),
+  );
 
   Widget _map(AppColors eco) {
     return LiveMap(
@@ -76,24 +74,33 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 Icon(Icons.my_location, size: 16, color: eco.primary),
                 const SizedBox(width: 8),
-                Text('Tu ubicación',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: eco.onSurface)),
+                Text(
+                  'Tu ubicación',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: eco.onSurface,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                        color: Color(0xFF22C55E), shape: BoxShape.circle)),
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF22C55E),
+                    shape: BoxShape.circle,
+                  ),
+                ),
                 const SizedBox(width: 4),
-                Text('EN VIVO',
-                    style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
-                        color: eco.onSurfaceVariant)),
+                Text(
+                  'EN VIVO',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                    color: eco.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -102,7 +109,93 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _recognition(BuildContext context, AppColors eco) {
+  Widget _realDataSections(BuildContext context, AppColors eco) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('fieldRecords').snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return _loadingData(eco);
+        }
+        if (snap.hasError) {
+          return _dataError(eco, snap.error!);
+        }
+
+        final records =
+            snap.data?.docs
+                .map((doc) => _FieldRecord.fromMap(doc.id, doc.data()))
+                .toList() ??
+            const <_FieldRecord>[];
+        final data = _DashboardData.fromRecords(records);
+
+        return Column(
+          children: [
+            _recognition(context, eco, data),
+            const SizedBox(height: 32),
+            _leaders(eco, data),
+            const SizedBox(height: 32),
+            _monitor(context, eco, data),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _loadingData(AppColors eco) {
+    return EcoCard(
+      radius: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: eco.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            'Cargando datos reales...',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: eco.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dataError(AppColors eco, Object error) {
+    return EcoCard(
+      radius: 28,
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off, color: eco.error),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No se pudieron cargar los registros reales: $error',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _recognition(
+    BuildContext context,
+    AppColors eco,
+    _DashboardData data,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -110,24 +203,30 @@ class DashboardScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _label(eco, 'Prestigio e Impacto'),
-                const SizedBox(height: 4),
-                Text('Centro de Reconocimiento',
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label(eco, 'Prestigio e Impacto'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Centro de Reconocimiento',
                     style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        color: eco.onSurface)),
-              ],
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                      color: eco.onSurface,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text('Perfil Completo',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: eco.primary)),
+            const SizedBox(width: 12),
+            EcoChip(
+              '${data.totalRecords} registros',
+              tone: ChipTone.emerald,
+              small: true,
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -136,45 +235,53 @@ class DashboardScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Column(
             children: [
-              Text('TOP CONTRIBUIDORES',
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.8,
-                      color: eco.onSurfaceVariant)),
-              const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: const [
-                  Expanded(
-                      child: _Podium(
-                          icon: Icons.military_tech,
-                          iconColor: Color(0xFF9CA3AF),
-                          name: 'Elena R.',
-                          pts: '982',
-                          tone: AvatarTone.slate,
-                          emoji: '👩‍🔬')),
-                  SizedBox(width: 12),
-                  Expanded(
-                      child: _Podium(
-                          icon: Icons.emoji_events,
-                          iconColor: Color(0xFFF59E0B),
-                          name: 'Mateo L.',
-                          pts: '1,245',
-                          tone: AvatarTone.primary,
-                          emoji: '🧑‍🌾',
-                          highlight: true)),
-                  SizedBox(width: 12),
-                  Expanded(
-                      child: _Podium(
-                          icon: Icons.workspace_premium,
-                          iconColor: Color(0xFFC87F5B),
-                          name: 'Carlos J.',
-                          pts: '856',
-                          tone: AvatarTone.forest,
-                          emoji: '🦫')),
-                ],
+              Text(
+                'TOP CONTRIBUIDORES',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.8,
+                  color: eco.onSurfaceVariant,
+                ),
               ),
+              const SizedBox(height: 16),
+              if (data.contributors.isEmpty)
+                _emptyState(
+                  eco,
+                  icon: Icons.groups_outlined,
+                  title: 'Sin contribuciones registradas',
+                  message:
+                      'Cuando existan documentos en fieldRecords, aparecerán aquí.',
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < data.contributors.take(3).length; i++)
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(left: i == 0 ? 0 : 12),
+                          child: _Podium(
+                            icon: switch (i) {
+                              0 => Icons.emoji_events,
+                              1 => Icons.military_tech,
+                              _ => Icons.workspace_premium,
+                            },
+                            iconColor: switch (i) {
+                              0 => const Color(0xFFF59E0B),
+                              1 => const Color(0xFF9CA3AF),
+                              _ => const Color(0xFFC87F5B),
+                            },
+                            name: data.contributors[i].name,
+                            pts: _formatInt(data.contributors[i].count),
+                            tone: _toneForIndex(i),
+                            photoUrl: data.contributors[i].photoUrl,
+                            highlight: i == 0,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -182,7 +289,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _leaders(AppColors eco) {
+  Widget _leaders(AppColors eco, _DashboardData data) {
     return EcoCard(
       radius: 32,
       padding: const EdgeInsets.all(18),
@@ -191,68 +298,62 @@ class DashboardScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Líderes por Categoría',
+              Expanded(
+                child: Text(
+                  'Líderes por Categoría',
                   style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: eco.onSurface)),
-              const EcoChip('Actualizado hoy', tone: ChipTone.emerald),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: eco.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              EcoChip(
+                '${data.categoryLeaders.length} categorías',
+                tone: ChipTone.emerald,
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: const [
-              Expanded(
-                  child: _LeaderCard(
-                      name: 'Elena R.',
-                      role: 'Campeón',
-                      cat: 'Fauna',
-                      pts: '421 pts',
-                      tone: AvatarTone.primary,
-                      chip: ChipTone.emerald,
-                      emoji: '👩‍🔬')),
-              SizedBox(width: 12),
-              Expanded(
-                  child: _LeaderCard(
-                      name: 'Mateo L.',
-                      role: 'Experto',
-                      cat: 'Flora',
-                      pts: '388 pts',
-                      tone: AvatarTone.blue,
-                      chip: ChipTone.tertiary,
-                      emoji: '🧑‍🌾')),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: const [
-              Expanded(
-                  child: _LeaderCard(
-                      name: 'Carlos J.',
-                      role: 'Avanzado',
-                      cat: 'Incidentes',
-                      pts: '254 pts',
-                      tone: AvatarTone.sand,
-                      chip: ChipTone.warning,
-                      emoji: '🦫')),
-              SizedBox(width: 12),
-              Expanded(
-                  child: _LeaderCard(
-                      name: 'Sofía M.',
-                      role: 'Campeón',
-                      cat: 'Basura',
-                      pts: '512 pts',
-                      tone: AvatarTone.primary,
-                      chip: ChipTone.emerald,
-                      emoji: '👩')),
-            ],
-          ),
+          if (data.categoryLeaders.isEmpty)
+            _emptyState(
+              eco,
+              icon: Icons.leaderboard_outlined,
+              title: 'Sin líderes por categoría',
+              message:
+                  'Los líderes se calculan desde los registros reales por categoría.',
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final leaders = data.categoryLeaders.take(4).toList();
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (var i = 0; i < leaders.length; i++)
+                      SizedBox(
+                        width: (constraints.maxWidth - 12) / 2,
+                        child: _LeaderCard(
+                          name: leaders[i].name,
+                          cat: leaders[i].categoryLabel,
+                          count: leaders[i].count,
+                          tone: _toneForIndex(i),
+                          chip: _chipForCategory(leaders[i].categoryKey),
+                          photoUrl: leaders[i].photoUrl,
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _monitor(BuildContext context, AppColors eco) {
+  Widget _monitor(BuildContext context, AppColors eco, _DashboardData data) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -260,29 +361,40 @@ class DashboardScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _label(eco, 'Monitor de Comunidad'),
-                const SizedBox(height: 4),
-                Text('Análisis de Datos',
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label(eco, 'Monitor de Comunidad'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Análisis de Datos',
                     style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        color: eco.onSurface)),
-              ],
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                      color: eco.onSurface,
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             GestureDetector(
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ReporteScreen())),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReporteScreen()),
+              ),
               child: Row(
                 children: [
-                  Text('Ver reporte',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: eco.primary)),
+                  Text(
+                    'Ver reporte',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: eco.primary,
+                    ),
+                  ),
                   const SizedBox(width: 4),
                   Icon(Icons.arrow_forward, size: 14, color: eco.primary),
                 ],
@@ -303,60 +415,49 @@ class DashboardScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('AVISTAMIENTOS TOTALES',
-                          style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1,
-                              color: eco.onSurfaceVariant)),
+                      Text(
+                        'REGISTROS TOTALES',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                          color: eco.onSurfaceVariant,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text('15,402',
-                          style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -1.5,
-                              color: eco.onSurface)),
+                      Text(
+                        _formatInt(data.totalRecords),
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.5,
+                          color: eco.onSurface,
+                        ),
+                      ),
                     ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const EcoChip('+15.2%', tone: ChipTone.emerald),
+                      EcoChip(
+                        data.deltaLabel,
+                        tone: data.deltaTone,
+                        small: true,
+                      ),
                       const SizedBox(height: 4),
-                      Text('Vs. mes anterior',
-                          style: TextStyle(
-                              fontSize: 10, color: eco.onSurfaceVariant)),
+                      Text(
+                        'Vs. mes anterior',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: eco.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 80,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    for (final entry in const [34, 42, 38, 56, 48, 70, 92]
-                        .asMap()
-                        .entries)
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: Container(
-                            height: entry.value * 0.8,
-                            decoration: BoxDecoration(
-                              color: entry.key == 6
-                                  ? eco.primary
-                                  : eco.primary.withValues(alpha: 0.25),
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(6)),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+              _weeklyBars(eco, data),
             ],
           ),
         ),
@@ -367,38 +468,59 @@ class DashboardScreen extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
+              Expanded(
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('PRECISIÓN DE DATOS',
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                          color: eco.onSurfaceVariant)),
+                  Text(
+                    'PRECISIÓN DE DATOS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: eco.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('94.2%',
-                      style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.5,
-                          color: eco.onSurface)),
+                  Text(
+                    data.precisionLabel,
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1.5,
+                      color: eco.onSurface,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.check_circle, size: 14, color: eco.primary),
                       const SizedBox(width: 4),
-                      Text('Calidad de grado científico',
+                      Expanded(
+                        child: Text(
+                          data.precisionDescription,
                           style: TextStyle(
-                              fontSize: 11, color: eco.onSurfaceVariant)),
+                            fontSize: 11,
+                            color: eco.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
+                ),
               ),
+              const SizedBox(width: 12),
               SizedBox(
                 width: 72,
                 height: 72,
-                child: CustomPaint(painter: _DonutPainter(94, eco)),
+                child: data.precision == null
+                    ? Icon(
+                        Icons.fact_check_outlined,
+                        size: 36,
+                        color: eco.outline,
+                      )
+                    : CustomPaint(painter: _DonutPainter(data.precision!, eco)),
               ),
             ],
           ),
@@ -413,53 +535,612 @@ class DashboardScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Especies con Mayor Impacto',
+                  Expanded(
+                    child: Text(
+                      'Especies con Mayor Impacto',
                       style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: eco.onSurface)),
-                  Text('TOP REPORTADAS',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                          color: eco.outline)),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: eco.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'TOP REPORTADAS',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: eco.outline,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
-              SpeciesRow(
-                  name: 'Tortuga Gigante',
-                  emoji: '🐢',
-                  pts: '4,201',
-                  pct: 92,
-                  color: eco.primary),
-              const SizedBox(height: 12),
-              SpeciesRow(
-                  name: 'Iguana Marina',
-                  emoji: '🦎',
-                  pts: '3,120',
-                  pct: 68,
-                  color: const Color(0xFF10B981)),
-              const SizedBox(height: 12),
-              SpeciesRow(
-                  name: 'Piquero Patas Azules',
-                  emoji: '🐦',
-                  pts: '2,840',
-                  pct: 60,
-                  color: eco.tertiary),
-              const SizedBox(height: 12),
-              SpeciesRow(
-                  name: 'Lobo Marino',
-                  emoji: '🦭',
-                  pts: '1,950',
-                  pct: 42,
-                  color: const Color(0xFFF59E0B)),
+              if (data.species.isEmpty)
+                _emptyState(
+                  eco,
+                  icon: Icons.eco_outlined,
+                  title: 'Sin especies reportadas',
+                  message:
+                      'Las especies aparecerán cuando fieldRecords tenga speciesName.',
+                )
+              else
+                for (final entry
+                    in data.species.take(4).toList().asMap().entries)
+                  Padding(
+                    padding: EdgeInsets.only(top: entry.key == 0 ? 0 : 12),
+                    child: SpeciesRow(
+                      name: entry.value.name,
+                      emoji: _categoryGlyph(entry.value.categoryKey),
+                      pts: _formatInt(entry.value.count),
+                      pct: entry.value.percent,
+                      color: _colorForIndex(eco, entry.key),
+                    ),
+                  ),
             ],
           ),
         ),
       ],
     );
   }
+
+  Widget _weeklyBars(AppColors eco, _DashboardData data) {
+    if (data.weeklyCounts.every((value) => value == 0)) {
+      return SizedBox(
+        height: 80,
+        child: _emptyState(
+          eco,
+          icon: Icons.bar_chart,
+          title: 'Sin registros recientes',
+          message: 'No hay actividad en los últimos 7 días.',
+          compact: true,
+        ),
+      );
+    }
+
+    final maxCount = data.weeklyCounts.reduce(math.max);
+    return SizedBox(
+      height: 80,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final entry in data.weeklyCounts.asMap().entries)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Container(
+                  height: math.max(6, 76 * entry.value / maxCount),
+                  decoration: BoxDecoration(
+                    color: entry.key == data.weeklyCounts.length - 1
+                        ? eco.primary
+                        : eco.primary.withValues(alpha: 0.25),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(6),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState(
+    AppColors eco, {
+    required IconData icon,
+    required String title,
+    required String message,
+    bool compact = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 12 : 16,
+        vertical: compact ? 10 : 16,
+      ),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(compact ? 18 : 24),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: eco.outline, size: compact ? 20 : 26),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: compact ? 12 : 14,
+                    fontWeight: FontWeight.w800,
+                    color: eco.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  maxLines: compact ? 1 : 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: compact ? 10 : 12,
+                    color: eco.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardData {
+  _DashboardData({
+    required this.totalRecords,
+    required this.currentPeriodRecords,
+    required this.previousPeriodRecords,
+    required this.weeklyCounts,
+    required this.contributors,
+    required this.categoryLeaders,
+    required this.species,
+    required this.precision,
+    required this.precisionDescription,
+  });
+
+  final int totalRecords;
+  final int currentPeriodRecords;
+  final int previousPeriodRecords;
+  final List<int> weeklyCounts;
+  final List<_ContributorStat> contributors;
+  final List<_CategoryLeader> categoryLeaders;
+  final List<_SpeciesStat> species;
+  final int? precision;
+  final String precisionDescription;
+
+  String get precisionLabel => precision == null ? '—' : '$precision%';
+
+  String get deltaLabel {
+    if (currentPeriodRecords == 0 && previousPeriodRecords == 0) {
+      return totalRecords == 0 ? 'Sin actividad' : 'Sin fecha';
+    }
+    if (previousPeriodRecords == 0) return '+$currentPeriodRecords nuevos';
+
+    final pct =
+        ((currentPeriodRecords - previousPeriodRecords) /
+            previousPeriodRecords) *
+        100;
+    final rounded = pct.round();
+    return '${rounded >= 0 ? '+' : ''}$rounded%';
+  }
+
+  ChipTone get deltaTone {
+    if (currentPeriodRecords >= previousPeriodRecords) return ChipTone.emerald;
+    return ChipTone.warning;
+  }
+
+  static _DashboardData fromRecords(List<_FieldRecord> records) {
+    final now = DateTime.now();
+    final currentStart = now.subtract(const Duration(days: 30));
+    final previousStart = now.subtract(const Duration(days: 60));
+
+    final contributors = <String, _MutableContributor>{};
+    final categories = <String, Map<String, _MutableContributor>>{};
+    final species = <String, _MutableSpecies>{};
+    final weeklyCounts = List<int>.filled(7, 0);
+    final scores = <int>[];
+    var recordsWithStatus = 0;
+    var verifiedRecords = 0;
+    var currentPeriodRecords = 0;
+    var previousPeriodRecords = 0;
+
+    for (final record in records) {
+      final date = record.date;
+      if (date != null) {
+        if (!date.isBefore(currentStart) && !date.isAfter(now)) {
+          currentPeriodRecords++;
+        } else if (!date.isBefore(previousStart) &&
+            date.isBefore(currentStart)) {
+          previousPeriodRecords++;
+        }
+
+        final daysAgo = now
+            .difference(DateTime(date.year, date.month, date.day))
+            .inDays;
+        if (daysAgo >= 0 && daysAgo < 7) {
+          weeklyCounts[6 - daysAgo]++;
+        }
+      }
+
+      final authorKey = record.authorId ?? record.authorName;
+      contributors
+          .putIfAbsent(
+            authorKey,
+            () => _MutableContributor(
+              name: record.authorName,
+              photoUrl: record.authorPhotoUrl,
+            ),
+          )
+          .count++;
+
+      final categoryKey = record.categoryKey;
+      final categoryAuthors = categories.putIfAbsent(
+        categoryKey,
+        () => <String, _MutableContributor>{},
+      );
+      categoryAuthors
+          .putIfAbsent(
+            authorKey,
+            () => _MutableContributor(
+              name: record.authorName,
+              photoUrl: record.authorPhotoUrl,
+            ),
+          )
+          .count++;
+
+      if (record.speciesName != null) {
+        species
+            .putIfAbsent(
+              record.speciesName!,
+              () => _MutableSpecies(
+                name: record.speciesName!,
+                categoryKey: categoryKey,
+              ),
+            )
+            .count++;
+      }
+
+      if (record.integrityScore != null) scores.add(record.integrityScore!);
+      if (record.status != null) {
+        recordsWithStatus++;
+        if (_isVerifiedStatus(record.status!)) verifiedRecords++;
+      }
+    }
+
+    final contributorStats =
+        contributors.values
+            .map(
+              (c) => _ContributorStat(
+                name: c.name,
+                count: c.count,
+                photoUrl: c.photoUrl,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.count.compareTo(a.count));
+
+    final categoryLeaderStats = <_CategoryLeader>[];
+    for (final entry in categories.entries) {
+      final leaders = entry.value.values.toList()
+        ..sort((a, b) => b.count.compareTo(a.count));
+      if (leaders.isEmpty) continue;
+      final leader = leaders.first;
+      categoryLeaderStats.add(
+        _CategoryLeader(
+          categoryKey: entry.key,
+          categoryLabel: _categoryLabel(entry.key),
+          name: leader.name,
+          count: leader.count,
+          photoUrl: leader.photoUrl,
+        ),
+      );
+    }
+    categoryLeaderStats.sort((a, b) => b.count.compareTo(a.count));
+
+    final maxSpeciesCount = species.values.fold<int>(
+      0,
+      (max, item) => math.max(max, item.count),
+    );
+    final speciesStats =
+        species.values
+            .map(
+              (s) => _SpeciesStat(
+                name: s.name,
+                count: s.count,
+                categoryKey: s.categoryKey,
+                percent: maxSpeciesCount == 0
+                    ? 0
+                    : (s.count * 100 / maxSpeciesCount).round(),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.count.compareTo(a.count));
+
+    int? precision;
+    String precisionDescription;
+    if (scores.isNotEmpty) {
+      precision = (scores.reduce((a, b) => a + b) / scores.length).round();
+      precisionDescription = 'Promedio de integridad real';
+    } else if (recordsWithStatus > 0) {
+      precision = (verifiedRecords * 100 / recordsWithStatus).round();
+      precisionDescription = 'Registros verificados';
+    } else {
+      precision = null;
+      precisionDescription = 'Sin validaciones registradas';
+    }
+
+    return _DashboardData(
+      totalRecords: records.length,
+      currentPeriodRecords: currentPeriodRecords,
+      previousPeriodRecords: previousPeriodRecords,
+      weeklyCounts: weeklyCounts,
+      contributors: contributorStats,
+      categoryLeaders: categoryLeaderStats,
+      species: speciesStats,
+      precision: precision,
+      precisionDescription: precisionDescription,
+    );
+  }
+}
+
+class _FieldRecord {
+  _FieldRecord({
+    required this.id,
+    required this.authorName,
+    required this.categoryKey,
+    this.authorId,
+    this.authorPhotoUrl,
+    this.speciesName,
+    this.date,
+    this.integrityScore,
+    this.status,
+  });
+
+  final String id;
+  final String? authorId;
+  final String authorName;
+  final String? authorPhotoUrl;
+  final String categoryKey;
+  final String? speciesName;
+  final DateTime? date;
+  final int? integrityScore;
+  final String? status;
+
+  factory _FieldRecord.fromMap(String id, Map<String, dynamic> data) {
+    final authorSnapshot = data['authorSnapshot'] is Map
+        ? data['authorSnapshot'] as Map
+        : null;
+    final authorId = _firstNonEmpty([
+      _stringValue(data['authorId']),
+      _stringValue(data['createdBy']),
+      _stringValue(data['userId']),
+      _stringValue(data['uid']),
+    ]);
+    final authorName =
+        _firstNonEmpty([
+          _stringValue(authorSnapshot?['name']),
+          _stringValue(authorSnapshot?['displayName']),
+          _stringValue(data['authorName']),
+          _stringValue(data['userName']),
+          _stringValue(data['name']),
+        ]) ??
+        _fallbackUserName(authorId);
+
+    return _FieldRecord(
+      id: id,
+      authorId: authorId,
+      authorName: authorName,
+      authorPhotoUrl: _firstNonEmpty([
+        _stringValue(authorSnapshot?['photoUrl']),
+        _stringValue(authorSnapshot?['photoURL']),
+        _stringValue(data['authorPhotoUrl']),
+        _stringValue(data['photoUrl']),
+      ]),
+      categoryKey: _normalizeCategory(
+        _firstNonEmpty([
+          _stringValue(data['category']),
+          _stringValue(data['type']),
+        ]),
+      ),
+      speciesName: _firstNonEmpty([
+        _stringValue(data['speciesName']),
+        _stringValue(data['species']),
+        _stringValue(data['commonName']),
+      ]),
+      date:
+          _toDate(data['observedAt']) ??
+          _toDate(data['createdAt']) ??
+          _toDate(data['date']),
+      integrityScore: _toInt(data['integrityScore']),
+      status: _firstNonEmpty([_stringValue(data['status'])]),
+    );
+  }
+}
+
+class _ContributorStat {
+  const _ContributorStat({
+    required this.name,
+    required this.count,
+    this.photoUrl,
+  });
+
+  final String name;
+  final int count;
+  final String? photoUrl;
+}
+
+class _CategoryLeader {
+  const _CategoryLeader({
+    required this.categoryKey,
+    required this.categoryLabel,
+    required this.name,
+    required this.count,
+    this.photoUrl,
+  });
+
+  final String categoryKey;
+  final String categoryLabel;
+  final String name;
+  final int count;
+  final String? photoUrl;
+}
+
+class _SpeciesStat {
+  const _SpeciesStat({
+    required this.name,
+    required this.count,
+    required this.categoryKey,
+    required this.percent,
+  });
+
+  final String name;
+  final int count;
+  final String categoryKey;
+  final int percent;
+}
+
+class _MutableContributor {
+  _MutableContributor({required this.name, this.photoUrl});
+
+  final String name;
+  final String? photoUrl;
+  int count = 0;
+}
+
+class _MutableSpecies {
+  _MutableSpecies({required this.name, required this.categoryKey});
+
+  final String name;
+  final String categoryKey;
+  int count = 0;
+}
+
+String? _firstNonEmpty(List<String?> values) {
+  for (final value in values) {
+    if (value != null && value.trim().isNotEmpty) return value.trim();
+  }
+  return null;
+}
+
+String? _stringValue(Object? value) {
+  if (value == null) return null;
+  return value.toString();
+}
+
+String _fallbackUserName(String? uid) {
+  if (uid == null || uid.isEmpty) return 'Usuario sin nombre';
+  final visible = uid.length <= 6 ? uid : uid.substring(uid.length - 6);
+  return 'Usuario $visible';
+}
+
+String _normalizeCategory(String? value) {
+  final v = (value ?? 'otros').trim().toLowerCase();
+  return switch (v) {
+    'fauna' || 'animal' || 'animals' => 'fauna',
+    'flora' || 'plant' || 'plants' => 'flora',
+    'incidente' || 'incident' || 'incidents' => 'incident',
+    'basura' || 'trash' || 'waste' => 'trash',
+    _ => 'otros',
+  };
+}
+
+String _categoryLabel(String key) {
+  return switch (key) {
+    'fauna' => 'Fauna',
+    'flora' => 'Flora',
+    'incident' => 'Incidentes',
+    'trash' => 'Basura',
+    _ => 'Otros',
+  };
+}
+
+bool _isVerifiedStatus(String status) {
+  final s = status.trim().toLowerCase();
+  return s == 'verified' ||
+      s == 'verificado' ||
+      s == 'approved' ||
+      s == 'aprobado' ||
+      s == 'validado';
+}
+
+DateTime? _toDate(Object? value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+  if (value is String) return DateTime.tryParse(value);
+  return null;
+}
+
+int? _toInt(Object? value) {
+  if (value is num) return value.round().clamp(0, 100).toInt();
+  if (value is String) return int.tryParse(value)?.clamp(0, 100).toInt();
+  return null;
+}
+
+String _formatInt(int value) {
+  final text = value.toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < text.length; i++) {
+    final remaining = text.length - i;
+    buffer.write(text[i]);
+    if (remaining > 1 && remaining % 3 == 1) buffer.write(',');
+  }
+  return buffer.toString();
+}
+
+AvatarTone _toneForIndex(int index) {
+  return switch (index % 6) {
+    0 => AvatarTone.primary,
+    1 => AvatarTone.slate,
+    2 => AvatarTone.forest,
+    3 => AvatarTone.blue,
+    4 => AvatarTone.sand,
+    _ => AvatarTone.teal,
+  };
+}
+
+ChipTone _chipForCategory(String key) {
+  return switch (key) {
+    'fauna' => ChipTone.emerald,
+    'flora' => ChipTone.tertiary,
+    'incident' => ChipTone.warning,
+    'trash' => ChipTone.primary,
+    _ => ChipTone.slate,
+  };
+}
+
+String _categoryGlyph(String key) {
+  return switch (key) {
+    'fauna' => 'F',
+    'flora' => 'L',
+    'incident' => '!',
+    'trash' => 'B',
+    _ => '*',
+  };
+}
+
+Color _colorForIndex(AppColors eco, int index) {
+  return switch (index % 4) {
+    0 => eco.primary,
+    1 => const Color(0xFF10B981),
+    2 => eco.tertiary,
+    _ => const Color(0xFFF59E0B),
+  };
+}
+
+Widget _profileAvatar({
+  required String name,
+  required AvatarTone tone,
+  required double size,
+  String? photoUrl,
+}) {
+  if (photoUrl == null || photoUrl.isEmpty) {
+    return Avatar(name: name, size: size, tone: tone);
+  }
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      image: DecorationImage(image: NetworkImage(photoUrl), fit: BoxFit.cover),
+    ),
+  );
 }
 
 class _Podium extends StatelessWidget {
@@ -469,7 +1150,7 @@ class _Podium extends StatelessWidget {
     required this.name,
     required this.pts,
     required this.tone,
-    required this.emoji,
+    this.photoUrl,
     this.highlight = false,
   });
 
@@ -478,7 +1159,7 @@ class _Podium extends StatelessWidget {
   final String name;
   final String pts;
   final AvatarTone tone;
-  final String emoji;
+  final String? photoUrl;
   final bool highlight;
 
   @override
@@ -488,27 +1169,36 @@ class _Podium extends StatelessWidget {
       children: [
         Icon(icon, color: iconColor, size: 28),
         const SizedBox(height: 8),
-        Avatar(size: 56, tone: tone, emoji: emoji),
+        _profileAvatar(name: name, tone: tone, size: 56, photoUrl: photoUrl),
         const SizedBox(height: 8),
-        Text(name,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurface)),
+        Text(
+          name,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: eco.onSurface,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(pts,
-            style: TextStyle(
-                fontSize: highlight ? 20 : 16,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-                color: highlight ? eco.primary : eco.onSurface)),
-        Text('REGISTROS',
-            style: TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-                color: eco.outline)),
+        Text(
+          pts,
+          style: TextStyle(
+            fontSize: highlight ? 20 : 16,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.5,
+            color: highlight ? eco.primary : eco.onSurface,
+          ),
+        ),
+        Text(
+          'REGISTROS',
+          style: TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1,
+            color: eco.outline,
+          ),
+        ),
       ],
     );
   }
@@ -517,21 +1207,19 @@ class _Podium extends StatelessWidget {
 class _LeaderCard extends StatelessWidget {
   const _LeaderCard({
     required this.name,
-    required this.role,
     required this.cat,
-    required this.pts,
+    required this.count,
     required this.tone,
     required this.chip,
-    required this.emoji,
+    this.photoUrl,
   });
 
   final String name;
-  final String role;
   final String cat;
-  final String pts;
+  final int count;
   final AvatarTone tone;
   final ChipTone chip;
-  final String emoji;
+  final String? photoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -547,20 +1235,32 @@ class _LeaderCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Avatar(size: 40, tone: tone, emoji: emoji),
+              _profileAvatar(
+                name: name,
+                tone: tone,
+                size: 40,
+                photoUrl: photoUrl,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: eco.onSurface)),
+                    Text(
+                      name,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: eco.onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    EcoChip(role, tone: chip, small: true),
+                    EcoChip(
+                      '${_formatInt(count)} reg.',
+                      tone: chip,
+                      small: true,
+                    ),
                   ],
                 ),
               ),
@@ -571,17 +1271,27 @@ class _LeaderCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(cat.toUpperCase(),
+              Expanded(
+                child: Text(
+                  cat.toUpperCase(),
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                      color: eco.onSurfaceVariant)),
-              Text(pts,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: eco.onSurface)),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                    color: eco.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${_formatInt(count)} reg.',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: eco.onSurface,
+                ),
+              ),
             ],
           ),
         ],
@@ -615,23 +1325,35 @@ class SpeciesRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 16)),
-                const SizedBox(width: 8),
-                Text(name.toUpperCase(),
-                    style: TextStyle(
+            Expanded(
+              child: Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      name.toUpperCase(),
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.6,
-                        color: eco.onSurface)),
-              ],
+                        color: eco.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text('$pts sightings',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: eco.onSurfaceVariant)),
+            const SizedBox(width: 8),
+            Text(
+              '$pts registros',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -668,15 +1390,22 @@ class _DonutPainter extends CustomPainter {
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, track);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2, 2 * math.pi * value / 100, false, arc);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * value / 100,
+      false,
+      arc,
+    );
     final tp = TextPainter(
       text: TextSpan(
-          text: '$value%',
-          style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-              color: eco.onSurface)),
+        text: '$value%',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          color: eco.onSurface,
+        ),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));

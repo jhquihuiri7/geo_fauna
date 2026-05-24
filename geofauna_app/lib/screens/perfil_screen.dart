@@ -401,37 +401,43 @@ class _StatCell extends StatelessWidget {
     return EcoCard(
       radius: 24,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: eco.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 18, color: eco.primary),
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: eco.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 18, color: eco.primary),
+              ),
+              const SizedBox(height: 8),
+              Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: small ? 14 : 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                      color: eco.onSurface)),
+              const SizedBox(height: 4),
+              Text(label.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: eco.onSurfaceVariant)),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontSize: small ? 14 : 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                  color: eco.onSurface)),
-          const SizedBox(height: 4),
-          Text(label.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
-                  color: eco.onSurfaceVariant)),
-        ],
+        ),
       ),
     );
   }

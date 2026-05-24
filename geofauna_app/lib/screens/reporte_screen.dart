@@ -114,11 +114,14 @@ class ReporteScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Tendencia de Avistamientos',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: eco.onSurface)),
+                            Expanded(
+                              child: Text('Tendencia de Avistamientos',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: eco.onSurface)),
+                            ),
+                            const SizedBox(width: 8),
                             Icon(Icons.more_horiz, color: eco.outline),
                           ],
                         ),
@@ -299,18 +302,24 @@ class ReporteScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-                width: 10,
-                height: 10,
-                decoration:
-                    BoxDecoration(color: color, shape: BoxShape.circle)),
-            const SizedBox(width: 8),
-            Text(label,
-                style: TextStyle(fontSize: 14, color: eco.onSurface)),
-          ],
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                  width: 10,
+                  height: 10,
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 14, color: eco.onSurface)),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         Text(value,
             style: TextStyle(
                 fontSize: 14,
@@ -396,32 +405,37 @@ class _ZoneRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: eco.onSurface)),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.visibility, size: 13, color: eco.onSurfaceVariant),
-                  const SizedBox(width: 4),
-                  Text(visits,
-                      style: TextStyle(
-                          fontSize: 11, color: eco.onSurfaceVariant)),
-                  const SizedBox(width: 12),
-                  Icon(Icons.warning, size: 13, color: eco.onSurfaceVariant),
-                  const SizedBox(width: 4),
-                  Text(incidents,
-                      style: TextStyle(
-                          fontSize: 11, color: eco.onSurfaceVariant)),
-                ],
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: eco.onSurface)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.visibility,
+                        size: 13, color: eco.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Text(visits,
+                        style: TextStyle(
+                            fontSize: 11, color: eco.onSurfaceVariant)),
+                    const SizedBox(width: 12),
+                    Icon(Icons.warning, size: 13, color: eco.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Text(incidents,
+                        style: TextStyle(
+                            fontSize: 11, color: eco.onSurfaceVariant)),
+                  ],
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           EcoChip(status, tone: tone),
         ],
       ),

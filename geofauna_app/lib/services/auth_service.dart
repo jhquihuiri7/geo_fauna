@@ -4,6 +4,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
+import 'notification_service.dart';
+
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -51,6 +53,36 @@ class AuthService {
     }, SetOptions(merge: true));
   }
 
+  /// Actualiza los datos editables del perfil del usuario autenticado en
+  /// Firebase Auth y Firestore.
+  Future<void> updateAccountProfile({
+    required String name,
+    required String rangerId,
+    required String userType,
+    required String specialty,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No hay una sesión activa.',
+      );
+    }
+
+    await user.updateDisplayName(name);
+    await _firestore.collection('users').doc(user.uid).set({
+      'uid': user.uid,
+      'name': name,
+      if (user.email != null) 'email': user.email,
+      'rangerId': rangerId,
+      'userType': userType,
+      'specialty': specialty,
+      'profileCompleted': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    await user.reload();
+  }
+
   // ── Email / Contraseña ──────────────────────────────────────────────────────
 
   Future<UserCredential> signInWithEmail(String email, String password) {
@@ -90,6 +122,38 @@ class AuthService {
     return _auth.sendPasswordResetEmail(email: email);
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No hay una cuenta con correo activa.',
+      );
+    }
+
+    final usesPassword = user.providerData.any(
+      (provider) => provider.providerId == 'password',
+    );
+    if (!usesPassword) {
+      throw FirebaseAuthException(
+        code: 'provider-not-password',
+        message:
+            'Esta cuenta no usa contraseña local. Gestiona el acceso desde tu proveedor de inicio de sesión.',
+      );
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
   // ── Google Sign-In ──────────────────────────────────────────────────────────
 
   Future<UserCredential?> signInWithGoogle() async {
@@ -119,6 +183,7 @@ class AuthService {
   // ── Cerrar sesión ───────────────────────────────────────────────────────────
 
   Future<void> signOut() async {
+    await NotificationService.instance.unregisterCurrentDevice();
     await _googleSignIn.signOut();
     await _auth.signOut();
   }

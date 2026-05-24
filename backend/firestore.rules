@@ -2,18 +2,123 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAuthor() {
+      return signedIn()
+        && request.resource.data.authorId == request.auth.uid;
+    }
+
+    function isExistingAuthor() {
+      return signedIn()
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    function isInteractionCounterUpdate() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["reactionCounts", "validationSummary", "commentCount", "updatedAt"]);
+    }
+
+    function ownsInteractionDoc(docId) {
+      return signedIn() && docId == request.auth.uid;
+    }
+
+    function ownsCreatedComment() {
+      return signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 1000;
+    }
+
+    function ownsExistingComment() {
+      return signedIn() && resource.data.authorId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+
+      match /notificationTokens/{tokenId} {
+        allow read: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId)
+          && request.resource.data.userId == request.auth.uid;
+      }
+    }
+
+    match /fieldRecords/{recordId} {
+      allow read: if signedIn();
+      allow create: if isAuthor();
+      allow update: if isExistingAuthor() || isInteractionCounterUpdate();
+      allow delete: if isExistingAuthor();
+
+      match /reactions/{userId} {
+        allow read: if signedIn();
+        allow create, update, delete: if ownsInteractionDoc(userId);
+      }
+
+      match /confirmations/{userId} {
+        allow read: if signedIn();
+        allow create, update, delete: if ownsInteractionDoc(userId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if ownsCreatedComment();
+        allow update, delete: if ownsExistingComment();
+      }
+    }
+
+    match /publicFeed/{postId} {
+      allow read: if signedIn();
+      allow create: if isAuthor();
+      allow update: if isExistingAuthor() || isInteractionCounterUpdate();
+      allow delete: if isExistingAuthor();
+
+      match /reactions/{userId} {
+        allow read: if signedIn();
+        allow create, update, delete: if ownsInteractionDoc(userId);
+      }
+
+      match /confirmations/{userId} {
+        allow read: if signedIn();
+        allow create, update, delete: if ownsInteractionDoc(userId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if ownsCreatedComment();
+        allow update, delete: if ownsExistingComment();
+      }
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow create: if isAuthor();
+      allow update, delete: if isExistingAuthor();
+    }
+
+    match /tours/{tourId} {
+      allow read: if signedIn();
+      allow create: if isAuthor();
+      allow update, delete: if isExistingAuthor();
+    }
+
+    match /userStats/{userId} {
+      allow read: if signedIn();
+      allow write: if isOwner(userId);
+    }
+
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 6, 22);
+      allow read, write: if false;
     }
   }
 }
