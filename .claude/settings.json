@@ -11,7 +11,23 @@
       "Bash(flutter pub *)",
       "Bash(python -m py_compile main.py)",
       "Bash(flutter create *)",
-      "Bash(Select-Object -First 80)"
+      "Bash(Select-Object -First 80)",
+      "Bash(firebase projects:list)",
+      "Bash(gcloud --version)",
+      "Bash(gcloud logging *)",
+      "Bash(gcloud firestore *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('main.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK syntax'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('main.py', encoding='utf-8'\\).read\\(\\)\\); print\\('main.py OK'\\)\")",
+      "Bash(gcloud auth *)",
+      "Bash(curl -s -X POST 'https://firestore.googleapis.com/v1/projects/geofaunagps/databases/\\(default\\)/documents:runQuery' -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s 'https://firestore.googleapis.com/v1/projects/geofaunagps/databases/\\(default\\)/documents/users/__TRACKED_VAR__' -H 'Authorization: Bearer __TRACKED_VAR__')",
+      "Bash(curl -s -X POST https://fcm.googleapis.com/v1/projects/geofaunagps/messages:send -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"message\":{\"token\":\"__TRACKED_VAR__\",\"notification\":{\"title\":\"Prueba estandar GeoFauna\",\"body\":\"Si ves esto, FCM y el dispositivo funcionan\"},\"android\":{\"priority\":\"high\"}}}')",
+      "Bash(curl -s -X POST https://fcm.googleapis.com/v1/projects/geofaunagps/messages:send -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"message\":{\"token\":\"__TRACKED_VAR__\",\"data\":{\"content\":\"{\\\\\"id\\\\\":999,\\\\\"channelKey\\\\\":\\\\\"wall_channel\\\\\",\\\\\"title\\\\\":\\\\\"Prueba data-only\\\\\",\\\\\"body\\\\\":\\\\\"Formato awesome\\\\\"}\",\"route\":\"wall_post\"},\"android\":{\"priority\":\"high\"}}}')",
+      "Bash(curl -s -X POST https://fcm.googleapis.com/v1/projects/geofaunagps/messages:send -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"message\":{\"token\":\"__TRACKED_VAR__\",\"notification\":{\"title\":\"Nueva publicacion en el muro\",\"body\":\"Cesar Rojas compartio un registro\"},\"data\":{\"route\":\"wall_post\",\"postId\":\"test123\",\"sourceKey\":\"publicFeed/test123\"},\"android\":{\"priority\":\"high\",\"notification\":{\"channel_id\":\"wall_channel\"}}}}')",
+      "Bash(cd \"/c/Users/Jhonatan Quihuiri/.claude/projects/c--geofauna/memory\" && ls -la 2>&1 && echo \"---\" && [ -f MEMORY.md ] && cat MEMORY.md || echo \"NO MEMORY.md\")",
+      "Read(//c/Users/Jhonatan Quihuiri/.claude/projects/c--geofauna/memory/**)",
+      "PowerShell(Get-PSDrive C | Select-Object Used,Free,@{n='FreeGB';e={[math]::Round\\($_.Free/1GB,2\\)}},@{n='UsedGB';e={[math]::Round\\($_.Used/1GB,2\\)}})",
+      "PowerShell($paths = @\\(\"$env:USERPROFILE\\\\.gradle\",\"$env:LOCALAPPDATA\\\\Pub\\\\Cache\",\"C:\\\\geofauna\\\\geofauna_app\\\\build\",\"C:\\\\geofauna\\\\geofauna_app\\\\android\\\\.gradle\",\"$env:USERPROFILE\\\\.gradle\\\\caches\",\"$env:USERPROFILE\\\\.gradle\\\\.tmp\"\\); foreach\\($p in $paths\\){ if\\(Test-Path $p\\){ $s=\\(Get-ChildItem $p -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum\\).Sum; \"{0,10:N2} MB  {1}\" -f \\($s/1MB\\),$p } else { \"    \\(no existe\\)  $p\" } })"
     ]
   }
 }

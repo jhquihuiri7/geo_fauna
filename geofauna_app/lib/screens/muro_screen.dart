@@ -6,14 +6,17 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:video_player/video_player.dart';
 
 import '../services/auth_service.dart';
+import '../services/calendar_service.dart';
 import '../services/field_data_service.dart';
 import '../services/wall_interaction_service.dart';
 import '../services/wall_media_cache_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
+import '../widgets/route_map.dart';
 import '../widgets/user_avatar.dart';
 
 final _wallOptimism = _WallOptimism();
@@ -441,7 +444,10 @@ class _EventCard extends StatelessWidget {
 
     return SizedBox(
       width: 268,
-      child: EcoCard(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _openEventDetail(context, event),
+        child: EcoCard(
         soft: true,
         padding: const EdgeInsets.all(22),
         child: Column(
@@ -487,8 +493,387 @@ class _EventCard extends StatelessWidget {
             ],
           ],
         ),
+        ),
       ),
     );
+  }
+}
+
+Future<void> _openEventDetail(BuildContext context, _WallEvent event) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: context.eco.surfaceContainerLowest,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    ),
+    builder: (_) => _EventDetailSheet(event: event),
+  );
+}
+
+/// Hoja de detalle de un evento del muro. Muestra datos en vivo (conteo de
+/// inscritos / cupo) y permite participar o cancelar la participación. Al
+/// inscribirse, agenda el evento en el calendario del teléfono; al cancelar, lo
+/// elimina.
+class _EventDetailSheet extends StatefulWidget {
+  const _EventDetailSheet({required this.event});
+
+  final _WallEvent event;
+
+  @override
+  State<_EventDetailSheet> createState() => _EventDetailSheetState();
+}
+
+class _EventDetailSheetState extends State<_EventDetailSheet> {
+  final _dataService = FieldDataService();
+  bool _working = false;
+
+  String get _eventId => widget.event.id;
+  String? get _uid => AuthService().currentUser?.uid;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    final uid = _uid;
+    return SafeArea(
+      child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('events')
+            .doc(_eventId)
+            .snapshots(),
+        builder: (context, eventSnap) {
+          final data = eventSnap.data?.data();
+          final event = data == null
+              ? widget.event
+              : _WallEvent.fromMap(_eventId, data);
+
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: uid == null
+                ? const Stream.empty()
+                : FirebaseFirestore.instance
+                      .collection('events')
+                      .doc(_eventId)
+                      .collection('participants')
+                      .doc(uid)
+                      .snapshots(),
+            builder: (context, partSnap) {
+              final joined = partSnap.data?.exists ?? false;
+              final calendarEventId = _stringValue(
+                partSnap.data?.data()?['calendarEventId'],
+              );
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: eco.outlineVariant,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _header(eco, event),
+                    const SizedBox(height: 18),
+                    _detailRow(
+                      eco,
+                      icon: Icons.event_rounded,
+                      label: 'Fecha y hora',
+                      value: _scheduleLabel(event),
+                    ),
+                    if (event.locationLabel != null)
+                      _detailRow(
+                        eco,
+                        icon: Icons.location_on_rounded,
+                        label: 'Punto de encuentro',
+                        value: event.locationLabel!,
+                      ),
+                    _detailRow(
+                      eco,
+                      icon: Icons.groups_rounded,
+                      label: 'Participantes',
+                      value: _participantsLabel(event),
+                    ),
+                    if (event.body != null) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        'OBJETIVOS',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                          color: eco.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        event.body!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: eco.onSurface,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 22),
+                    _actionButton(eco, event, joined, calendarEventId),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _header(AppColors eco, _WallEvent event) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                event.title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                  color: eco.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              EcoChip(event.type, tone: event.chipTone),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Cerrar',
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.close_rounded, color: eco.outline),
+        ),
+      ],
+    );
+  }
+
+  Widget _actionButton(
+    AppColors eco,
+    _WallEvent event,
+    bool joined,
+    String? calendarEventId,
+  ) {
+    final uid = _uid;
+    final isOwner = uid != null && uid == event.ownerId;
+
+    if (isOwner) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: eco.primary.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.verified_rounded, size: 18, color: eco.primary),
+            const SizedBox(width: 8),
+            Text(
+              'Eres el organizador',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: eco.primary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (joined) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _working ? null : () => _leave(calendarEventId),
+          icon: _working
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              : const Icon(Icons.event_busy_rounded),
+          label: Text(_working ? 'Cancelando...' : 'Cancelar participación'),
+        ),
+      );
+    }
+
+    final full = _isFull(event);
+    return GradientButton(
+      label: full
+          ? 'Cupo lleno'
+          : (_working ? 'Inscribiendo...' : 'Participar'),
+      icon: full ? Icons.block_rounded : Icons.event_available_rounded,
+      loading: _working,
+      onPressed: (full || _working) ? null : () => _join(event),
+    );
+  }
+
+  bool _isFull(_WallEvent event) {
+    final capacity = event.capacity;
+    final count = event.participantCount ?? 0;
+    return capacity != null && capacity > 0 && count >= capacity;
+  }
+
+  ({DateTime start, DateTime end}) _calendarRange(_WallEvent event) {
+    final start = event.startAt ?? event.date ?? DateTime.now();
+    final end = event.endAt ?? start.add(const Duration(hours: 1));
+    return (start: start, end: end);
+  }
+
+  Future<void> _join(_WallEvent event) async {
+    if (_uid == null) return;
+    setState(() => _working = true);
+    String? calendarEventId;
+    try {
+      // Agendamos primero en el calendario para guardar su id junto a la
+      // inscripción; si el cupo está lleno hacemos rollback del calendario.
+      final range = _calendarRange(event);
+      calendarEventId = await CalendarService.instance.addEvent(
+        title: event.title,
+        start: range.start,
+        end: range.end,
+        description: event.body,
+        location: event.locationLabel,
+      );
+
+      final result = await _dataService.joinEvent(
+        eventId: _eventId,
+        calendarEventId: calendarEventId,
+      );
+
+      if (!mounted) return;
+      if (result.full) {
+        if (calendarEventId != null) {
+          await CalendarService.instance.removeEvent(calendarEventId);
+        }
+        if (!mounted) return;
+        _showEditorSnack(
+          context,
+          'El cupo del evento está completo.',
+          error: true,
+        );
+        return;
+      }
+      _showEditorSnack(
+        context,
+        result.alreadyJoined
+            ? 'Ya estabas inscrito en este evento.'
+            : 'Te inscribiste. El evento se agregó a tu calendario.',
+      );
+    } catch (error) {
+      if (calendarEventId != null) {
+        await CalendarService.instance.removeEvent(calendarEventId);
+      }
+      if (mounted) {
+        _showEditorSnack(
+          context,
+          'No se pudo completar la inscripción: $error',
+          error: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _leave(String? calendarEventId) async {
+    if (_uid == null) return;
+    setState(() => _working = true);
+    try {
+      await _dataService.leaveEvent(eventId: _eventId);
+      if (calendarEventId != null) {
+        await CalendarService.instance.removeEvent(calendarEventId);
+      }
+      if (mounted) {
+        _showEditorSnack(context, 'Cancelaste tu participación.');
+      }
+    } catch (error) {
+      if (mounted) {
+        _showEditorSnack(
+          context,
+          'No se pudo cancelar la participación: $error',
+          error: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Widget _detailRow(
+    AppColors eco, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: eco.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                    color: eco.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: eco.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _scheduleLabel(_WallEvent event) {
+    final start = event.startAt ?? event.date;
+    if (start == null) return 'Sin fecha definida';
+    final dateText = _shortDate(start);
+    final startTime = _hhmm(start);
+    final end = event.endAt;
+    if (end == null) return '$dateText · $startTime';
+    return '$dateText · $startTime - ${_hhmm(end)}';
+  }
+
+  String _hhmm(DateTime value) {
+    return '${value.hour.toString().padLeft(2, '0')}:'
+        '${value.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -610,7 +995,11 @@ class _SightingCard extends StatelessWidget {
                       color: eco.onSurface,
                     ),
                   ),
-                  if (item.mediaUrl != null || item.photoLabel != null) ...[
+                  if (item.isRoute) ...[
+                    const SizedBox(height: 16),
+                    RouteMapPreview(points: item.routePoints!, height: 220),
+                  ] else if (item.mediaUrl != null ||
+                      item.photoLabel != null) ...[
                     const SizedBox(height: 16),
                     _media(context, item),
                   ],
@@ -621,41 +1010,6 @@ class _SightingCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: _InteractionBar(item: item, target: target),
             ),
-            if (highlighted)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: eco.primary.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.notifications_active,
-                        size: 16,
-                        color: eco.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Publicacion abierta desde la notificacion',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: eco.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -2602,6 +2956,9 @@ class _WallEvent {
     this.body,
     this.locationLabel,
     this.date,
+    this.startAt,
+    this.endAt,
+    this.ownerId,
     this.xpReward,
     this.participantCount,
     this.capacity,
@@ -2615,6 +2972,9 @@ class _WallEvent {
   final String? body;
   final String? locationLabel;
   final DateTime? date;
+  final DateTime? startAt;
+  final DateTime? endAt;
+  final String? ownerId;
   final int? xpReward;
   final int? participantCount;
   final int? capacity;
@@ -2653,6 +3013,12 @@ class _WallEvent {
         _stringValue(data['placeName']),
       ]),
       date: _toDate(data['startAt']) ?? _toDate(data['date']),
+      startAt: _toDate(data['startAt']) ?? _toDate(data['date']),
+      endAt: _toDate(data['endAt']),
+      ownerId: _firstNonEmpty([
+        _stringValue(data['authorId']),
+        _stringValue(data['createdBy']),
+      ]),
       xpReward: _toInt(data['xpReward']),
       participantCount: _toInt(data['participantCount']),
       capacity: _toInt(data['capacity']),
@@ -2686,6 +3052,7 @@ class _FeedItem {
     this.photoLabel,
     this.placeLabel,
     this.createdAt,
+    this.routePoints,
   });
 
   final String id;
@@ -2705,6 +3072,11 @@ class _FeedItem {
   final DateTime? createdAt;
   final int reactions;
   final int comments;
+
+  /// Puntos del recorrido cuando la publicación es de tipo `route`.
+  final List<LatLng>? routePoints;
+
+  bool get isRoute => routePoints != null && routePoints!.isNotEmpty;
 
   int get popularity => reactions + comments;
 
@@ -2731,6 +3103,7 @@ class _FeedItem {
         : null;
     final category = _stringValue(data['category']);
     final species = _stringValue(data['speciesName']);
+    final routePoints = _routePointsFromData(data);
     final mediaType = _mediaTypeFromData(data);
     final mediaUrl = mediaType == _PostMediaType.video
         ? _stringValue(data['videoUrl'])
@@ -2781,6 +3154,7 @@ class _FeedItem {
       createdAt: _toDate(data['createdAt']),
       reactions: _sumMapCounts(counts),
       comments: _toInt(data['commentCount']) ?? 0,
+      routePoints: routePoints,
     );
   }
 
@@ -2959,8 +3333,23 @@ String? _categoryLabel(String? value) {
     'flora' => 'Flora',
     'incident' || 'incidente' => 'Incidente',
     'trash' || 'basura' => 'Basura',
+    'route' || 'recorrido' => 'Recorrido',
     _ => null,
   };
+}
+
+List<LatLng>? _routePointsFromData(Map<String, dynamic> data) {
+  if ((_stringValue(data['postType']) ?? '').toLowerCase() != 'route') {
+    return null;
+  }
+  final raw = data['routePoints'];
+  if (raw is! List) return null;
+  final points = <LatLng>[
+    for (final item in raw)
+      if (item is Map && item['lat'] is num && item['lng'] is num)
+        LatLng((item['lat'] as num).toDouble(), (item['lng'] as num).toDouble()),
+  ];
+  return points.isEmpty ? null : points;
 }
 
 _PostMediaType? _mediaTypeFromData(Map<String, dynamic> data) {
@@ -2981,6 +3370,7 @@ ChipTone _chipForCategory(String? value) {
     'flora' => ChipTone.tertiary,
     'incident' || 'incidente' => ChipTone.warning,
     'trash' || 'basura' => ChipTone.primary,
+    'route' || 'recorrido' => ChipTone.emerald,
     _ => ChipTone.slate,
   };
 }

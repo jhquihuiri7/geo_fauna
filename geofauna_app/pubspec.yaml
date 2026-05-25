@@ -64,6 +64,10 @@ dependencies:
   wakelock_plus: ^1.2.8
   share_plus: ^10.1.2
   qr_flutter: ^4.1.0
+  # Agenda de eventos en el calendario del teléfono
+  device_calendar: ^4.3.3
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
 
 dev_dependencies:
   flutter_test:

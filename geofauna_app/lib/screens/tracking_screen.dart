@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../services/field_data_service.dart';
 import '../services/location_service.dart';
 import '../services/tracking_service.dart';
 import '../theme/app_colors.dart';
@@ -21,6 +19,7 @@ class TrackingScreen extends StatefulWidget {
     this.tourName,
     this.tourType,
     this.resume = false,
+    this.overwriteTrackId,
   });
 
   /// Tour de la agenda asociado (opcional: también se puede grabar libre).
@@ -30,6 +29,10 @@ class TrackingScreen extends StatefulWidget {
 
   /// `true` cuando se reanuda una sesión recuperada tras cerrar la app.
   final bool resume;
+
+  /// Id de un recorrido previo a sobrescribir: al grabar de nuevo se reutiliza
+  /// este id para reemplazar el track (y su publicación) anteriores.
+  final String? overwriteTrackId;
 
   @override
   State<TrackingScreen> createState() => _TrackingScreenState();
@@ -89,6 +92,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           tourId: widget.tourId,
           tourName: widget.tourName,
           tourType: widget.tourType,
+          trackId: widget.overwriteTrackId,
         );
       }
     } catch (error) {
@@ -589,7 +593,8 @@ class _SummarySheet extends StatefulWidget {
 }
 
 class _SummarySheetState extends State<_SummarySheet> {
-  bool _sharing = false;
+  bool _publishing = false;
+  bool _published = false;
 
   @override
   Widget build(BuildContext context) {
@@ -673,18 +678,43 @@ class _SummarySheetState extends State<_SummarySheet> {
               style: TextStyle(fontSize: 12, color: eco.onSurfaceVariant),
             ),
             const SizedBox(height: 22),
-            GradientButton(
-              label: _sharing ? 'Generando…' : 'Compartir recorrido (GPX)',
-              icon: Icons.ios_share_rounded,
-              loading: _sharing,
-              onPressed: s.points.isEmpty ? null : _shareGpx,
-            ),
+            if (_published)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: eco.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  'Publicado en el muro',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: eco.primary,
+                  ),
+                ),
+              )
+            else
+              GradientButton(
+                label: _publishing ? 'Publicando…' : 'Publicar en el muro',
+                icon: Icons.public_rounded,
+                loading: _publishing,
+                onPressed: (!s.saved || s.points.isEmpty) ? null : _publishToWall,
+              ),
+            if (!s.saved && !_published) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Podrás publicarlo en el muro cuando el recorrido se suba.',
+                style: TextStyle(fontSize: 12, color: eco.onSurfaceVariant),
+              ),
+            ],
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Listo'),
+                child: Text(_published ? 'Listo' : 'Ahora no'),
               ),
             ),
           ],
@@ -723,31 +753,38 @@ class _SummarySheetState extends State<_SummarySheet> {
     );
   }
 
-  Future<void> _shareGpx() async {
-    setState(() => _sharing = true);
+  Future<void> _publishToWall() async {
+    setState(() => _publishing = true);
+    final s = widget.summary;
     try {
-      final gpx = buildGpx(
-        widget.summary.points,
-        startedAt: widget.summary.startedAt,
-        name: widget.summary.tourName ?? 'Recorrido GeoFauna',
+      await FieldDataService().publishTrackToWall(
+        trackId: s.trackId,
+        startedAt: s.startedAt,
+        movingSeconds: s.movingDuration.inSeconds,
+        distanceMeters: s.distanceMeters,
+        maxSpeedMps: s.maxSpeedMps,
+        points: [for (final p in s.points) p.toJson()],
+        tourName: s.tourName,
       );
-      final dir = await getTemporaryDirectory();
-      final file = File(
-        '${dir.path}${Platform.pathSeparator}${widget.summary.trackId}.gpx',
-      );
-      await file.writeAsString(gpx);
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/gpx+xml')],
-        text: 'Recorrido de campo registrado con GeoFauna.',
+      if (!mounted) return;
+      setState(() => _published = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Recorrido publicado en el muro.'),
+          backgroundColor: context.eco.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo compartir el recorrido.')),
+          const SnackBar(
+            content: Text('No se pudo publicar el recorrido en el muro.'),
+          ),
         );
       }
     } finally {
-      if (mounted) setState(() => _sharing = false);
+      if (mounted) setState(() => _publishing = false);
     }
   }
 }

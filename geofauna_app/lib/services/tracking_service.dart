@@ -248,14 +248,23 @@ class TrackingService {
   }
 
   /// Comienza un recorrido nuevo. Lanza si faltan permisos/GPS.
-  Future<void> start({String? tourId, String? tourName, String? tourType}) async {
+  ///
+  /// Si se entrega [trackId], se reutiliza ese id en lugar de generar uno
+  /// nuevo, de modo que al guardar se sobrescribe el recorrido anterior (y su
+  /// publicación en el muro, que comparte el mismo id).
+  Future<void> start({
+    String? tourId,
+    String? tourName,
+    String? tourType,
+    String? trackId,
+  }) async {
     await initialize();
     if (isActive) return;
     await _locationService.ensureTrackingPermission();
 
     final now = DateTime.now().millisecondsSinceEpoch;
     session.value = TrackingSession(
-      trackId: 'track_${now}_${now.toRadixString(36)}',
+      trackId: trackId ?? 'track_${now}_${now.toRadixString(36)}',
       status: TrackStatus.recording,
       points: <TrackPoint>[],
       startedAtMs: now,

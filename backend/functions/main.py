@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import zlib
 from datetime import datetime, timezone
 from typing import Any
@@ -295,10 +296,121 @@ def create_event(req: https_fn.CallableRequest) -> dict[str, Any]:
     cors=options.CorsOptions(cors_origins=["*"], cors_methods=["post"]),
 )
 def join_event(req: https_fn.CallableRequest) -> dict[str, Any]:
-    """Join an event with capacity checks."""
-    _require_auth(req)
-    _not_implemented("join_event")
-    return {"ok": True}
+    """Join an event, enforcing capacity and single-membership in a transaction."""
+    uid = _require_auth(req)
+    data = _request_data(req)
+    event_id = _require_id(data, "eventId")
+    calendar_event_id = _string_value(data.get("calendarEventId"))
+
+    db = firestore.client()
+    event_ref = db.collection("events").document(event_id)
+    participant_ref = event_ref.collection("participants").document(uid)
+
+    @firestore.transactional
+    def _join(transaction: firestore.Transaction) -> dict[str, Any]:
+        snap = event_ref.get(transaction=transaction)
+        if not snap.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="El evento no existe.",
+            )
+        event = snap.to_dict() or {}
+
+        if _is_closed_status(_string_value(event.get("status"))):
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="El evento ya no admite inscripciones.",
+            )
+
+        participant_ids = event.get("participantIds")
+        participant_ids = participant_ids if isinstance(participant_ids, list) else []
+        if uid in participant_ids:
+            return {"ok": True, "alreadyJoined": True, "full": False}
+
+        count = _coerce_int(event.get("participantCount"), default=len(participant_ids))
+        capacity = _coerce_int(event.get("capacity"), default=None)
+        if capacity is not None and count >= capacity:
+            return {"ok": False, "alreadyJoined": False, "full": True}
+
+        transaction.update(
+            event_ref,
+            {
+                "participantIds": firestore.ArrayUnion([uid]),
+                "participantCount": firestore.Increment(1),
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+            },
+        )
+        transaction.set(
+            participant_ref,
+            {
+                "userId": uid,
+                "role": "participant",
+                "status": "going",
+                "joinedAt": firestore.SERVER_TIMESTAMP,
+                "calendarEventId": calendar_event_id or firestore.DELETE_FIELD,
+            },
+            merge=True,
+        )
+        return {"ok": True, "alreadyJoined": False, "full": False}
+
+    result = _join(db.transaction())
+    if result.get("ok"):
+        result["eventId"] = event_id
+    return result
+
+
+@https_fn.on_call(
+    region=REGION,
+    cors=options.CorsOptions(cors_origins=["*"], cors_methods=["post"]),
+)
+def leave_event(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Leave an event. The organizer cannot leave their own event."""
+    uid = _require_auth(req)
+    data = _request_data(req)
+    event_id = _require_id(data, "eventId")
+
+    db = firestore.client()
+    event_ref = db.collection("events").document(event_id)
+    participant_ref = event_ref.collection("participants").document(uid)
+
+    @firestore.transactional
+    def _leave(transaction: firestore.Transaction) -> dict[str, Any]:
+        snap = event_ref.get(transaction=transaction)
+        if not snap.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="El evento no existe.",
+            )
+        event = snap.to_dict() or {}
+        owner = _first_non_empty([
+            _string_value(event.get("authorId")),
+            _string_value(event.get("createdBy")),
+        ])
+        if owner == uid:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="El organizador no puede abandonar su propio evento.",
+            )
+
+        participant_ids = event.get("participantIds")
+        participant_ids = participant_ids if isinstance(participant_ids, list) else []
+        if uid not in participant_ids:
+            return {"ok": True, "wasParticipant": False}
+
+        transaction.update(
+            event_ref,
+            {
+                "participantIds": firestore.ArrayRemove([uid]),
+                "participantCount": firestore.Increment(-1),
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+            },
+        )
+        transaction.delete(participant_ref)
+        return {"ok": True, "wasParticipant": True}
+
+    result = _leave(db.transaction())
+    result["eventId"] = event_id
+    return result
 
 
 @https_fn.on_call(
@@ -465,7 +577,7 @@ def update_event(req: https_fn.CallableRequest) -> dict[str, Any]:
     uid = _require_auth(req)
     data = _request_data(req)
     event_id = _require_id(data, "eventId")
-    event_ref, _ = _require_document_owner("events", event_id, uid)
+    event_ref, current = _require_document_owner("events", event_id, uid)
 
     title = _string_value(data.get("title"))
     if title is None:
@@ -496,12 +608,22 @@ def update_event(req: https_fn.CallableRequest) -> dict[str, Any]:
         "isPublic": is_public,
         "public": is_public,
         "visibility": "public" if is_public else "private",
-        "participantCount": _require_int(data, "participantCount", minimum=0),
         "updatedAt": firestore.SERVER_TIMESTAMP,
         "editedAt": firestore.SERVER_TIMESTAMP,
         "editedBy": uid,
         "editCount": firestore.Increment(1),
     }
+
+    # The organizer edits the maximum capacity, never the live joined count.
+    # New capacity must not drop below the people already enrolled.
+    capacity = _require_int(data, "capacity", minimum=0)
+    current_count = _coerce_int(current.get("participantCount"), default=0) or 0
+    if capacity < current_count:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+            message=f"El cupo no puede ser menor a los {current_count} inscritos.",
+        )
+    update_data["capacity"] = capacity
 
     db = firestore.client()
     batch = db.batch()
@@ -632,22 +754,33 @@ def on_public_feed_created(event: Event[DocumentSnapshot]) -> None:
         "sourceKey": source_key,
     }
 
+    notification = messaging.Notification(title=title, body=body)
+
     for chunk in _chunks(tokens, 500):
         message = messaging.MulticastMessage(
             tokens=chunk,
+            notification=notification,
             data=data_payload,
-            android=messaging.AndroidConfig(priority="high"),
+            android=messaging.AndroidConfig(
+                priority="high",
+                notification=messaging.AndroidNotification(
+                    channel_id=WALL_CHANNEL_KEY,
+                    title=title,
+                    body=body,
+                ),
+            ),
             apns=messaging.APNSConfig(
                 headers={"apns-priority": "10"},
                 payload=messaging.APNSPayload(
                     aps=messaging.Aps(
-                        content_available=True,
+                        alert=messaging.ApsAlert(title=title, body=body),
+                        sound="default",
                         mutable_content=True,
                     )
                 ),
             ),
         )
-        _send_multicast(message)
+        _send_multicast(message, post_id=post_id, recipients=len(chunk))
 
 
 @on_document_updated(document="fieldRecords/{recordId}", region=REGION)
@@ -694,12 +827,33 @@ def _notification_tokens(exclude_uid: str | None) -> list[str]:
     return tokens
 
 
-def _send_multicast(message: messaging.MulticastMessage) -> None:
+def _send_multicast(
+    message: messaging.MulticastMessage,
+    *,
+    post_id: str | None = None,
+    recipients: int | None = None,
+) -> None:
     sender = getattr(messaging, "send_each_for_multicast", None)
-    if sender is not None:
-        sender(message)
-        return
-    messaging.send_multicast(message)
+    response = sender(message) if sender is not None else messaging.send_multicast(message)
+
+    success = getattr(response, "success_count", None)
+    failure = getattr(response, "failure_count", None)
+    logging.info(
+        "publicFeed push sent post=%s recipients=%s success=%s failure=%s",
+        post_id,
+        recipients,
+        success,
+        failure,
+    )
+    if failure:
+        for idx, resp in enumerate(getattr(response, "responses", []) or []):
+            if not getattr(resp, "success", True):
+                logging.warning(
+                    "publicFeed push failed post=%s token_index=%s error=%s",
+                    post_id,
+                    idx,
+                    getattr(resp, "exception", None),
+                )
 
 
 def _chunks(values: list[str], size: int) -> list[list[str]]:
@@ -708,6 +862,30 @@ def _chunks(values: list[str], size: int) -> list[list[str]]:
 
 def _notification_id(post_id: str) -> int:
     return zlib.crc32(post_id.encode("utf-8")) & 0x7FFFFFFF
+
+
+def _coerce_int(value: Any, default: int | None = None) -> int | None:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            return default
+    return default
+
+
+def _is_closed_status(status: str | None) -> bool:
+    return (status or "").lower() in {
+        "completed",
+        "cancelled",
+        "canceled",
+        "finalizado",
+        "cancelado",
+        "closed",
+    }
 
 
 def _string_value(value: Any) -> str | None:

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../services/auth_service.dart';
 import '../services/field_data_service.dart';
@@ -8,6 +9,7 @@ import '../services/tracking_service.dart';
 import '../theme/app_colors.dart';
 import 'tracking_screen.dart';
 import '../widgets/eco_widgets.dart';
+import '../widgets/route_map.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/weather_header.dart';
 
@@ -532,16 +534,51 @@ class _AgendaScreenState extends State<AgendaScreen> {
     if (action == _AgendaDetailAction.edit) {
       await _openAgendaEditor(context, item);
     } else if (action == _AgendaDetailAction.startTracking) {
+      // Si el tour ya tiene un recorrido grabado, confirmamos antes de
+      // sobrescribirlo (se reutiliza el mismo trackId al volver a grabar).
+      String? overwriteTrackId;
+      if (item.trackId != null) {
+        final overwrite = await _confirmOverwriteTrack(context);
+        if (overwrite != true) return;
+        overwriteTrackId = item.trackId;
+      }
+      if (!context.mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => TrackingScreen(
             tourId: item.kind == _AgendaItemKind.tour ? item.id : null,
             tourName: item.title,
             tourType: item.type,
+            overwriteTrackId: overwriteTrackId,
           ),
         ),
       );
     }
+  }
+
+  Future<bool?> _confirmOverwriteTrack(BuildContext context) {
+    final eco = context.eco;
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Sobrescribir recorrido'),
+        content: const Text(
+          'Este tour ya tiene un recorrido grabado. Si vuelves a grabar, se '
+          'reemplazará el recorrido anterior. ¿Deseas continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: eco.primary),
+            child: const Text('Sobrescribir'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openAgendaEditor(BuildContext context, _AgendaItem item) async {
@@ -589,6 +626,8 @@ class _AgendaItem {
     this.body,
     this.isPublic = true,
     this.participantCount = 0,
+    this.capacity,
+    this.trackId,
   });
 
   final String id;
@@ -607,6 +646,12 @@ class _AgendaItem {
   final String? body;
   final bool isPublic;
   final int participantCount;
+
+  /// Cupo máximo del evento (null = sin límite).
+  final int? capacity;
+
+  /// Id del recorrido grabado asociado a un tour, si existe.
+  final String? trackId;
 
   String get timeLabel {
     if (startAt == null) return 'Sin hora definida';
@@ -650,6 +695,7 @@ class _AgendaItem {
       ]),
       isPublic: data['isPublic'] != false && data['public'] != false,
       participantCount: _toInt(data['participantCount']) ?? 0,
+      capacity: _toInt(data['capacity']),
     );
   }
 
@@ -686,6 +732,7 @@ class _AgendaItem {
         _stringValue(data['description']),
         _stringValue(data['notes']),
       ]),
+      trackId: _stringValue(data['trackId']),
     );
   }
 }
@@ -802,7 +849,9 @@ class _AgendaDetailSheet extends StatelessWidget {
                 eco,
                 icon: Icons.groups_rounded,
                 label: 'Participantes',
-                value: '${item.participantCount}',
+                value: item.capacity != null && item.capacity! > 0
+                    ? '${item.participantCount}/${item.capacity} inscritos'
+                    : '${item.participantCount} inscritos',
               ),
             if (item.body != null) ...[
               const SizedBox(height: 14),
@@ -825,9 +874,25 @@ class _AgendaDetailSheet extends StatelessWidget {
                 ),
               ),
             ],
+            if (item.kind == _AgendaItemKind.tour) ...[
+              const SizedBox(height: 18),
+              Text(
+                'RECORRIDO',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: eco.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _TourRouteSection(tourId: item.id),
+            ],
             const SizedBox(height: 22),
             GradientButton(
-              label: 'Iniciar recorrido',
+              label: item.trackId != null
+                  ? 'Volver a grabar recorrido'
+                  : 'Iniciar recorrido',
               icon: Icons.my_location_rounded,
               onPressed: item.pendingSync
                   ? null
@@ -898,6 +963,120 @@ class _AgendaDetailSheet extends StatelessWidget {
   }
 }
 
+/// Muestra el mapa del recorrido grabado para un tour. Si todavía no hay
+/// recorrido, despliega un estado vacío; al grabar uno, dibuja la ruta.
+class _TourRouteSection extends StatelessWidget {
+  const _TourRouteSection({required this.tourId});
+
+  final String tourId;
+
+  Future<List<LatLng>> _loadRoute() async {
+    final snap = await FirebaseFirestore.instance
+        .collection('tracks')
+        .where('tourId', isEqualTo: tourId)
+        .get();
+    if (snap.docs.isEmpty) return const [];
+
+    // Sin orderBy para no exigir un índice compuesto: elegimos el más reciente
+    // en cliente (normalmente solo hay uno, porque sobrescribir reutiliza el id).
+    final docs = snap.docs.toList()
+      ..sort((a, b) {
+        final aAt = _toDate(a.data()['endedAt']) ?? _toDate(a.data()['createdAt']);
+        final bAt = _toDate(b.data()['endedAt']) ?? _toDate(b.data()['createdAt']);
+        return (bAt ?? DateTime(1900)).compareTo(aAt ?? DateTime(1900));
+      });
+    return _pointsFromTrack(docs.first.data());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return FutureBuilder<List<LatLng>>(
+      future: _loadRoute(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return _frame(
+            eco,
+            child: SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: eco.primary),
+            ),
+          );
+        }
+        if (snap.hasError) {
+          return _frame(
+            eco,
+            icon: Icons.cloud_off_rounded,
+            message: 'No se pudo cargar el recorrido.',
+          );
+        }
+        final points = snap.data ?? const <LatLng>[];
+        if (points.isEmpty) {
+          return _frame(
+            eco,
+            icon: Icons.map_outlined,
+            message: 'Aún no se ha grabado un recorrido para este tour.',
+          );
+        }
+        return RouteMapPreview(points: points, height: 220);
+      },
+    );
+  }
+
+  Widget _frame(AppColors eco, {IconData? icon, String? message, Widget? child}) {
+    return Container(
+      height: 160,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (child != null)
+            child
+          else if (icon != null)
+            Icon(icon, color: eco.outline, size: 30),
+          if (message != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+List<LatLng> _pointsFromTrack(Map<String, dynamic> data) {
+  final path = data['path'];
+  if (path is List && path.isNotEmpty) {
+    return [
+      for (final p in path)
+        if (p is GeoPoint) LatLng(p.latitude, p.longitude),
+    ];
+  }
+  final points = data['points'];
+  if (points is List) {
+    return [
+      for (final p in points)
+        if (p is Map && p['lat'] is num && p['lng'] is num)
+          LatLng((p['lat'] as num).toDouble(), (p['lng'] as num).toDouble()),
+    ];
+  }
+  return const [];
+}
+
 List<_AgendaItem> _offlineAgendaItems(List<OfflineSyncOperation> operations) {
   final uid = AuthService().currentUser?.uid;
   return [
@@ -936,7 +1115,8 @@ List<_AgendaItem> _offlineAgendaItems(List<OfflineSyncOperation> operations) {
           locationLabel: _stringValue(operation.payload['meetingPoint']),
           body: _stringValue(operation.payload['objectives']),
           isPublic: operation.payload['isPublic'] != false,
-          participantCount: _toInt(operation.payload['participantCount']) ?? 0,
+          participantCount: 1,
+          capacity: _toInt(operation.payload['capacity']),
           pendingSync: true,
         ),
   ];
@@ -958,7 +1138,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
   late final TextEditingController _meetingPointController;
   late String _type;
   late bool _isPublic;
-  late int _participants;
+  late int _capacity;
   late DateTime _date;
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
@@ -978,7 +1158,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
     );
     _type = widget.item.type;
     _isPublic = widget.item.isPublic;
-    _participants = widget.item.participantCount;
+    _capacity = widget.item.capacity ?? 0;
     _date = DateTime(startAt.year, startAt.month, startAt.day);
     _startTime = TimeOfDay.fromDateTime(startAt);
     _endTime = TimeOfDay.fromDateTime(endAt);
@@ -1306,45 +1486,66 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
   }
 
   Widget _participantCounter(AppColors eco) {
+    final enrolled = widget.item.participantCount;
+    // El cupo no puede bajar de los ya inscritos (el servidor también valida).
+    final canDecrease = !_saving && _capacity > enrolled && _capacity > 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              'Participantes',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurface,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cupo máximo',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: eco.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _capacity == 0 ? 'Sin límite' : '$enrolled inscritos',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: eco.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-          IconButton(
-            onPressed: _saving || _participants <= 0
-                ? null
-                : () => setState(() => _participants--),
-            icon: const Icon(Icons.remove_rounded),
-          ),
-          SizedBox(
-            width: 42,
-            child: Text(
-              '$_participants',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: eco.onSurface,
+              IconButton(
+                onPressed: canDecrease
+                    ? () => setState(() => _capacity--)
+                    : null,
+                icon: const Icon(Icons.remove_rounded),
               ),
-            ),
-          ),
-          IconButton(
-            onPressed: _saving ? null : () => setState(() => _participants++),
-            icon: const Icon(Icons.add_rounded),
+              SizedBox(
+                width: 52,
+                child: Text(
+                  _capacity == 0 ? '∞' : '$_capacity',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: eco.onSurface,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: _saving ? null : () => setState(() => _capacity++),
+                icon: const Icon(Icons.add_rounded),
+              ),
+            ],
           ),
         ],
       ),
@@ -1383,7 +1584,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
           startAt: startAt,
           endAt: endAt,
           isPublic: _isPublic,
-          participantCount: _participants,
+          capacity: _capacity,
           objectives: _bodyController.text,
           meetingPoint: _meetingPointController.text,
         );

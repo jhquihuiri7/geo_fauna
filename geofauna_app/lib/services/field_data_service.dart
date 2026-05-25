@@ -260,15 +260,20 @@ class FieldDataService {
     return tourRef.id;
   }
 
+  /// Crea un evento. [capacity] es el cupo máximo (0 = sin límite). El
+  /// organizador queda auto-inscrito como participante (participantCount: 1).
+  /// Si se agendó en el calendario del teléfono, [ownerCalendarEventId] guarda
+  /// el id del evento creado para poder eliminarlo si se cancela.
   Future<String> createEvent({
     required String title,
     required String type,
     required DateTime startAt,
     required DateTime endAt,
     required bool isPublic,
-    required int participantCount,
+    required int capacity,
     String? objectives,
     String? meetingPoint,
+    String? ownerCalendarEventId,
   }) async {
     final eventId = _firestore.collection('events').doc().id;
     try {
@@ -279,9 +284,10 @@ class FieldDataService {
         startAt: startAt,
         endAt: endAt,
         isPublic: isPublic,
-        participantCount: participantCount,
+        capacity: capacity,
         objectives: objectives,
         meetingPoint: meetingPoint,
+        ownerCalendarEventId: ownerCalendarEventId,
       );
     } catch (_) {
       await _enqueueCreateEvent(
@@ -291,9 +297,10 @@ class FieldDataService {
         startAt: startAt,
         endAt: endAt,
         isPublic: isPublic,
-        participantCount: participantCount,
+        capacity: capacity,
         objectives: objectives,
         meetingPoint: meetingPoint,
+        ownerCalendarEventId: ownerCalendarEventId,
       );
       return eventId;
     }
@@ -306,37 +313,83 @@ class FieldDataService {
     required DateTime startAt,
     required DateTime endAt,
     required bool isPublic,
-    required int participantCount,
+    required int capacity,
     String? objectives,
     String? meetingPoint,
+    String? ownerCalendarEventId,
   }) async {
     final user = _requireUser();
     final author = await _authorSnapshot(user);
     final eventRef = _firestore.collection('events').doc(eventId);
-    await eventRef.set({
-      'title': title.trim(),
-      'name': title.trim(),
-      'type': type,
-      'date': Timestamp.fromDate(_dateOnly(startAt)),
-      'startAt': Timestamp.fromDate(startAt),
-      'endAt': Timestamp.fromDate(endAt),
-      'objectives': _cleanOrNull(objectives),
-      'description': _cleanOrNull(objectives),
-      'meetingPoint': _cleanOrNull(meetingPoint),
-      'locationLabel': _cleanOrNull(meetingPoint),
-      'isPublic': isPublic,
-      'public': isPublic,
-      'visibility': isPublic ? 'public' : 'private',
-      'participantCount': participantCount,
-      'status': 'scheduled',
-      'createdBy': user.uid,
-      'authorId': user.uid,
-      'authorName': author.name,
-      'authorSnapshot': author.toMap(),
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    final participantRef = eventRef.collection('participants').doc(user.uid);
+
+    final batch = _firestore.batch()
+      ..set(eventRef, {
+        'title': title.trim(),
+        'name': title.trim(),
+        'type': type,
+        'date': Timestamp.fromDate(_dateOnly(startAt)),
+        'startAt': Timestamp.fromDate(startAt),
+        'endAt': Timestamp.fromDate(endAt),
+        'objectives': _cleanOrNull(objectives),
+        'description': _cleanOrNull(objectives),
+        'meetingPoint': _cleanOrNull(meetingPoint),
+        'locationLabel': _cleanOrNull(meetingPoint),
+        'isPublic': isPublic,
+        'public': isPublic,
+        'visibility': isPublic ? 'public' : 'private',
+        // capacity 0 = sin límite (se guarda null para representarlo).
+        'capacity': capacity > 0 ? capacity : null,
+        'participantCount': 1,
+        'participantIds': [user.uid],
+        'status': 'scheduled',
+        'createdBy': user.uid,
+        'authorId': user.uid,
+        'authorName': author.name,
+        'authorSnapshot': author.toMap(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      })
+      ..set(participantRef, {
+        'userId': user.uid,
+        'role': 'owner',
+        'status': 'going',
+        'authorName': author.name,
+        'authorSnapshot': author.toMap(),
+        'joinedAt': FieldValue.serverTimestamp(),
+        if (ownerCalendarEventId != null)
+          'calendarEventId': ownerCalendarEventId,
+      });
+    await batch.commit();
     return eventRef.id;
+  }
+
+  /// Inscribe al usuario actual en un evento. Devuelve un [EventJoinResult] que
+  /// indica si quedó inscrito, si ya lo estaba o si el cupo está lleno. El
+  /// chequeo de cupo es atómico en el servidor (Cloud Function `join_event`).
+  Future<EventJoinResult> joinEvent({
+    required String eventId,
+    String? calendarEventId,
+  }) async {
+    final callable = _functions.httpsCallable('join_event');
+    final response = await callable.call(<String, dynamic>{
+      'eventId': eventId,
+      if (calendarEventId != null) 'calendarEventId': calendarEventId,
+    });
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : const <String, dynamic>{};
+    return EventJoinResult(
+      ok: data['ok'] == true,
+      full: data['full'] == true,
+      alreadyJoined: data['alreadyJoined'] == true,
+    );
+  }
+
+  /// Cancela la inscripción del usuario actual en un evento.
+  Future<void> leaveEvent({required String eventId}) async {
+    final callable = _functions.httpsCallable('leave_event');
+    await callable.call(<String, dynamic>{'eventId': eventId});
   }
 
   /// Guarda un recorrido GPS finalizado. Intenta online primero; si la red
@@ -381,6 +434,66 @@ class FieldDataService {
       );
       return trackId;
     }
+  }
+
+  /// Publica un recorrido finalizado en el muro (`publicFeed`) para que pueda
+  /// recibir reacciones y comentarios. El documento usa el mismo id del track,
+  /// de modo que volver a publicar tras sobrescribir reemplaza el post anterior.
+  Future<String> publishTrackToWall({
+    required String trackId,
+    required DateTime startedAt,
+    required int movingSeconds,
+    required double distanceMeters,
+    required double maxSpeedMps,
+    required List<Map<String, dynamic>> points,
+    String? tourName,
+    String? tourType,
+    String? placeLabel,
+  }) async {
+    final user = _requireUser();
+    final author = await _authorSnapshot(user);
+
+    // Para el muro basta una versión ligera de la ruta; reducimos los puntos.
+    final sampled = _downsamplePoints(points, 500);
+    final routePoints = <Map<String, dynamic>>[
+      for (final p in sampled)
+        {'lat': (p['lat'] as num).toDouble(), 'lng': (p['lng'] as num).toDouble()},
+    ];
+    if (routePoints.length < 2) {
+      throw StateError('El recorrido no tiene puntos suficientes para publicar.');
+    }
+    final bounds = _routeBounds(routePoints);
+
+    final feedRef = _firestore.collection('publicFeed').doc(trackId);
+    await feedRef.set({
+      'authorId': user.uid,
+      'authorName': author.name,
+      'authorSnapshot': author.toMap(),
+      'postType': 'route',
+      'category': 'route',
+      'bodyPreview': _routeSummaryText(
+        tourName: tourName,
+        distanceMeters: distanceMeters,
+        movingSeconds: movingSeconds,
+      ),
+      'tourName': _cleanOrNull(tourName),
+      'tourType': _cleanOrNull(tourType),
+      'distanceMeters': distanceMeters,
+      'movingSeconds': movingSeconds,
+      'maxSpeedMps': maxSpeedMps,
+      'pointCount': routePoints.length,
+      'routePoints': routePoints,
+      'routeBounds': bounds,
+      'placeLabel': _cleanOrNull(placeLabel),
+      'startedAt': Timestamp.fromDate(startedAt),
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'visibility': 'public',
+      'validationSummary': {'confirmations': 0, 'disputes': 0},
+      'reactionCounts': <String, int>{},
+      'commentCount': 0,
+    });
+    return feedRef.id;
   }
 
   /// Marca un tour como "en progreso" al iniciar su grabación. Best-effort:
@@ -629,7 +742,7 @@ class FieldDataService {
     required DateTime startAt,
     required DateTime endAt,
     required bool isPublic,
-    required int participantCount,
+    required int capacity,
     String? objectives,
     String? meetingPoint,
   }) async {
@@ -641,7 +754,7 @@ class FieldDataService {
         startAt: startAt,
         endAt: endAt,
         isPublic: isPublic,
-        participantCount: participantCount,
+        capacity: capacity,
         objectives: objectives,
         meetingPoint: meetingPoint,
       );
@@ -653,7 +766,7 @@ class FieldDataService {
         startAt: startAt,
         endAt: endAt,
         isPublic: isPublic,
-        participantCount: participantCount,
+        capacity: capacity,
         objectives: objectives,
         meetingPoint: meetingPoint,
       );
@@ -667,7 +780,7 @@ class FieldDataService {
     required DateTime startAt,
     required DateTime endAt,
     required bool isPublic,
-    required int participantCount,
+    required int capacity,
     String? objectives,
     String? meetingPoint,
   }) {
@@ -679,7 +792,7 @@ class FieldDataService {
       'startAtMs': startAt.millisecondsSinceEpoch,
       'endAtMs': endAt.millisecondsSinceEpoch,
       'isPublic': isPublic,
-      'participantCount': participantCount,
+      'capacity': capacity,
       'objectives': objectives,
       'meetingPoint': meetingPoint,
     });
@@ -794,9 +907,10 @@ class FieldDataService {
     required DateTime startAt,
     required DateTime endAt,
     required bool isPublic,
-    required int participantCount,
+    required int capacity,
     String? objectives,
     String? meetingPoint,
+    String? ownerCalendarEventId,
   }) {
     return OfflineSyncService.instance.enqueue(
       type: 'createEvent',
@@ -807,9 +921,10 @@ class FieldDataService {
         'startAtMs': startAt.millisecondsSinceEpoch,
         'endAtMs': endAt.millisecondsSinceEpoch,
         'isPublic': isPublic,
-        'participantCount': participantCount,
+        'capacity': capacity,
         'objectives': objectives,
         'meetingPoint': meetingPoint,
+        'ownerCalendarEventId': ownerCalendarEventId,
       },
     );
   }
@@ -821,7 +936,7 @@ class FieldDataService {
     required DateTime startAt,
     required DateTime endAt,
     required bool isPublic,
-    required int participantCount,
+    required int capacity,
     String? objectives,
     String? meetingPoint,
   }) {
@@ -834,7 +949,7 @@ class FieldDataService {
         'startAtMs': startAt.millisecondsSinceEpoch,
         'endAtMs': endAt.millisecondsSinceEpoch,
         'isPublic': isPublic,
-        'participantCount': participantCount,
+        'capacity': capacity,
         'objectives': objectives,
         'meetingPoint': meetingPoint,
       },
@@ -895,9 +1010,10 @@ class FieldDataService {
           startAt: _dateFromMs(payload['startAtMs']),
           endAt: _dateFromMs(payload['endAtMs']),
           isPublic: payload['isPublic'] != false,
-          participantCount: _requiredInt(payload, 'participantCount'),
+          capacity: _requiredInt(payload, 'capacity'),
           objectives: _stringValue(payload['objectives']),
           meetingPoint: _stringValue(payload['meetingPoint']),
+          ownerCalendarEventId: _stringValue(payload['ownerCalendarEventId']),
         );
       case 'updateEvent':
         await _updateEventOnline(
@@ -907,7 +1023,7 @@ class FieldDataService {
           startAt: _dateFromMs(payload['startAtMs']),
           endAt: _dateFromMs(payload['endAtMs']),
           isPublic: payload['isPublic'] != false,
-          participantCount: _requiredInt(payload, 'participantCount'),
+          capacity: _requiredInt(payload, 'capacity'),
           objectives: _stringValue(payload['objectives']),
           meetingPoint: _stringValue(payload['meetingPoint']),
         );
@@ -1099,6 +1215,24 @@ class FieldDataService {
   }
 }
 
+/// Resultado de intentar inscribirse en un evento vía `join_event`.
+class EventJoinResult {
+  const EventJoinResult({
+    required this.ok,
+    required this.full,
+    required this.alreadyJoined,
+  });
+
+  /// La inscripción se concretó (o ya estaba inscrito).
+  final bool ok;
+
+  /// El cupo está completo y no se pudo inscribir.
+  final bool full;
+
+  /// El usuario ya estaba inscrito previamente.
+  final bool alreadyJoined;
+}
+
 class _AuthorSnapshot {
   const _AuthorSnapshot({
     required this.uid,
@@ -1143,6 +1277,43 @@ Map<String, dynamic> _locationFields(UserLocation location) {
 
 DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
+
+Map<String, double> _routeBounds(List<Map<String, dynamic>> points) {
+  var minLat = double.infinity;
+  var minLng = double.infinity;
+  var maxLat = -double.infinity;
+  var maxLng = -double.infinity;
+  for (final p in points) {
+    final lat = (p['lat'] as num).toDouble();
+    final lng = (p['lng'] as num).toDouble();
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+  }
+  return {
+    'minLat': minLat,
+    'minLng': minLng,
+    'maxLat': maxLat,
+    'maxLng': maxLng,
+  };
+}
+
+String _routeSummaryText({
+  String? tourName,
+  required double distanceMeters,
+  required int movingSeconds,
+}) {
+  final distance = distanceMeters < 1000
+      ? '${distanceMeters.round()} m'
+      : '${(distanceMeters / 1000).toStringAsFixed(2)} km';
+  final minutes = (movingSeconds / 60).round();
+  final duration = minutes < 60
+      ? '$minutes min'
+      : '${minutes ~/ 60} h ${minutes % 60} min';
+  final prefix = _cleanOrNull(tourName) ?? 'Recorrido de campo';
+  return '$prefix · $distance en $duration';
+}
 
 String _categoryKey(String value) {
   final v = value.trim().toLowerCase();

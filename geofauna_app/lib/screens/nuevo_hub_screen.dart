@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../services/calendar_service.dart';
 import '../services/field_data_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
@@ -1192,7 +1193,7 @@ class _EventCreateState extends State<_EventCreate> {
         const SizedBox(height: 16),
         _sectionCard(
           eco,
-          'Participantes / Guías Invitados',
+          'Cupo máximo (0 = sin límite)',
           child: Row(
             children: [
               GestureDetector(
@@ -1285,15 +1286,29 @@ class _EventCreateState extends State<_EventCreate> {
 
     setState(() => _saving = true);
     try {
+      // El organizador queda auto-inscrito, así que agendamos el evento en su
+      // calendario al publicar (best-effort: no bloquea si no hay permiso).
+      final calendarEventId = await CalendarService.instance.addEvent(
+        title: title,
+        start: startAt,
+        end: endAt,
+        description: _objectivesController.text.trim().isEmpty
+            ? null
+            : _objectivesController.text.trim(),
+        location: _meetingPointController.text.trim().isEmpty
+            ? null
+            : _meetingPointController.text.trim(),
+      );
       await _dataService.createEvent(
         title: title,
         type: _type,
         startAt: startAt,
         endAt: endAt,
         isPublic: _public,
-        participantCount: _participants,
+        capacity: _participants,
         objectives: _objectivesController.text,
         meetingPoint: _meetingPointController.text,
+        ownerCalendarEventId: calendarEventId,
       );
       if (!mounted) return;
       setState(() {

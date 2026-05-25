@@ -102,8 +102,21 @@ service cloud.firestore {
 
     match /events/{eventId} {
       allow read: if signedIn();
+      // El autor crea el evento (y queda auto-inscrito como participante).
+      // El cupo (capacity) y el conteo de inscritos solo se modifican vía
+      // Cloud Functions (join_event / leave_event / update_event).
       allow create: if isAuthor();
       allow update, delete: if false;
+
+      match /participants/{userId} {
+        // Inscritos visibles para todos los autenticados; el autor del evento
+        // crea su propio doc al publicar (auto-inscripción). Las altas/bajas
+        // del resto pasan por la Cloud Function join_event / leave_event.
+        allow read: if signedIn();
+        allow create: if ownsInteractionDoc(userId)
+          && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
 
     match /tours/{tourId} {
