@@ -12,9 +12,14 @@ import '../widgets/user_avatar.dart';
 /// Nuevo — capture hub with three segmented sub-screens: Monitoreo (field
 /// record), Agenda (tour), Evento (create event) — port of screens-forms.jsx.
 class NuevoHubScreen extends StatefulWidget {
-  const NuevoHubScreen({super.key, this.initialTab = 'Monitoreo'});
+  const NuevoHubScreen({
+    super.key,
+    this.initialTab = 'Monitoreo',
+    this.onSaved,
+  });
 
   final String initialTab;
+  final ValueChanged<String?>? onSaved;
 
   @override
   State<NuevoHubScreen> createState() => _NuevoHubScreenState();
@@ -48,9 +53,9 @@ class _NuevoHubScreenState extends State<NuevoHubScreen> {
           ),
           Expanded(
             child: switch (_tab) {
-              'Agenda' => const _TourRecord(),
-              'Evento' => const _EventCreate(),
-              _ => const _FieldRecord(),
+              'Agenda' => _TourRecord(onSaved: widget.onSaved),
+              'Evento' => _EventCreate(onSaved: widget.onSaved),
+              _ => _FieldRecord(onSaved: widget.onSaved),
             },
           ),
         ],
@@ -64,7 +69,9 @@ class _NuevoHubScreenState extends State<NuevoHubScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FieldRecord extends StatefulWidget {
-  const _FieldRecord();
+  const _FieldRecord({this.onSaved});
+
+  final ValueChanged<String?>? onSaved;
 
   @override
   State<_FieldRecord> createState() => _FieldRecordState();
@@ -499,11 +506,12 @@ class _FieldRecordState extends State<_FieldRecord> {
 
     setState(() => _saving = true);
     try {
-      await _dataService.createFieldRecord(
+      final publishToWall = _publish;
+      final recordId = await _dataService.createFieldRecord(
         category: _cat,
         observedAt: _combineDateAndTime(_recordDate, _recordTime),
         quantity: quantity,
-        publishToWall: _publish,
+        publishToWall: publishToWall,
         evidence: List.of(_evidence),
         speciesName: _speciesController.text,
         notes: _notesController.text,
@@ -514,10 +522,13 @@ class _FieldRecordState extends State<_FieldRecord> {
         _quantityController.text = '1';
         _notesController.clear();
         _evidence.clear();
+        _cat = 'Fauna';
+        _publish = true;
         _recordDate = DateTime.now();
         _recordTime = TimeOfDay.fromDateTime(DateTime.now());
       });
       _showSnack(context, 'Reporte guardado correctamente.');
+      widget.onSaved?.call(publishToWall ? 'fieldRecords/$recordId' : null);
     } catch (error) {
       if (!mounted) return;
       _showSnack(context, 'No se pudo guardar el reporte: $error', error: true);
@@ -532,7 +543,9 @@ class _FieldRecordState extends State<_FieldRecord> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TourRecord extends StatefulWidget {
-  const _TourRecord();
+  const _TourRecord({this.onSaved});
+
+  final ValueChanged<String?>? onSaved;
 
   @override
   State<_TourRecord> createState() => _TourRecordState();
@@ -879,11 +892,13 @@ class _TourRecordState extends State<_TourRecord> {
         _nameController.clear();
         _meetingPointController.clear();
         _notesController.clear();
+        _type = 'Terrestre';
         _tourDate = null;
         _startTime = null;
         _endTime = null;
       });
       _showSnack(context, 'Tour guardado correctamente.');
+      widget.onSaved?.call(null);
     } catch (error) {
       if (!mounted) return;
       _showSnack(context, 'No se pudo guardar el tour: $error', error: true);
@@ -898,7 +913,9 @@ class _TourRecordState extends State<_TourRecord> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _EventCreate extends StatefulWidget {
-  const _EventCreate();
+  const _EventCreate({this.onSaved});
+
+  final ValueChanged<String?>? onSaved;
 
   @override
   State<_EventCreate> createState() => _EventCreateState();
@@ -1286,10 +1303,12 @@ class _EventCreateState extends State<_EventCreate> {
         _eventDate = null;
         _startTime = null;
         _endTime = null;
+        _type = 'MisiÃ³n';
         _participants = 10;
         _public = true;
       });
       _showSnack(context, 'Evento guardado correctamente.');
+      widget.onSaved?.call(null);
     } catch (error) {
       if (!mounted) return;
       _showSnack(context, 'No se pudo guardar el evento: $error', error: true);

@@ -7,9 +7,12 @@ import 'eco_widgets.dart';
 
 /// Ubicación + clima actual ya resueltos.
 class WeatherData {
-  const WeatherData(this.location, this.weather);
+  const WeatherData(this.location, this.forecast);
+
   final UserLocation location;
-  final CurrentWeather weather;
+  final WeatherForecast forecast;
+
+  CurrentWeather get weather => forecast.current;
 }
 
 /// Obtiene una vez la ubicación del dispositivo + el clima actual y reconstruye
@@ -19,25 +22,36 @@ class WeatherBuilder extends StatefulWidget {
   const WeatherBuilder({super.key, required this.builder});
 
   final Widget Function(
-      BuildContext, AsyncSnapshot<WeatherData>, VoidCallback retry) builder;
+    BuildContext,
+    AsyncSnapshot<WeatherData>,
+    VoidCallback retry,
+  )
+  builder;
 
   @override
   State<WeatherBuilder> createState() => _WeatherBuilderState();
 }
 
 class _WeatherBuilderState extends State<WeatherBuilder> {
-  late Future<WeatherData> _future = _load();
+  static Future<WeatherData>? _cachedFuture;
+
+  late Future<WeatherData> _future = _cachedFuture ??= _load();
 
   Future<WeatherData> _load() async {
     final loc = await LocationService().getCurrentLocation();
-    final weather = await WeatherService().fetchCurrent(
+    final forecast = await WeatherService().fetchForecast(
       latitude: loc.latitude,
       longitude: loc.longitude,
     );
-    return WeatherData(loc, weather);
+    return WeatherData(loc, forecast);
   }
 
-  void _retry() => setState(() => _future = _load());
+  void _retry() {
+    setState(() {
+      _cachedFuture = _load();
+      _future = _cachedFuture!;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +60,101 @@ class _WeatherBuilderState extends State<WeatherBuilder> {
       builder: (context, snap) => widget.builder(context, snap, _retry),
     );
   }
+}
+
+Widget _weatherMetrics(
+  AppColors eco,
+  CurrentWeather weather, {
+  bool compact = false,
+}) {
+  final min = weather.dayMinTemperature;
+  final max = weather.dayMaxTemperature;
+  return Wrap(
+    spacing: 8,
+    runSpacing: 6,
+    children: [
+      if (min != null && max != null)
+        _metric(eco, Icons.thermostat, '${min.round()}-${max.round()}°C'),
+      _metric(
+        eco,
+        Icons.device_thermostat,
+        'SENS ${weather.apparentTemperature.round()}°',
+      ),
+      _metric(eco, Icons.water_drop, '${weather.humidity}% HUM'),
+      _metric(eco, Icons.air, '${weather.windSpeed.round()} KM/H'),
+      _metric(eco, Icons.speed, 'RACH ${weather.windGusts.round()}'),
+      _metric(eco, Icons.explore, '${weather.windDirection}°'),
+      _metric(eco, Icons.grain, '${_oneDecimal(weather.precipitation)} MM'),
+      if (!compact) ...[
+        _metric(eco, Icons.water, 'LLUV ${_oneDecimal(weather.rain)}'),
+        _metric(eco, Icons.waves, 'CHUB ${_oneDecimal(weather.showers)}'),
+        _metric(eco, Icons.ac_unit, 'NIEVE ${_oneDecimal(weather.snowfall)}'),
+        _metric(eco, Icons.cloud, '${weather.cloudCover}% NUBES'),
+        _metric(eco, Icons.compress, '${weather.pressureMsl.round()} HPA'),
+        _metric(
+          eco,
+          Icons.vertical_align_bottom,
+          '${weather.surfacePressure.round()} HPA SUP',
+        ),
+      ] else ...[
+        _metric(eco, Icons.cloud, '${weather.cloudCover}% NUBES'),
+        _metric(eco, Icons.compress, '${weather.pressureMsl.round()} HPA'),
+      ],
+    ],
+  );
+}
+
+Widget _metric(AppColors eco, IconData icon, String label) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: eco.primary.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: eco.primary),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: eco.onSurfaceVariant,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+String _hourLabel(DateTime value) {
+  return '${value.hour.toString().padLeft(2, '0')}:00';
+}
+
+String _weatherDateLabel(DateTime date) {
+  const months = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+  return '${date.day} de ${months[date.month - 1]}';
+}
+
+String _oneDecimal(double value) {
+  if (value == value.roundToDouble()) return value.round().toString();
+  return value.toStringAsFixed(1);
 }
 
 /// Mensaje de error legible a partir de una excepción.
@@ -75,36 +184,43 @@ class WeatherHeader extends StatelessWidget {
         };
         final subtitle = snap.hasData
             ? (snap.data!.location.subtitle ??
-                '${snap.data!.location.latitude.toStringAsFixed(2)}, '
-                    '${snap.data!.location.longitude.toStringAsFixed(2)}')
+                  '${snap.data!.location.latitude.toStringAsFixed(2)}, '
+                      '${snap.data!.location.longitude.toStringAsFixed(2)}')
             : 'Obteniendo tu posición actual';
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ESTADO DEL TIEMPO',
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.8,
-                    color: eco.primary)),
+            Text(
+              'ESTADO DEL TIEMPO',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.8,
+                color: eco.primary,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(title,
-                style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1.5,
-                    height: 1,
-                    color: eco.onSurface)),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.5,
+                height: 1,
+                color: eco.onSurface,
+              ),
+            ),
             const SizedBox(height: 6),
             Row(
               children: [
                 Icon(Icons.location_on, size: 16, color: eco.primary),
                 const SizedBox(width: 6),
                 Flexible(
-                  child: Text(subtitle,
-                      style:
-                          TextStyle(fontSize: 14, color: eco.onSurfaceVariant)),
+                  child: Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 14, color: eco.onSurfaceVariant),
+                  ),
                 ),
               ],
             ),
@@ -116,8 +232,12 @@ class WeatherHeader extends StatelessWidget {
     );
   }
 
-  Widget _card(BuildContext context, AppColors eco,
-      AsyncSnapshot<WeatherData> snap, VoidCallback retry) {
+  Widget _card(
+    BuildContext context,
+    AppColors eco,
+    AsyncSnapshot<WeatherData> snap,
+    VoidCallback retry,
+  ) {
     if (snap.connectionState == ConnectionState.done && snap.hasError) {
       return EcoCard(
         radius: 28,
@@ -127,11 +247,14 @@ class WeatherHeader extends StatelessWidget {
             const Text('📍', style: TextStyle(fontSize: 28)),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(weatherErrorMessage(snap.error!),
-                  style: TextStyle(
-                      fontSize: 13,
-                      height: 1.3,
-                      color: eco.onSurfaceVariant)),
+              child: Text(
+                weatherErrorMessage(snap.error!),
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.3,
+                  color: eco.onSurfaceVariant,
+                ),
+              ),
             ),
             TextButton(onPressed: retry, child: const Text('Reintentar')),
           ],
@@ -149,14 +272,19 @@ class WeatherHeader extends StatelessWidget {
               width: 28,
               height: 28,
               child: CircularProgressIndicator(
-                  strokeWidth: 2.5, color: eco.primary),
+                strokeWidth: 2.5,
+                color: eco.primary,
+              ),
             ),
             const SizedBox(width: 16),
-            Text('Consultando el clima…',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: eco.onSurfaceVariant)),
+            Text(
+              'Consultando el clima…',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       );
@@ -178,20 +306,26 @@ class WeatherHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text('${w.temperature.round()}°C',
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                            color: eco.onSurface)),
+                    Text(
+                      '${w.temperature.round()}°C',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                        color: eco.onSurface,
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Flexible(
-                      child: Text(w.description,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: eco.onSurfaceVariant)),
+                      child: Text(
+                        w.description,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: eco.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -201,11 +335,14 @@ class WeatherHeader extends StatelessWidget {
                   'VIENTO ${w.windSpeed.round()} KM/H · '
                   'SENS. ${w.apparentTemperature.round()}°',
                   style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                      color: eco.onSurfaceVariant),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                    color: eco.onSurfaceVariant,
+                  ),
                 ),
+                const SizedBox(height: 8),
+                _weatherMetrics(eco, w),
               ],
             ),
           ),
@@ -220,33 +357,49 @@ class WeatherHeader extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AgendaWeatherCard extends StatelessWidget {
-  const AgendaWeatherCard({super.key});
+  const AgendaWeatherCard({super.key, required this.selectedDate});
+
+  final DateTime selectedDate;
 
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
     return WeatherBuilder(
       builder: (context, snap, retry) {
-        return EcoCard(
-          radius: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
-          child: _content(eco, snap, retry),
+        return GestureDetector(
+          onTap: snap.hasData
+              ? () => _openHourlySheet(context, snap.data!)
+              : null,
+          behavior: HitTestBehavior.opaque,
+          child: EcoCard(
+            radius: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+            child: _content(eco, snap, retry),
+          ),
         );
       },
     );
   }
 
-  Widget _content(AppColors eco, AsyncSnapshot<WeatherData> snap,
-      VoidCallback retry) {
+  Widget _content(
+    AppColors eco,
+    AsyncSnapshot<WeatherData> snap,
+    VoidCallback retry,
+  ) {
     if (snap.connectionState == ConnectionState.done && snap.hasError) {
       return Row(
         children: [
           const Text('📍', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(weatherErrorMessage(snap.error!),
-                style: TextStyle(
-                    fontSize: 13, height: 1.3, color: eco.onSurfaceVariant)),
+            child: Text(
+              weatherErrorMessage(snap.error!),
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.3,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
           ),
           TextButton(onPressed: retry, child: const Text('Reintentar')),
         ],
@@ -259,21 +412,41 @@ class AgendaWeatherCard extends StatelessWidget {
           SizedBox(
             width: 28,
             height: 28,
-            child:
-                CircularProgressIndicator(strokeWidth: 2.5, color: eco.primary),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: eco.primary,
+            ),
           ),
           const SizedBox(width: 16),
-          Text('Consultando el clima…',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: eco.onSurfaceVariant)),
+          Text(
+            'Consultando el clima…',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: eco.onSurfaceVariant,
+            ),
+          ),
         ],
       );
     }
 
-    final loc = snap.data!.location;
-    final w = snap.data!.weather;
+    final data = snap.data!;
+    final loc = data.location;
+    final w = data.forecast.atPhoneHour(selectedDate);
+    if (w == null) {
+      return Row(
+        children: [
+          Icon(Icons.cloud_off, color: eco.outline),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No hay pronostico disponible para esta fecha.',
+              style: TextStyle(fontSize: 13, color: eco.onSurfaceVariant),
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -286,12 +459,15 @@ class AgendaWeatherCard extends StatelessWidget {
                   Icon(Icons.location_on, size: 18, color: eco.primary),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(loc.title,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: eco.onSurface)),
+                    child: Text(
+                      loc.title,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: eco.onSurface,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -300,18 +476,25 @@ class AgendaWeatherCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Text('${w.temperature.round()}°C',
-                      style: TextStyle(
-                          fontSize: 34,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.5,
-                          color: eco.onSurface)),
+                  Text(
+                    '${w.temperature.round()}°C',
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1.5,
+                      color: eco.onSurface,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Text(w.description,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 14, color: eco.onSurfaceVariant)),
+                    child: Text(
+                      w.description,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: eco.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -321,6 +504,23 @@ class AgendaWeatherCard extends StatelessWidget {
                   _stat(eco, Icons.water_drop, '${w.humidity}% HUM.'),
                   const SizedBox(width: 16),
                   _stat(eco, Icons.air, '${w.windSpeed.round()} KM/H'),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _weatherMetrics(eco, w),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.touch_app, size: 13, color: eco.outline),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Toca para ver todas las horas',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: eco.outline,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -341,17 +541,172 @@ class AgendaWeatherCard extends StatelessWidget {
     );
   }
 
+  void _openHourlySheet(BuildContext context, WeatherData data) {
+    final hours = data.forecast.hoursForDay(selectedDate);
+    final eco = context.eco;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: eco.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (context) {
+        final sheetEco = context.eco;
+        return SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.78,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: sheetEco.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _weatherDateLabel(selectedDate),
+                          style: TextStyle(
+                            color: sheetEco.onSurface,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      EcoChip('${hours.length} horas', tone: ChipTone.slate),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      data.location.title,
+                      style: TextStyle(
+                        color: sheetEco.onSurfaceVariant,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: hours.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No hay pronostico para este dia.',
+                              style: TextStyle(
+                                color: sheetEco.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: hours.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, index) =>
+                                _hourRow(sheetEco, hours[index]),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _hourRow(AppColors eco, CurrentWeather weather) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 58,
+            child: Column(
+              children: [
+                Text(
+                  _hourLabel(weather.time),
+                  style: TextStyle(
+                    color: eco.primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(weather.emoji, style: const TextStyle(fontSize: 26)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      '${weather.temperature.round()}°C',
+                      style: TextStyle(
+                        color: eco.onSurface,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        weather.description,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: eco.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _weatherMetrics(eco, weather),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _stat(AppColors eco, IconData icon, String label) {
     return Row(
       children: [
         Icon(icon, size: 14, color: eco.primary),
         const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6,
-                color: eco.onSurfaceVariant)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.6,
+            color: eco.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }

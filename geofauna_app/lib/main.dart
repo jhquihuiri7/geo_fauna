@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +10,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart'; // generado por: flutterfire configure
 import 'services/app_navigation_service.dart';
 import 'services/auth_service.dart';
+import 'services/field_data_service.dart';
 import 'services/notification_service.dart';
+import 'services/offline_sync_service.dart';
+import 'services/tracking_service.dart';
 import 'theme/app_theme.dart';
 import 'app_shell.dart';
 import 'screens/auth/login_screen.dart';
@@ -20,6 +25,8 @@ void main() async {
   // revela deslizando desde el borde y se vuelve a ocultar automáticamente.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await OfflineSyncService.instance.initialize();
+  await TrackingService.instance.initialize();
   await NotificationService.instance.initialize();
   runApp(const EcoGuiaApp());
 }
@@ -73,6 +80,8 @@ class AuthWrapper extends StatelessWidget {
         if (user == null) return const LoginScreen();
 
         NotificationService.instance.syncDeviceToken(user);
+        FieldDataService();
+        unawaited(OfflineSyncService.instance.retryNow());
 
         // Autenticado: decidir según si el perfil ya está completo en Firestore.
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(

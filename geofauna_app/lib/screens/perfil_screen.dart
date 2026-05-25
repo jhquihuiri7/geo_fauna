@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../services/auth_service.dart';
+import '../services/wall_media_cache_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
-import '../widgets/painters.dart';
 import 'settings_screen.dart';
 import 'integridad_screen.dart';
 
@@ -19,7 +21,12 @@ class _Profile {
         specialty = _firstNonEmpty([data?['specialty'] as String?]) ?? '—',
         email =
             _firstNonEmpty([data?['email'] as String?, user?.email]) ?? '—',
-        photoUrl = _firstNonEmpty([data?['photoUrl'] as String?, user?.photoURL]);
+        photoUrl = _firstNonEmpty([data?['photoUrl'] as String?, user?.photoURL]),
+        parkName = _firstNonEmpty([data?['parkName'] as String?]) ??
+            'Parque Nacional\nGalápagos',
+        statusLabel =
+            (_firstNonEmpty([data?['status'] as String?]) ?? 'Activo')
+                .toUpperCase();
 
   final String name;
   final String userType;
@@ -27,10 +34,21 @@ class _Profile {
   final String specialty;
   final String email;
   final String? photoUrl;
+  final String parkName;
+  final String statusLabel;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
     return parts.take(2).map((w) => w.isEmpty ? '' : w[0]).join().toUpperCase();
+  }
+
+  /// Contenido del QR de identificación: prioriza el ID de guardaparque y, si
+  /// no existe, recurre al correo o al nombre para que siga siendo escaneable.
+  String get qrData {
+    final id = rangerId != '—'
+        ? rangerId
+        : (email != '—' ? email : name);
+    return 'geofauna:ranger:$id';
   }
 
   /// Subtítulo del encabezado: "Guía Naturalista · GNPS-2024-001".
@@ -100,9 +118,7 @@ class PerfilScreen extends StatelessWidget {
                     const SizedBox(height: 24),
                     _idCard(eco, p),
                     const SizedBox(height: 24),
-                    _stats(eco),
-                    const SizedBox(height: 24),
-                    _wall(eco),
+                    _statsAndWall(eco, user),
                     const SizedBox(height: 24),
                     _actions(context, eco),
                   ],
@@ -173,8 +189,8 @@ class PerfilScreen extends StatelessWidget {
                         letterSpacing: 1.2,
                         color: Colors.white70)),
                 const SizedBox(height: 4),
-                const Text('Parque Nacional\nGalápagos',
-                    style: TextStyle(
+                Text(p.parkName,
+                    style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         height: 1.1,
@@ -203,17 +219,17 @@ class PerfilScreen extends StatelessWidget {
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      SizedBox(
+                    children: [
+                      const SizedBox(
                           width: 6,
                           height: 6,
                           child: DecoratedBox(
                               decoration: BoxDecoration(
                                   color: Color(0xFF86EFAC),
                                   shape: BoxShape.circle))),
-                      SizedBox(width: 8),
-                      Text('ACTIVO',
-                          style: TextStyle(
+                      const SizedBox(width: 8),
+                      Text(p.statusLabel,
+                          style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1.2,
@@ -225,12 +241,27 @@ class PerfilScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: SizedBox(
-              width: 100,
-              height: 100,
-              child: CustomPaint(painter: QrArtPainter()),
+          Container(
+            width: 100,
+            height: 100,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: QrImageView(
+              data: p.qrData,
+              version: QrVersions.auto,
+              gapless: true,
+              padding: EdgeInsets.zero,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF0F172A),
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF0F172A),
+              ),
             ),
           ),
         ],
@@ -238,36 +269,129 @@ class PerfilScreen extends StatelessWidget {
     );
   }
 
-  Widget _stats(AppColors eco) {
-    // Métricas de actividad: aún no se registran en backend, por eso van en
-    // cero/neutro en lugar de valores inventados.
-    final cells = const [
-      [Icons.visibility, 'Avistamientos', '0', false],
-      [Icons.eco, 'Especies', '0', false],
-      [Icons.verified, 'Precisión', '—', false],
-      [Icons.timer, 'En Campo', '0h', false],
-      [Icons.map, 'Recorrido', '0km', false],
-      [Icons.workspace_premium, 'Destacado', '—', true],
-    ];
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 0.78,
-      children: [
-        for (final c in cells)
-          _StatCell(
-              icon: c[0] as IconData,
-              label: c[1] as String,
-              value: c[2] as String,
-              small: c[3] as bool),
-      ],
+  /// Estadísticas + muro personal. Lee los `fieldRecords` del usuario una sola
+  /// vez y los reutiliza para (a) calcular la precisión a partir de las
+  /// validaciones y (b) renderizar el muro de avistamientos.
+  Widget _statsAndWall(AppColors eco, User? user) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: user != null
+          ? FirebaseFirestore.instance
+              .collection('fieldRecords')
+              .where('authorId', isEqualTo: user.uid)
+              .snapshots()
+          : null,
+      builder: (context, recSnap) {
+        final docs = recSnap.data?.docs ??
+            const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+
+        // Precisión = confirmaciones / (confirmaciones + disputas) sobre los
+        // registros del usuario. Si aún no hay votos, queda en "—".
+        var confirmations = 0;
+        var disputes = 0;
+        for (final d in docs) {
+          final vs = d.data()['validationSummary'];
+          if (vs is Map) {
+            confirmations += _statNum(vs['confirmations']).round();
+            disputes += _statNum(vs['disputes']).round();
+          }
+        }
+        final totalVotes = confirmations + disputes;
+        final precisionLabel = totalVotes == 0
+            ? '—'
+            : '${(confirmations / totalVotes * 100).round()}%';
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _stats(eco, user, precisionLabel),
+            const SizedBox(height: 24),
+            _wall(eco, docs),
+          ],
+        );
+      },
     );
   }
 
-  Widget _wall(AppColors eco) {
+  Widget _stats(AppColors eco, User? user, String precisionLabel) {
+    // Métricas reales agregadas en `userStats` por FieldDataService.
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: user != null
+          ? FirebaseFirestore.instance
+              .collection('userStats')
+              .doc(user.uid)
+              .snapshots()
+          : null,
+      builder: (context, snap) {
+        final s = snap.data?.data() ?? const <String, dynamic>{};
+        final sightings = _statNum(s['fieldRecordCount']).round();
+        final tracks = _statNum(s['trackCount']).round();
+        final km = _statNum(s['trackDistanceMeters']) / 1000;
+        final hours = _statNum(s['fieldSeconds']) / 3600;
+        // Nivel derivado del XP acumulado (+25 por registro, +50 por recorrido).
+        final xp = _statNum(s['xp']).round();
+        final level = xp ~/ 100 + 1;
+        final cells = [
+          [Icons.visibility, 'Avistamientos', '$sightings', false],
+          [Icons.route, 'Recorridos', '$tracks', false],
+          [Icons.verified, 'Precisión', precisionLabel, false],
+          [Icons.timer, 'En Campo', '${hours.toStringAsFixed(hours < 10 ? 1 : 0)}h', false],
+          [Icons.map, 'Distancia', '${km.toStringAsFixed(km < 100 ? 1 : 0)}km', false],
+          [Icons.workspace_premium, 'Nivel', 'Nv $level', false],
+        ];
+        return GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.78,
+          children: [
+            for (final c in cells)
+              _StatCell(
+                  icon: c[0] as IconData,
+                  label: c[1] as String,
+                  value: c[2] as String,
+                  small: c[3] as bool),
+          ],
+        );
+      },
+    );
+  }
+
+  static double _statNum(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  /// Devuelve la miniatura (o foto) representativa de un registro, si existe.
+  static String? _thumbUrl(Map<String, dynamic> data) {
+    for (final key in const ['photoThumbUrl', 'photoUrl', 'videoThumbUrl']) {
+      final v = data[key];
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+    }
+    return null;
+  }
+
+  Widget _wall(
+    AppColors eco,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    // Orden por fecha desc en cliente: evita un índice compuesto en Firestore.
+    final sorted = [...docs]..sort((a, b) {
+      final ta = a.data()['createdAt'];
+      final tb = b.data()['createdAt'];
+      final va = ta is Timestamp ? ta.toDate() : DateTime(0);
+      final vb = tb is Timestamp ? tb.toDate() : DateTime(0);
+      return vb.compareTo(va);
+    });
+    final withMedia = [
+      for (final d in sorted)
+        if (_thumbUrl(d.data()) != null) d,
+    ];
+    WallMediaCacheService.instance
+        .warm([for (final d in withMedia) _thumbUrl(d.data())]);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -278,39 +402,61 @@ class PerfilScreen extends StatelessWidget {
                 letterSpacing: 1.8,
                 color: eco.primary)),
         const SizedBox(height: 16),
-        // Estado vacío: aún no hay avistamientos registrados por el usuario.
-        EcoCard(
-          radius: 24,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
-          child: Column(
+        if (withMedia.isEmpty)
+          _wallEmpty(eco)
+        else
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: eco.primary.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+              for (final d in withMedia.take(12))
+                _WallThumb(
+                  url: _thumbUrl(d.data())!,
+                  label: (d.data()['speciesName'] as String?) ??
+                      (d.data()['categoryLabel'] as String?) ??
+                      'AVISTAMIENTO',
                 ),
-                child: Icon(Icons.photo_camera_outlined,
-                    color: eco.primary, size: 26),
-              ),
-              const SizedBox(height: 12),
-              Text('Aún no tienes avistamientos',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: eco.onSurface)),
-              const SizedBox(height: 4),
-              Text(
-                'Registra tu primer hallazgo desde la pestaña "Nuevo".',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: eco.onSurfaceVariant),
-              ),
             ],
           ),
-        ),
       ],
+    );
+  }
+
+  /// Estado vacío: aún no hay avistamientos con evidencia registrados.
+  Widget _wallEmpty(AppColors eco) {
+    return EcoCard(
+      radius: 24,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: eco.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.photo_camera_outlined,
+                color: eco.primary, size: 26),
+          ),
+          const SizedBox(height: 12),
+          Text('Aún no tienes avistamientos',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: eco.onSurface)),
+          const SizedBox(height: 4),
+          Text(
+            'Registra tu primer hallazgo desde la pestaña "Nuevo".',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: eco.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
 
@@ -438,6 +584,55 @@ class _StatCell extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Miniatura cuadrada del muro personal, servida desde la caché de medios del
+/// muro para reutilizar archivos ya descargados en la pestaña comunitaria.
+class _WallThumb extends StatelessWidget {
+  const _WallThumb({required this.url, this.label});
+
+  final String url;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: StreamBuilder<FileResponse>(
+        stream: WallMediaCacheService.instance.fileStream(url),
+        builder: (context, snap) {
+          final data = snap.data;
+          if (data is FileInfo) {
+            return Image.file(
+              data.file,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stack) =>
+                  PhotoPlaceholder(label: label ?? '', borderRadius: 16),
+            );
+          }
+          if (snap.hasError) {
+            return PhotoPlaceholder(label: label ?? '', borderRadius: 16);
+          }
+          return Container(
+            color: eco.surfaceContainerLow,
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.4,
+                color: eco.primary,
+                value: data is DownloadProgress ? data.progress : null,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

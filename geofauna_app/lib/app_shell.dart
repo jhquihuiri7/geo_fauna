@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'services/app_navigation_service.dart';
+import 'services/offline_sync_service.dart';
 import 'theme/app_colors.dart';
 import 'widgets/eco_widgets.dart';
 import 'widgets/animations.dart';
@@ -61,7 +62,7 @@ class _AppShellState extends State<AppShell> {
     final Widget screen = switch (i) {
       0 => const DashboardScreen(),
       1 => const AgendaScreen(),
-      2 => const NuevoHubScreen(),
+      2 => NuevoHubScreen(onSaved: _openWallAfterSave),
       3 => MuroScreen(highlightSourceKey: _wallHighlightSourceKey),
       _ => const PerfilScreen(),
     };
@@ -73,6 +74,14 @@ class _AppShellState extends State<AppShell> {
     setState(() {
       _index = i;
       _visited.add(i);
+    });
+  }
+
+  void _openWallAfterSave(String? highlightSourceKey) {
+    setState(() {
+      _index = 3;
+      _visited.add(3);
+      _wallHighlightSourceKey = highlightSourceKey;
     });
   }
 
@@ -109,6 +118,12 @@ class _AppShellState extends State<AppShell> {
             ),
           ),
           Positioned(
+            left: 16,
+            right: 16,
+            bottom: 92 + MediaQuery.of(context).viewPadding.bottom,
+            child: const _OfflineSyncPill(),
+          ),
+          Positioned(
             left: 0,
             right: 0,
             bottom: 0,
@@ -124,6 +139,93 @@ class _NavItem {
   const _NavItem(this.label, this.icon);
   final String label;
   final IconData icon;
+}
+
+class _OfflineSyncPill extends StatelessWidget {
+  const _OfflineSyncPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return ValueListenableBuilder<List<OfflineSyncOperation>>(
+      valueListenable: OfflineSyncService.instance.operations,
+      builder: (context, operations, _) {
+        if (operations.isEmpty) return const SizedBox.shrink();
+        final failed = operations
+            .where((op) => op.status == OfflineSyncStatus.failed)
+            .length;
+        final syncing = operations.any(
+          (op) => op.status == OfflineSyncStatus.syncing,
+        );
+        final text = syncing
+            ? 'Sincronizando cambios...'
+            : failed > 0
+            ? '$failed cambio(s) con reintento pendiente'
+            : '${operations.length} cambio(s) pendiente(s)';
+        return Align(
+          alignment: Alignment.center,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => OfflineSyncService.instance.retryNow(),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: eco.surfaceContainerLowest.withValues(alpha: 0.94),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: eco.outlineVariant),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: syncing
+                          ? CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: eco.primary,
+                            )
+                          : Icon(
+                              failed > 0
+                                  ? Icons.sync_problem_rounded
+                                  : Icons.cloud_upload_rounded,
+                              size: 16,
+                              color: failed > 0 ? eco.error : eco.primary,
+                            ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: eco.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _BottomNav extends StatelessWidget {

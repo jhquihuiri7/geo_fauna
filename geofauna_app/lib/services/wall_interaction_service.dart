@@ -29,6 +29,7 @@ class WallComment {
     required this.body,
     this.authorPhotoUrl,
     this.createdAt,
+    this.isPending = false,
   });
 
   final String id;
@@ -36,6 +37,7 @@ class WallComment {
   final String? authorPhotoUrl;
   final String body;
   final DateTime? createdAt;
+  final bool isPending;
 
   factory WallComment.fromSnapshot(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
@@ -60,6 +62,13 @@ class WallComment {
       createdAt: _toDate(data['createdAt']),
     );
   }
+}
+
+class QueuedWallComment {
+  const QueuedWallComment({required this.comment, required this.commit});
+
+  final WallComment comment;
+  final Future<void> commit;
 }
 
 class WallInteractionService {
@@ -159,13 +168,42 @@ class WallInteractionService {
   }
 
   Future<void> addComment(WallInteractionTarget target, String body) async {
+    final queued = queueComment(target, body);
+    await queued.commit;
+  }
+
+  QueuedWallComment queueComment(WallInteractionTarget target, String body) {
     final user = _requireUser();
     final text = body.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      throw ArgumentError.value(body, 'body', 'El comentario esta vacio.');
+    }
 
-    final author = await _authorSnapshot(user);
     final postRef = _postRef(target);
     final commentRef = postRef.collection('comments').doc();
+    final localAuthor = _localAuthorSnapshot(user);
+
+    return QueuedWallComment(
+      comment: WallComment(
+        id: commentRef.id,
+        authorName: localAuthor.name,
+        authorPhotoUrl: localAuthor.photoUrl,
+        body: text,
+        createdAt: DateTime.now(),
+        isPending: true,
+      ),
+      commit: _commitComment(target, text, postRef, commentRef, user),
+    );
+  }
+
+  Future<void> _commitComment(
+    WallInteractionTarget target,
+    String text,
+    DocumentReference<Map<String, dynamic>> postRef,
+    DocumentReference<Map<String, dynamic>> commentRef,
+    User user,
+  ) async {
+    final author = await _authorSnapshot(user);
 
     await _firestore.runTransaction((tx) async {
       final post = await tx.get(postRef);
@@ -229,6 +267,16 @@ class WallInteractionService {
         _stringValue(data['photoURL']),
         user.photoURL,
       ]),
+    );
+  }
+
+  _AuthorSnapshot _localAuthorSnapshot(User user) {
+    return _AuthorSnapshot(
+      uid: user.uid,
+      name:
+          _firstNonEmpty([user.displayName, user.email]) ??
+          'Usuario sin nombre',
+      photoUrl: user.photoURL,
     );
   }
 }

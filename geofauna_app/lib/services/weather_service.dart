@@ -1,23 +1,47 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
-/// Resultado del clima actual de Open-Meteo, ya interpretado para la UI.
 class CurrentWeather {
   const CurrentWeather({
+    required this.time,
     required this.temperature,
     required this.apparentTemperature,
     required this.humidity,
     required this.windSpeed,
     required this.isDay,
     required this.weatherCode,
+    required this.precipitation,
+    required this.rain,
+    required this.showers,
+    required this.snowfall,
+    required this.cloudCover,
+    required this.pressureMsl,
+    required this.surfacePressure,
+    required this.windDirection,
+    required this.windGusts,
+    this.dayMinTemperature,
+    this.dayMaxTemperature,
   });
 
-  final double temperature; // °C
-  final double apparentTemperature; // °C
-  final int humidity; // %
-  final double windSpeed; // km/h
+  final DateTime time;
+  final double temperature;
+  final double apparentTemperature;
+  final int humidity;
+  final double windSpeed;
   final bool isDay;
-  final int weatherCode; // código WMO
+  final int weatherCode;
+  final double precipitation;
+  final double rain;
+  final double showers;
+  final double snowfall;
+  final int cloudCover;
+  final double pressureMsl;
+  final double surfacePressure;
+  final int windDirection;
+  final double windGusts;
+  final double? dayMinTemperature;
+  final double? dayMaxTemperature;
 
   String get emoji => _wmoEmoji(weatherCode, isDay);
   String get description => _wmoDescription(weatherCode);
@@ -25,19 +49,145 @@ class CurrentWeather {
   factory CurrentWeather.fromJson(Map<String, dynamic> json) {
     final c = json['current'] as Map<String, dynamic>;
     return CurrentWeather(
-      temperature: (c['temperature_2m'] as num).toDouble(),
-      apparentTemperature: (c['apparent_temperature'] as num).toDouble(),
-      humidity: (c['relative_humidity_2m'] as num).round(),
-      windSpeed: (c['wind_speed_10m'] as num).toDouble(),
-      isDay: (c['is_day'] as num) == 1,
-      weatherCode: (c['weather_code'] as num).toInt(),
+      time: _dateValue(c['time']) ?? DateTime.now(),
+      temperature: _doubleValue(c['temperature_2m']),
+      apparentTemperature: _doubleValue(c['apparent_temperature']),
+      humidity: _doubleValue(c['relative_humidity_2m']).round(),
+      windSpeed: _doubleValue(c['wind_speed_10m']),
+      isDay: _doubleValue(c['is_day']).round() == 1,
+      weatherCode: _doubleValue(c['weather_code']).round(),
+      precipitation: _doubleValue(c['precipitation']),
+      rain: _doubleValue(c['rain']),
+      showers: _doubleValue(c['showers']),
+      snowfall: _doubleValue(c['snowfall']),
+      cloudCover: _doubleValue(c['cloud_cover']).round(),
+      pressureMsl: _doubleValue(c['pressure_msl']),
+      surfacePressure: _doubleValue(c['surface_pressure']),
+      windDirection: _doubleValue(c['wind_direction_10m']).round(),
+      windGusts: _doubleValue(c['wind_gusts_10m']),
+    );
+  }
+
+  factory CurrentWeather.fromHourly(Map<String, dynamic> hourly, int index) {
+    final time = _dateAt(hourly, 'time', index) ?? DateTime.now();
+    return CurrentWeather(
+      time: time,
+      temperature: _doubleAt(hourly, 'temperature_2m', index),
+      apparentTemperature: _doubleAt(hourly, 'apparent_temperature', index),
+      humidity: _doubleAt(hourly, 'relative_humidity_2m', index).round(),
+      windSpeed: _doubleAt(hourly, 'wind_speed_10m', index),
+      isDay: _isDayHour(time),
+      weatherCode: _doubleAt(hourly, 'weather_code', index).round(),
+      precipitation: _doubleAt(hourly, 'precipitation', index),
+      rain: _doubleAt(hourly, 'rain', index),
+      showers: _doubleAt(hourly, 'showers', index),
+      snowfall: _doubleAt(hourly, 'snowfall', index),
+      cloudCover: _doubleAt(hourly, 'cloud_cover', index).round(),
+      pressureMsl: _doubleAt(hourly, 'pressure_msl', index),
+      surfacePressure: _doubleAt(hourly, 'surface_pressure', index),
+      windDirection: _doubleAt(hourly, 'wind_direction_10m', index).round(),
+      windGusts: _doubleAt(hourly, 'wind_gusts_10m', index),
+    );
+  }
+
+  CurrentWeather withDailyRange(WeatherDayRange? range) {
+    return CurrentWeather(
+      time: time,
+      temperature: temperature,
+      apparentTemperature: apparentTemperature,
+      humidity: humidity,
+      windSpeed: windSpeed,
+      isDay: isDay,
+      weatherCode: weatherCode,
+      precipitation: precipitation,
+      rain: rain,
+      showers: showers,
+      snowfall: snowfall,
+      cloudCover: cloudCover,
+      pressureMsl: pressureMsl,
+      surfacePressure: surfacePressure,
+      windDirection: windDirection,
+      windGusts: windGusts,
+      dayMinTemperature: range?.minTemperature,
+      dayMaxTemperature: range?.maxTemperature,
     );
   }
 }
 
+class WeatherDayRange {
+  const WeatherDayRange({
+    required this.minTemperature,
+    required this.maxTemperature,
+  });
+
+  final double minTemperature;
+  final double maxTemperature;
+}
+
+class WeatherForecast {
+  const WeatherForecast({required this.current, required this.hourly});
+
+  final CurrentWeather current;
+  final List<CurrentWeather> hourly;
+
+  factory WeatherForecast.fromJson(Map<String, dynamic> json) {
+    final hourlyData = json['hourly'] is Map<String, dynamic>
+        ? json['hourly'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final times = hourlyData['time'] is List ? hourlyData['time'] as List : [];
+    final hourly = [
+      for (var i = 0; i < times.length; i++)
+        CurrentWeather.fromHourly(hourlyData, i),
+    ];
+
+    final rawCurrent = CurrentWeather.fromJson(json);
+    final current = rawCurrent.withDailyRange(
+      _rangeForDay(hourly, rawCurrent.time),
+    );
+
+    return WeatherForecast(current: current, hourly: hourly);
+  }
+
+  CurrentWeather? atPhoneHour(DateTime date) {
+    final hours = hoursForDay(date);
+    if (hours.isEmpty) return null;
+
+    final phoneHour = DateTime.now().hour;
+    CurrentWeather selected = hours.first;
+    var bestDistance = (selected.time.hour - phoneHour).abs();
+
+    for (final weather in hours.skip(1)) {
+      final distance = (weather.time.hour - phoneHour).abs();
+      if (distance < bestDistance) {
+        selected = weather;
+        bestDistance = distance;
+      }
+    }
+
+    return selected.withDailyRange(_rangeForHours(hours));
+  }
+
+  List<CurrentWeather> hoursForDay(DateTime date) {
+    final range = _rangeForDay(hourly, date);
+    return [
+      for (final weather in hourly)
+        if (_sameDay(weather.time, date)) weather.withDailyRange(range),
+    ];
+  }
+}
+
 class WeatherService {
-  /// Consulta el clima actual para una latitud/longitud dadas.
   Future<CurrentWeather> fetchCurrent({
+    required double latitude,
+    required double longitude,
+  }) async {
+    return (await fetchForecast(
+      latitude: latitude,
+      longitude: longitude,
+    )).current;
+  }
+
+  Future<WeatherForecast> fetchForecast({
     required double latitude,
     required double longitude,
   }) async {
@@ -48,20 +198,75 @@ class WeatherService {
       'is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,'
       'pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,'
       'wind_gusts_10m'
+      '&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,'
+      'precipitation,rain,showers,snowfall,weather_code,cloud_cover,'
+      'pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,'
+      'wind_gusts_10m'
       '&temperature_unit=celsius&wind_speed_unit=kmh'
-      '&precipitation_unit=mm&timezone=auto',
+      '&precipitation_unit=mm&timezone=auto&forecast_days=15',
     );
 
     final res = await http.get(uri);
     if (res.statusCode != 200) {
-      throw Exception('Open-Meteo respondió ${res.statusCode}');
+      throw Exception('Open-Meteo respondio ${res.statusCode}');
     }
-    return CurrentWeather.fromJson(
-        jsonDecode(res.body) as Map<String, dynamic>);
+
+    return WeatherForecast.fromJson(
+      jsonDecode(res.body) as Map<String, dynamic>,
+    );
   }
 }
 
-// ── Interpretación de códigos WMO ─────────────────────────────────────────────
+WeatherDayRange? _rangeForDay(List<CurrentWeather> hourly, DateTime date) {
+  return _rangeForHours([
+    for (final weather in hourly)
+      if (_sameDay(weather.time, date)) weather,
+  ]);
+}
+
+WeatherDayRange? _rangeForHours(List<CurrentWeather> hours) {
+  if (hours.isEmpty) return null;
+
+  var min = hours.first.temperature;
+  var max = hours.first.temperature;
+  for (final weather in hours.skip(1)) {
+    if (weather.temperature < min) min = weather.temperature;
+    if (weather.temperature > max) max = weather.temperature;
+  }
+  return WeatherDayRange(minTemperature: min, maxTemperature: max);
+}
+
+DateTime? _dateAt(Map<String, dynamic> json, String key, int index) {
+  final values = json[key];
+  if (values is! List || index >= values.length) return null;
+  return _dateValue(values[index]);
+}
+
+double _doubleAt(Map<String, dynamic> json, String key, int index) {
+  final values = json[key];
+  if (values is! List || index >= values.length) return 0;
+  return _doubleValue(values[index]);
+}
+
+double _doubleValue(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0;
+  return 0;
+}
+
+DateTime? _dateValue(Object? value) {
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
+  return null;
+}
+
+bool _sameDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+bool _isDayHour(DateTime time) {
+  return time.hour >= 6 && time.hour < 18;
+}
 
 String _wmoEmoji(int code, bool isDay) {
   if (code == 0) return isDay ? '☀️' : '🌙';

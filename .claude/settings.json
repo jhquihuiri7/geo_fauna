@@ -7,7 +7,11 @@
       "Read(//c/c/**)",
       "Bash(firebase deploy *)",
       "Bash(firebase functions:list)",
-      "Bash(firebase functions:log --only on_public_feed_created)"
+      "Bash(firebase functions:log --only on_public_feed_created)",
+      "Bash(flutter pub *)",
+      "Bash(python -m py_compile main.py)",
+      "Bash(flutter create *)",
+      "Bash(Select-Object -First 80)"
     ]
   }
 }

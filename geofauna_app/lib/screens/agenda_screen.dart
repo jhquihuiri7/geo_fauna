@@ -1,7 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
+import '../services/field_data_service.dart';
+import '../services/offline_sync_service.dart';
+import '../services/tracking_service.dart';
 import '../theme/app_colors.dart';
+import 'tracking_screen.dart';
 import '../widgets/eco_widgets.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/weather_header.dart';
@@ -15,6 +20,8 @@ class AgendaScreen extends StatefulWidget {
 }
 
 class _AgendaScreenState extends State<AgendaScreen> {
+  final _dataService = FieldDataService();
+
   // Nombres en español (sin dependencia de intl).
   static const _months = [
     'enero',
@@ -81,7 +88,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   style: TextStyle(fontSize: 15, color: eco.onSurfaceVariant),
                 ),
                 const SizedBox(height: 24),
-                const AgendaWeatherCard(),
+                AgendaWeatherCard(selectedDate: _selectedDate),
                 const SizedBox(height: 24),
               ],
             ),
@@ -92,17 +99,106 @@ class _AgendaScreenState extends State<AgendaScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               children: [
-                for (var i = 0; i < 5; i++)
+                for (var i = 0; i < 15; i++)
                   _dayCell(eco, _today.add(Duration(days: i))),
               ],
             ),
           ),
+          _activeTrackBanner(context, eco),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
             child: _timeline(context, eco, _selectedDate),
           ),
         ],
       ),
+    );
+  }
+
+  /// Banner persistente cuando hay un recorrido activo o recuperado, para
+  /// volver a la pantalla de grabación o reanudarlo.
+  Widget _activeTrackBanner(BuildContext context, AppColors eco) {
+    return ValueListenableBuilder<TrackingSession?>(
+      valueListenable: TrackingService.instance.session,
+      builder: (context, session, _) {
+        if (session == null) return const SizedBox.shrink();
+        final recording = session.isRecording;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => TrackingScreen(
+                    tourId: session.tourId,
+                    tourName: session.tourName,
+                    tourType: session.tourType,
+                    resume: !recording,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
+                color: eco.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: eco.primary.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    recording
+                        ? Icons.fiber_manual_record_rounded
+                        : Icons.pause_circle_filled_rounded,
+                    color: recording ? eco.error : eco.primary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          recording
+                              ? 'Recorrido en curso'
+                              : 'Recorrido en pausa',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: eco.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          session.tourName ?? 'Recorrido libre',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: eco.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    recording ? 'Abrir' : 'Reanudar',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: eco.primary,
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: eco.primary),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -150,50 +246,63 @@ class _AgendaScreenState extends State<AgendaScreen> {
   }
 
   Widget _timeline(BuildContext context, AppColors eco, DateTime selectedDate) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('events').snapshots(),
-      builder: (context, eventSnap) {
+    return ValueListenableBuilder<List<OfflineSyncOperation>>(
+      valueListenable: OfflineSyncService.instance.operations,
+      builder: (context, offlineOperations, _) {
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance.collection('tours').snapshots(),
-          builder: (context, tourSnap) {
-            if (_isLoading(eventSnap) || _isLoading(tourSnap)) {
-              return _loadingTimeline(eco);
-            }
-            if (eventSnap.hasError || tourSnap.hasError) {
-              return _timelineError(eco, eventSnap.error ?? tourSnap.error!);
-            }
+          stream: FirebaseFirestore.instance.collection('events').snapshots(),
+          builder: (context, eventSnap) {
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('tours')
+                  .snapshots(),
+              builder: (context, tourSnap) {
+                if (_isLoading(eventSnap) || _isLoading(tourSnap)) {
+                  return _loadingTimeline(eco);
+                }
+                if (eventSnap.hasError || tourSnap.hasError) {
+                  return _timelineError(
+                    eco,
+                    eventSnap.error ?? tourSnap.error!,
+                  );
+                }
 
-            final items =
-                [
-                    for (final doc
-                        in eventSnap.data?.docs ??
-                            const <
-                              QueryDocumentSnapshot<Map<String, dynamic>>
-                            >[])
-                      _AgendaItem.fromEvent(doc.id, doc.data()),
-                    for (final doc
-                        in tourSnap.data?.docs ??
-                            const <
-                              QueryDocumentSnapshot<Map<String, dynamic>>
-                            >[])
-                      _AgendaItem.fromTour(doc.id, doc.data()),
-                  ].where((item) => _sameDay(item.date, selectedDate)).toList()
-                  ..sort((a, b) {
-                    final aTime = a.startAt ?? a.date;
-                    final bTime = b.startAt ?? b.date;
-                    return aTime.compareTo(bTime);
-                  });
+                final items =
+                    [
+                          for (final doc
+                              in eventSnap.data?.docs ??
+                                  const <
+                                    QueryDocumentSnapshot<Map<String, dynamic>>
+                                  >[])
+                            _AgendaItem.fromEvent(doc.id, doc.data()),
+                          for (final doc
+                              in tourSnap.data?.docs ??
+                                  const <
+                                    QueryDocumentSnapshot<Map<String, dynamic>>
+                                  >[])
+                            _AgendaItem.fromTour(doc.id, doc.data()),
+                          ..._offlineAgendaItems(offlineOperations),
+                        ]
+                        .where((item) => _sameDay(item.date, selectedDate))
+                        .toList()
+                      ..sort((a, b) {
+                        final aTime = a.startAt ?? a.date;
+                        final bTime = b.startAt ?? b.date;
+                        return aTime.compareTo(bTime);
+                      });
 
-            if (items.isEmpty) return _emptyTimeline(eco, selectedDate);
+                if (items.isEmpty) return _emptyTimeline(eco, selectedDate);
 
-            return Column(
-              children: [
-                for (final entry in items.asMap().entries)
-                  Padding(
-                    padding: EdgeInsets.only(top: entry.key == 0 ? 0 : 12),
-                    child: _activityCard(eco, entry.value),
-                  ),
-              ],
+                return Column(
+                  children: [
+                    for (final entry in items.asMap().entries)
+                      Padding(
+                        padding: EdgeInsets.only(top: entry.key == 0 ? 0 : 12),
+                        child: _activityCard(context, eco, entry.value),
+                      ),
+                  ],
+                );
+              },
             );
           },
         );
@@ -294,96 +403,159 @@ class _AgendaScreenState extends State<AgendaScreen> {
     );
   }
 
-  Widget _activityCard(AppColors eco, _AgendaItem item) {
-    return EcoCard(
-      radius: 28,
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: eco.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+  Widget _activityCard(BuildContext context, AppColors eco, _AgendaItem item) {
+    final canEdit =
+        !item.pendingSync && item.ownerId == AuthService().currentUser?.uid;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openAgendaDetail(context, item),
+      child: EcoCard(
+        radius: 28,
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: eco.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(item.icon, color: eco.primary, size: 22),
             ),
-            child: Icon(item.icon, color: eco.primary, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: eco.onSurface,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    EcoChip(item.kindLabel, tone: item.chipTone, small: true),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item.timeLabel,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: eco.primary,
-                  ),
-                ),
-                if (item.locationLabel != null) ...[
-                  const SizedBox(height: 6),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 14,
-                        color: eco.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          item.locationLabel!,
-                          overflow: TextOverflow.ellipsis,
+                          item.title,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: eco.onSurfaceVariant,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: eco.onSurface,
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      if (canEdit)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Editar',
+                          onPressed: () => _openAgendaEditor(context, item),
+                          icon: Icon(
+                            Icons.edit_rounded,
+                            size: 20,
+                            color: eco.primary,
+                          ),
+                        ),
+                      if (item.pendingSync)
+                        const EcoChip(
+                          'Sin sincronizar',
+                          tone: ChipTone.warning,
+                          small: true,
+                        ),
+                      EcoChip(item.kindLabel, tone: item.chipTone, small: true),
                     ],
                   ),
-                ],
-                if (item.body != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
-                    item.body!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    item.timeLabel,
                     style: TextStyle(
-                      fontSize: 13,
-                      height: 1.35,
-                      color: eco.onSurfaceVariant,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: eco.primary,
                     ),
                   ),
+                  if (item.locationLabel != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: eco.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            item.locationLabel!,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: eco.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (item.body != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      item.body!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: eco.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _openAgendaDetail(BuildContext context, _AgendaItem item) async {
+    final action = await showModalBottomSheet<_AgendaDetailAction>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.eco.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (_) => _AgendaDetailSheet(item: item),
+    );
+    if (!context.mounted) return;
+    if (action == _AgendaDetailAction.edit) {
+      await _openAgendaEditor(context, item);
+    } else if (action == _AgendaDetailAction.startTracking) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TrackingScreen(
+            tourId: item.kind == _AgendaItemKind.tour ? item.id : null,
+            tourName: item.title,
+            tourType: item.type,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openAgendaEditor(BuildContext context, _AgendaItem item) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.eco.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (_) => _AgendaEditSheet(item: item, dataService: _dataService),
+    );
+    if (!context.mounted || saved != true) return;
+    _showAgendaSnack(context, '${item.kindLabel} actualizado correctamente.');
   }
 
   String _selectedDateText(DateTime date) {
@@ -402,18 +574,25 @@ class _AgendaScreenState extends State<AgendaScreen> {
 class _AgendaItem {
   const _AgendaItem({
     required this.id,
+    required this.kind,
     required this.title,
     required this.date,
     required this.kindLabel,
     required this.icon,
     required this.chipTone,
+    required this.type,
+    this.ownerId,
+    this.pendingSync = false,
     this.startAt,
     this.endAt,
     this.locationLabel,
     this.body,
+    this.isPublic = true,
+    this.participantCount = 0,
   });
 
   final String id;
+  final _AgendaItemKind kind;
   final String title;
   final DateTime date;
   final DateTime? startAt;
@@ -421,8 +600,13 @@ class _AgendaItem {
   final String kindLabel;
   final IconData icon;
   final ChipTone chipTone;
+  final String type;
+  final String? ownerId;
+  final bool pendingSync;
   final String? locationLabel;
   final String? body;
+  final bool isPublic;
+  final int participantCount;
 
   String get timeLabel {
     if (startAt == null) return 'Sin hora definida';
@@ -436,6 +620,7 @@ class _AgendaItem {
     final type = _stringValue(data['type']);
     return _AgendaItem(
       id: id,
+      kind: _AgendaItemKind.event,
       title:
           _firstNonEmpty([
             _stringValue(data['title']),
@@ -448,6 +633,11 @@ class _AgendaItem {
       kindLabel: _eventTypeLabel(type),
       icon: _eventIcon(type),
       chipTone: ChipTone.tertiary,
+      type: type ?? 'Mision',
+      ownerId: _firstNonEmpty([
+        _stringValue(data['authorId']),
+        _stringValue(data['createdBy']),
+      ]),
       locationLabel: _firstNonEmpty([
         _stringValue(data['locationLabel']),
         _stringValue(data['meetingPoint']),
@@ -458,6 +648,8 @@ class _AgendaItem {
         _stringValue(data['description']),
         _stringValue(data['body']),
       ]),
+      isPublic: data['isPublic'] != false && data['public'] != false,
+      participantCount: _toInt(data['participantCount']) ?? 0,
     );
   }
 
@@ -467,6 +659,7 @@ class _AgendaItem {
     final type = _stringValue(data['type']);
     return _AgendaItem(
       id: id,
+      kind: _AgendaItemKind.tour,
       title:
           _firstNonEmpty([
             _stringValue(data['name']),
@@ -479,6 +672,11 @@ class _AgendaItem {
       kindLabel: _tourTypeLabel(type),
       icon: Icons.route,
       chipTone: ChipTone.emerald,
+      type: type ?? 'Terrestre',
+      ownerId: _firstNonEmpty([
+        _stringValue(data['authorId']),
+        _stringValue(data['createdBy']),
+      ]),
       locationLabel: _firstNonEmpty([
         _stringValue(data['meetingPoint']),
         _stringValue(data['locationLabel']),
@@ -492,10 +690,763 @@ class _AgendaItem {
   }
 }
 
+enum _AgendaItemKind { event, tour }
+
+enum _AgendaDetailAction { edit, startTracking }
+
+class _AgendaDetailSheet extends StatelessWidget {
+  const _AgendaDetailSheet({required this.item});
+
+  final _AgendaItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    final canEdit =
+        !item.pendingSync && item.ownerId == AuthService().currentUser?.uid;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: eco.outlineVariant,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: eco.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(item.icon, color: eco.primary, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                          color: eco.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          EcoChip(
+                            item.kindLabel,
+                            tone: item.chipTone,
+                            small: true,
+                          ),
+                          if (item.pendingSync)
+                            const EcoChip(
+                              'Sin sincronizar',
+                              tone: ChipTone.warning,
+                              small: true,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Cerrar',
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.close_rounded, color: eco.outline),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _detailRow(
+              eco,
+              icon: Icons.schedule_rounded,
+              label: 'Horario',
+              value: item.timeLabel,
+            ),
+            if (item.locationLabel != null)
+              _detailRow(
+                eco,
+                icon: Icons.location_on_rounded,
+                label: 'Punto de encuentro',
+                value: item.locationLabel!,
+              ),
+            _detailRow(
+              eco,
+              icon: Icons.category_rounded,
+              label: 'Tipo',
+              value: item.type,
+            ),
+            if (item.kind == _AgendaItemKind.event)
+              _detailRow(
+                eco,
+                icon: Icons.groups_rounded,
+                label: 'Participantes',
+                value: '${item.participantCount}',
+              ),
+            if (item.body != null) ...[
+              const SizedBox(height: 14),
+              Text(
+                item.kind == _AgendaItemKind.event ? 'OBJETIVOS' : 'NOTAS',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: eco.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                item.body!,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: eco.onSurface,
+                ),
+              ),
+            ],
+            const SizedBox(height: 22),
+            GradientButton(
+              label: 'Iniciar recorrido',
+              icon: Icons.my_location_rounded,
+              onPressed: item.pendingSync
+                  ? null
+                  : () => Navigator.pop(
+                      context,
+                      _AgendaDetailAction.startTracking,
+                    ),
+            ),
+            if (canEdit) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      Navigator.pop(context, _AgendaDetailAction.edit),
+                  icon: const Icon(Icons.edit_rounded),
+                  label: const Text('Editar'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(
+    AppColors eco, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: eco.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                    color: eco.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: eco.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+List<_AgendaItem> _offlineAgendaItems(List<OfflineSyncOperation> operations) {
+  final uid = AuthService().currentUser?.uid;
+  return [
+    for (final operation in operations)
+      if (operation.type == 'createTour')
+        _AgendaItem(
+          id: operation.id,
+          kind: _AgendaItemKind.tour,
+          title: _stringValue(operation.payload['name']) ?? 'Tour sin nombre',
+          date: _dateFromMs(operation.payload['startAtMs']),
+          startAt: _dateFromMs(operation.payload['startAtMs']),
+          endAt: _dateFromMs(operation.payload['endAtMs']),
+          kindLabel: 'Tour',
+          icon: Icons.route,
+          chipTone: ChipTone.emerald,
+          type: _stringValue(operation.payload['type']) ?? 'Terrestre',
+          ownerId: uid,
+          locationLabel: _stringValue(operation.payload['meetingPoint']),
+          body: _stringValue(operation.payload['notes']),
+          pendingSync: true,
+        )
+      else if (operation.type == 'createEvent')
+        _AgendaItem(
+          id: operation.id,
+          kind: _AgendaItemKind.event,
+          title:
+              _stringValue(operation.payload['title']) ?? 'Evento sin titulo',
+          date: _dateFromMs(operation.payload['startAtMs']),
+          startAt: _dateFromMs(operation.payload['startAtMs']),
+          endAt: _dateFromMs(operation.payload['endAtMs']),
+          kindLabel: _eventTypeLabel(_stringValue(operation.payload['type'])),
+          icon: _eventIcon(_stringValue(operation.payload['type'])),
+          chipTone: ChipTone.tertiary,
+          type: _stringValue(operation.payload['type']) ?? 'Mision',
+          ownerId: uid,
+          locationLabel: _stringValue(operation.payload['meetingPoint']),
+          body: _stringValue(operation.payload['objectives']),
+          isPublic: operation.payload['isPublic'] != false,
+          participantCount: _toInt(operation.payload['participantCount']) ?? 0,
+          pendingSync: true,
+        ),
+  ];
+}
+
+class _AgendaEditSheet extends StatefulWidget {
+  const _AgendaEditSheet({required this.item, required this.dataService});
+
+  final _AgendaItem item;
+  final FieldDataService dataService;
+
+  @override
+  State<_AgendaEditSheet> createState() => _AgendaEditSheetState();
+}
+
+class _AgendaEditSheetState extends State<_AgendaEditSheet> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _bodyController;
+  late final TextEditingController _meetingPointController;
+  late String _type;
+  late bool _isPublic;
+  late int _participants;
+  late DateTime _date;
+  late TimeOfDay _startTime;
+  late TimeOfDay _endTime;
+  bool _saving = false;
+
+  bool get _isEvent => widget.item.kind == _AgendaItemKind.event;
+
+  @override
+  void initState() {
+    super.initState();
+    final startAt = widget.item.startAt ?? widget.item.date;
+    final endAt = widget.item.endAt ?? startAt.add(const Duration(hours: 1));
+    _titleController = TextEditingController(text: widget.item.title);
+    _bodyController = TextEditingController(text: widget.item.body ?? '');
+    _meetingPointController = TextEditingController(
+      text: widget.item.locationLabel ?? '',
+    );
+    _type = widget.item.type;
+    _isPublic = widget.item.isPublic;
+    _participants = widget.item.participantCount;
+    _date = DateTime(startAt.year, startAt.month, startAt.day);
+    _startTime = TimeOfDay.fromDateTime(startAt);
+    _endTime = TimeOfDay.fromDateTime(endAt);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _bodyController.dispose();
+    _meetingPointController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return SafeArea(
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: eco.outlineVariant,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _isEvent ? 'Editar evento' : 'Editar agenda',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: eco.onSurface,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: _saving ? null : () => Navigator.pop(context),
+                    icon: Icon(Icons.close_rounded, color: eco.outline),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _sheetField(
+                eco,
+                _isEvent ? 'Titulo' : 'Nombre',
+                _textInput(
+                  eco,
+                  controller: _titleController,
+                  hint: _isEvent ? 'Titulo del evento' : 'Nombre del tour',
+                ),
+              ),
+              const SizedBox(height: 14),
+              _sheetField(eco, 'Tipo', _typePicker(eco)),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: _datePicker(eco)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _timePicker(eco, start: true)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _timePicker(eco, start: false),
+              const SizedBox(height: 14),
+              _sheetField(
+                eco,
+                'Punto de encuentro',
+                _textInput(
+                  eco,
+                  controller: _meetingPointController,
+                  hint: 'Lugar de encuentro',
+                ),
+              ),
+              const SizedBox(height: 14),
+              _sheetField(
+                eco,
+                _isEvent ? 'Objetivos' : 'Notas',
+                _textInput(
+                  eco,
+                  controller: _bodyController,
+                  hint: _isEvent ? 'Objetivos del evento' : 'Notas del tour',
+                  maxLines: 3,
+                ),
+              ),
+              if (_isEvent) ...[
+                const SizedBox(height: 14),
+                _publicSwitch(eco),
+                const SizedBox(height: 14),
+                _participantCounter(eco),
+              ],
+              const SizedBox(height: 22),
+              GradientButton(
+                label: _saving ? 'Guardando...' : 'Guardar cambios',
+                icon: Icons.save_rounded,
+                loading: _saving,
+                onPressed: _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetField(AppColors eco, String label, Widget child) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            color: eco.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
+
+  Widget _textInput(
+    AppColors eco, {
+    required TextEditingController controller,
+    required String hint,
+    int maxLines = 1,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(maxLines > 1 ? 22 : 999),
+      ),
+      child: TextField(
+        controller: controller,
+        enabled: !_saving,
+        maxLines: maxLines,
+        style: TextStyle(fontSize: 14, color: eco.onSurface),
+        decoration: InputDecoration(
+          isCollapsed: true,
+          border: InputBorder.none,
+          hintText: hint,
+          hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _typePicker(AppColors eco) {
+    final options = _isEvent
+        ? const ['Mision', 'Taller', 'Limpieza']
+        : const [
+            'Marino',
+            'Terrestre',
+            'Avistamiento',
+            'Educativo',
+            'Tour diario',
+            'Crucero',
+          ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final option in options)
+          ChoiceChip(
+            label: Text(option),
+            selected: _sameOption(_type, option),
+            onSelected: _saving ? null : (_) => setState(() => _type = option),
+            selectedColor: eco.primary.withValues(alpha: 0.16),
+            labelStyle: TextStyle(
+              color: _sameOption(_type, option) ? eco.primary : eco.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+            side: BorderSide(
+              color: _sameOption(_type, option)
+                  ? eco.primary
+                  : eco.outlineVariant,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _datePicker(AppColors eco) {
+    return _pickerTile(
+      eco,
+      label: 'Fecha',
+      value: _formatAgendaDate(_date),
+      icon: Icons.event_rounded,
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _date,
+          firstDate: DateTime(DateTime.now().year - 2, 1, 1),
+          lastDate: DateTime(DateTime.now().year + 5, 12, 31),
+        );
+        if (picked != null) setState(() => _date = picked);
+      },
+    );
+  }
+
+  Widget _timePicker(AppColors eco, {required bool start}) {
+    final value = start ? _startTime : _endTime;
+    return _pickerTile(
+      eco,
+      label: start ? 'Inicio' : 'Fin',
+      value: _formatTimeOfDay(value),
+      icon: start ? Icons.schedule_rounded : Icons.timer_rounded,
+      onTap: () async {
+        final picked = await showTimePicker(
+          context: context,
+          initialTime: value,
+        );
+        if (picked == null) return;
+        setState(() {
+          if (start) {
+            _startTime = picked;
+          } else {
+            _endTime = picked;
+          }
+        });
+      },
+    );
+  }
+
+  Widget _pickerTile(
+    AppColors eco, {
+    required String label,
+    required String value,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: _saving ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: eco.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: eco.primary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: eco.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: eco.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _publicSwitch(AppColors eco) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.visibility_rounded, color: eco.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Visibilidad publica',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: eco.onSurface,
+              ),
+            ),
+          ),
+          EcoSwitch(
+            value: _isPublic,
+            onChanged: _saving
+                ? (_) {}
+                : (value) => setState(() => _isPublic = value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _participantCounter(AppColors eco) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Participantes',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: eco.onSurface,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: _saving || _participants <= 0
+                ? null
+                : () => setState(() => _participants--),
+            icon: const Icon(Icons.remove_rounded),
+          ),
+          SizedBox(
+            width: 42,
+            child: Text(
+              '$_participants',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: eco.onSurface,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: _saving ? null : () => setState(() => _participants++),
+            icon: const Icon(Icons.add_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      _showAgendaSnack(
+        context,
+        _isEvent ? 'Ingresa el titulo.' : 'Ingresa el nombre.',
+        error: true,
+      );
+      return;
+    }
+
+    final startAt = _combineAgendaDateAndTime(_date, _startTime);
+    final endAt = _combineAgendaDateAndTime(_date, _endTime);
+    if (!endAt.isAfter(startAt)) {
+      _showAgendaSnack(
+        context,
+        'La hora fin debe ser posterior al inicio.',
+        error: true,
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      if (_isEvent) {
+        await widget.dataService.updateEvent(
+          eventId: widget.item.id,
+          title: title,
+          type: _type,
+          startAt: startAt,
+          endAt: endAt,
+          isPublic: _isPublic,
+          participantCount: _participants,
+          objectives: _bodyController.text,
+          meetingPoint: _meetingPointController.text,
+        );
+      } else {
+        await widget.dataService.updateTour(
+          tourId: widget.item.id,
+          name: title,
+          type: _type,
+          startAt: startAt,
+          endAt: endAt,
+          notes: _bodyController.text,
+          meetingPoint: _meetingPointController.text,
+        );
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      _showAgendaSnack(context, 'No se pudo guardar: $error', error: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
 String _formatTime(DateTime value) {
   final hour = value.hour.toString().padLeft(2, '0');
   final minute = value.minute.toString().padLeft(2, '0');
   return '$hour:$minute';
+}
+
+String _formatTimeOfDay(TimeOfDay value) {
+  return '${value.hour.toString().padLeft(2, '0')}:'
+      '${value.minute.toString().padLeft(2, '0')}';
+}
+
+String _formatAgendaDate(DateTime value) {
+  return '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/'
+      '${value.year}';
+}
+
+DateTime _combineAgendaDateAndTime(DateTime date, TimeOfDay time) {
+  return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+}
+
+bool _sameOption(String a, String b) {
+  return a.trim().toLowerCase() == b.trim().toLowerCase();
+}
+
+void _showAgendaSnack(
+  BuildContext context,
+  String message, {
+  bool error = false,
+}) {
+  if (!context.mounted) return;
+  final eco = context.eco;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: error ? eco.error : eco.primary,
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
 }
 
 String _eventTypeLabel(String? type) {
@@ -550,9 +1501,24 @@ DateTime? _toDate(Object? value) {
   return null;
 }
 
+DateTime _dateFromMs(Object? value) {
+  if (value is num) return DateTime.fromMillisecondsSinceEpoch(value.round());
+  if (value is String) {
+    final parsed = int.tryParse(value);
+    if (parsed != null) return DateTime.fromMillisecondsSinceEpoch(parsed);
+  }
+  return DateTime(1900);
+}
+
 String? _stringValue(Object? value) {
   if (value == null) return null;
   return value.toString();
+}
+
+int? _toInt(Object? value) {
+  if (value is num) return value.round();
+  if (value is String) return int.tryParse(value);
+  return null;
 }
 
 String? _firstNonEmpty(List<String?> values) {

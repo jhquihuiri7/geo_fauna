@@ -26,7 +26,7 @@ service firebase.storage {
     match /profile_photos/{fileName} {
       allow read: if signedIn();
       allow write: if signedIn()
-        && fileName == request.auth.uid + '.jpg'
+        && fileName.matches(request.auth.uid + '\\.(jpg|jpeg|png|webp|gif|heic|heif)')
         && isImage();
     }
 

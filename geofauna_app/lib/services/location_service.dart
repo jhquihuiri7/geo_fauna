@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -82,5 +84,65 @@ class LocationService {
       locality: locality,
       area: area,
     );
+  }
+
+  /// Garantiza que tenemos permiso y el GPS encendido antes de grabar un
+  /// recorrido. Lanza una excepción con mensaje claro si no es posible, igual
+  /// que [getCurrentLocation], para que la UI lo muestre tal cual.
+  Future<void> ensureTrackingPermission() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Activa la ubicación (GPS) del dispositivo.');
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied) {
+      throw Exception('Permiso de ubicación denegado.');
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Permiso de ubicación bloqueado. Actívalo en Ajustes.');
+    }
+  }
+
+  /// Flujo continuo de posiciones de alta precisión para grabar el recorrido.
+  ///
+  /// En Android se levanta un *foreground service* (notificación persistente)
+  /// para que el SO no mate la grabación con la pantalla apagada o la app en
+  /// segundo plano. En iOS se habilitan las actualizaciones en background.
+  /// [distanceFilterMeters] descarta micro-movimientos por ruido del GPS.
+  Stream<Position> trackPositionStream({int distanceFilterMeters = 8}) {
+    final LocationSettings settings;
+    if (Platform.isAndroid) {
+      settings = AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: distanceFilterMeters,
+        intervalDuration: const Duration(seconds: 3),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'Recorrido en curso',
+          notificationText: 'GeoFauna está registrando tu ruta de campo.',
+          notificationIcon: AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
+    } else if (Platform.isIOS) {
+      settings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: distanceFilterMeters,
+        activityType: ActivityType.fitness,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      );
+    } else {
+      settings = LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: distanceFilterMeters,
+      );
+    }
+    return Geolocator.getPositionStream(locationSettings: settings);
   }
 }

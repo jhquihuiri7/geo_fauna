@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
+import 'media_optimization_service.dart';
 import 'notification_service.dart';
 
 class AuthService {
@@ -15,6 +17,8 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final MediaOptimizationService _mediaOptimizationService =
+      const MediaOptimizationService();
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
@@ -191,8 +195,24 @@ class AuthService {
   // ── Helpers privados ────────────────────────────────────────────────────────
 
   Future<String> _uploadProfilePhoto(String uid, File photoFile) async {
-    final ref = _storage.ref().child('profile_photos/$uid.jpg');
-    await ref.putFile(photoFile);
+    final prepared = await _mediaOptimizationService.prepare(
+      file: XFile(photoFile.path, name: _fileName(photoFile)),
+      type: MediaUploadType.image,
+      index: 0,
+    );
+    final extension = _extensionForContentType(prepared.primaryContentType);
+    final ref = _storage.ref().child('profile_photos/$uid.$extension');
+    await ref.putFile(
+      prepared.primaryFile,
+      SettableMetadata(
+        contentType: prepared.primaryContentType,
+        customMetadata: {
+          'optimized': prepared.optimized.toString(),
+          'originalSizeBytes': prepared.originalSizeBytes.toString(),
+          'outputSizeBytes': prepared.primarySizeBytes.toString(),
+        },
+      ),
+    );
     return ref.getDownloadURL();
   }
 
@@ -210,4 +230,21 @@ class AuthService {
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
+}
+
+String _fileName(File file) {
+  final segments = file.path.split(Platform.pathSeparator);
+  final name = segments.isEmpty ? '' : segments.last.trim();
+  return name.isEmpty ? 'profile_photo.jpg' : name;
+}
+
+String _extensionForContentType(String contentType) {
+  return switch (contentType.toLowerCase()) {
+    'image/png' => 'png',
+    'image/webp' => 'webp',
+    'image/gif' => 'gif',
+    'image/heic' => 'heic',
+    'image/heif' => 'heif',
+    _ => 'jpg',
+  };
 }

@@ -1,11 +1,22 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 
 import '../services/auth_service.dart';
+import '../services/field_data_service.dart';
 import '../services/wall_interaction_service.dart';
+import '../services/wall_media_cache_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import '../widgets/user_avatar.dart';
+
+final _wallOptimism = _WallOptimism();
 
 /// Muro — community wall with upcoming events + sighting feed.
 class MuroScreen extends StatefulWidget {
@@ -274,9 +285,12 @@ class _MuroScreenState extends State<MuroScreen> {
               );
             }
 
+            final visibleFeed = feed.take(20).toList();
+            _warmWallFeedMedia(visibleFeed);
+
             return Column(
               children: [
-                for (final entry in feed.take(20).toList().asMap().entries)
+                for (final entry in visibleFeed.asMap().entries)
                   Padding(
                     padding: EdgeInsets.only(top: entry.key == 0 ? 0 : 24),
                     child: _SightingCard(
@@ -294,6 +308,18 @@ class _MuroScreenState extends State<MuroScreen> {
 
   bool _isLoading(AsyncSnapshot snap) {
     return snap.connectionState == ConnectionState.waiting && !snap.hasData;
+  }
+
+  void _warmWallFeedMedia(List<_FeedItem> feed) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final urls = <String?>[
+        for (final item in feed.take(8)) item.mediaUrl,
+        for (final item in feed.take(8)) item.posterUrl,
+        for (final item in feed.take(8)) item.authorPhotoUrl,
+      ];
+      WallMediaCacheService.instance.warm(urls);
+    });
   }
 
   Widget _loadingCard(AppColors eco, String message) {
@@ -479,6 +505,10 @@ class _SightingCard extends StatelessWidget {
       id: item.id,
       sourceKey: item.sourceKey,
     );
+    final fieldRecordId = item.fieldRecordId;
+    final canEdit =
+        fieldRecordId != null &&
+        item.authorId == AuthService().currentUser?.uid;
     return Container(
       decoration: BoxDecoration(
         color: eco.surfaceContainerLowest,
@@ -533,10 +563,23 @@ class _SightingCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (canEdit)
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Editar',
+                      onPressed: () =>
+                          _openFieldRecordEditor(context, fieldRecordId),
+                      icon: Icon(
+                        Icons.edit_rounded,
+                        size: 20,
+                        color: eco.primary,
+                      ),
+                    ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      EcoChip(item.chipLabel, tone: item.chipTone),
+                      if (item.chipLabel != null)
+                        EcoChip(item.chipLabel!, tone: item.chipTone),
                       if (item.rankLabel != null) ...[
                         const SizedBox(height: 6),
                         Text(
@@ -567,9 +610,9 @@ class _SightingCard extends StatelessWidget {
                       color: eco.onSurface,
                     ),
                   ),
-                  if (item.photoUrl != null || item.photoLabel != null) ...[
+                  if (item.mediaUrl != null || item.photoLabel != null) ...[
                     const SizedBox(height: 16),
-                    _media(item),
+                    _media(context, item),
                   ],
                 ],
               ),
@@ -624,39 +667,1334 @@ class _SightingCard extends StatelessWidget {
       return Container(
         width: 42,
         height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          image: DecorationImage(
-            image: NetworkImage(item.authorPhotoUrl!),
-            fit: BoxFit.cover,
-          ),
+        clipBehavior: Clip.antiAlias,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
+        child: _CachedNetworkMediaImage(
+          url: item.authorPhotoUrl!,
+          fit: BoxFit.cover,
         ),
       );
     }
     return Avatar(name: item.authorName, tone: AvatarTone.forest, size: 42);
   }
 
-  Widget _media(_FeedItem item) {
-    if (item.photoUrl != null) {
+  Widget _media(BuildContext context, _FeedItem item) {
+    final mediaUrl = item.mediaUrl;
+    if (mediaUrl != null && item.mediaType == _PostMediaType.image) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        child: AspectRatio(
-          aspectRatio: 16 / 10,
-          child: Image.network(
-            item.photoUrl!,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stack) {
-              return PhotoPlaceholder(
-                label: item.photoLabel ?? 'IMAGEN NO DISPONIBLE',
-                borderRadius: 28,
-              );
-            },
+        child: GestureDetector(
+          onTap: () => _openMediaViewer(context, item),
+          child: AspectRatio(
+            aspectRatio: 4 / 5,
+            child: _CachedNetworkMediaImage(
+              url: mediaUrl,
+              fit: BoxFit.cover,
+              fallbackLabel: item.photoLabel ?? 'IMAGEN NO DISPONIBLE',
+              borderRadius: 28,
+            ),
           ),
         ),
       );
     }
+
+    if (mediaUrl != null && item.mediaType == _PostMediaType.video) {
+      return _VideoPostPreview(
+        label: item.photoLabel ?? 'Video cargado',
+        posterUrl: item.posterUrl,
+        onTap: () => _openMediaViewer(context, item),
+      );
+    }
+
     return PhotoPlaceholder(label: item.photoLabel!, borderRadius: 28);
   }
+}
+
+Future<void> _openFieldRecordEditor(
+  BuildContext context,
+  String recordId,
+) async {
+  try {
+    final snap = await FirebaseFirestore.instance
+        .collection('fieldRecords')
+        .doc(recordId)
+        .get();
+    if (!context.mounted) return;
+    final data = snap.data();
+    if (!snap.exists || data == null) {
+      _showEditorSnack(context, 'No se encontro el registro.', error: true);
+      return;
+    }
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.eco.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (_) => _FieldRecordEditSheet(recordId: recordId, data: data),
+    );
+    if (context.mounted && saved == true) {
+      _showEditorSnack(context, 'Monitoreo actualizado correctamente.');
+    }
+  } catch (error) {
+    if (context.mounted) {
+      _showEditorSnack(
+        context,
+        'No se pudo abrir la edicion: $error',
+        error: true,
+      );
+    }
+  }
+}
+
+enum _EvidenceEditMode { keep, replace, remove }
+
+enum _WallEvidenceChoice { cameraPhoto, galleryPhoto, galleryVideo }
+
+class _FieldRecordEditSheet extends StatefulWidget {
+  const _FieldRecordEditSheet({required this.recordId, required this.data});
+
+  final String recordId;
+  final Map<String, dynamic> data;
+
+  @override
+  State<_FieldRecordEditSheet> createState() => _FieldRecordEditSheetState();
+}
+
+class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
+  final _dataService = FieldDataService();
+  final _picker = ImagePicker();
+  late final TextEditingController _speciesController;
+  late final TextEditingController _quantityController;
+  late final TextEditingController _notesController;
+  late String _category;
+  late bool _publishToWall;
+  late DateTime _recordDate;
+  late TimeOfDay _recordTime;
+  _EvidenceEditMode _evidenceMode = _EvidenceEditMode.keep;
+  final List<EvidenceDraft> _newEvidence = [];
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _speciesController = TextEditingController(
+      text: _stringValue(widget.data['speciesName']) ?? '',
+    );
+    _quantityController = TextEditingController(
+      text: '${_toInt(widget.data['quantity']) ?? 1}',
+    );
+    _notesController = TextEditingController(
+      text: _stringValue(widget.data['notes']) ?? '',
+    );
+    _category = _fieldCategoryLabel(_stringValue(widget.data['category']));
+    _publishToWall =
+        widget.data['publishToWall'] == true ||
+        _stringValue(widget.data['visibility']) == 'public';
+    final observedAt = _toDate(widget.data['observedAt']) ?? DateTime.now();
+    _recordDate = DateTime(observedAt.year, observedAt.month, observedAt.day);
+    _recordTime = TimeOfDay.fromDateTime(observedAt);
+  }
+
+  @override
+  void dispose() {
+    _speciesController.dispose();
+    _quantityController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return SafeArea(
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: eco.outlineVariant,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Editar monitoreo',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: eco.onSurface,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: _saving ? null : () => Navigator.pop(context),
+                    icon: Icon(Icons.close_rounded, color: eco.outline),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _editorField(eco, 'Categoria', _categoryPicker(eco)),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: _datePicker(eco)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _timePicker(eco)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _editorField(
+                eco,
+                'Especie',
+                _textInput(
+                  eco,
+                  controller: _speciesController,
+                  hint: 'Nombre de especie',
+                ),
+              ),
+              const SizedBox(height: 14),
+              _editorField(
+                eco,
+                'Cantidad',
+                _textInput(
+                  eco,
+                  controller: _quantityController,
+                  hint: 'Cantidad',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _editorField(
+                eco,
+                'Notas',
+                _textInput(
+                  eco,
+                  controller: _notesController,
+                  hint: 'Observaciones',
+                  maxLines: 3,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _publishSwitch(eco),
+              const SizedBox(height: 14),
+              _evidenceEditor(eco),
+              const SizedBox(height: 22),
+              GradientButton(
+                label: _saving ? 'Guardando...' : 'Guardar cambios',
+                icon: Icons.save_rounded,
+                loading: _saving,
+                onPressed: _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _editorField(AppColors eco, String label, Widget child) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            color: eco.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
+
+  Widget _textInput(
+    AppColors eco, {
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(maxLines > 1 ? 22 : 999),
+      ),
+      child: TextField(
+        controller: controller,
+        enabled: !_saving,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        style: TextStyle(fontSize: 14, color: eco.onSurface),
+        decoration: InputDecoration(
+          isCollapsed: true,
+          border: InputBorder.none,
+          hintText: hint,
+          hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _categoryPicker(AppColors eco) {
+    const options = ['Fauna', 'Incidente', 'Flora', 'Basura', 'Otro'];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final option in options)
+          ChoiceChip(
+            label: Text(option),
+            selected: _category == option,
+            onSelected: _saving
+                ? null
+                : (_) => setState(() => _category = option),
+            selectedColor: eco.primary.withValues(alpha: 0.16),
+            labelStyle: TextStyle(
+              color: _category == option ? eco.primary : eco.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+            side: BorderSide(
+              color: _category == option ? eco.primary : eco.outlineVariant,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _datePicker(AppColors eco) {
+    return _pickerTile(
+      eco,
+      label: 'Fecha',
+      value: _formatEditorDate(_recordDate),
+      icon: Icons.event_rounded,
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _recordDate,
+          firstDate: DateTime(DateTime.now().year - 2, 1, 1),
+          lastDate: DateTime(DateTime.now().year + 5, 12, 31),
+        );
+        if (picked != null) setState(() => _recordDate = picked);
+      },
+    );
+  }
+
+  Widget _timePicker(AppColors eco) {
+    return _pickerTile(
+      eco,
+      label: 'Hora',
+      value: _formatEditorTime(_recordTime),
+      icon: Icons.schedule_rounded,
+      onTap: () async {
+        final picked = await showTimePicker(
+          context: context,
+          initialTime: _recordTime,
+        );
+        if (picked != null) setState(() => _recordTime = picked);
+      },
+    );
+  }
+
+  Widget _pickerTile(
+    AppColors eco, {
+    required String label,
+    required String value,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: _saving ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: eco.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: eco.primary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: eco.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: eco.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _publishSwitch(AppColors eco) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.forum_rounded, color: eco.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Publicar en muro',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: eco.onSurface,
+              ),
+            ),
+          ),
+          EcoSwitch(
+            value: _publishToWall,
+            onChanged: _saving
+                ? (_) {}
+                : (value) => setState(() => _publishToWall = value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _evidenceEditor(AppColors eco) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.perm_media_rounded, color: eco.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _evidenceLabel(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: eco.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_newEvidence.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _newEvidence.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final evidence = _newEvidence[index];
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      color: eco.surfaceContainerLowest,
+                      child: evidence.type == EvidenceType.image
+                          ? Image.file(
+                              File(evidence.file.path),
+                              fit: BoxFit.cover,
+                            )
+                          : Icon(Icons.videocam_rounded, color: eco.primary),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ActionChip(
+                avatar: const Icon(Icons.add_photo_alternate_rounded, size: 18),
+                label: const Text('Reemplazar'),
+                onPressed: _saving ? null : _pickEvidence,
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.delete_outline_rounded, size: 18),
+                label: const Text('Quitar'),
+                onPressed: _saving
+                    ? null
+                    : () => setState(() {
+                        _newEvidence.clear();
+                        _evidenceMode = _EvidenceEditMode.remove;
+                      }),
+              ),
+              if (_evidenceMode != _EvidenceEditMode.keep)
+                ActionChip(
+                  avatar: const Icon(Icons.undo_rounded, size: 18),
+                  label: const Text('Mantener actual'),
+                  onPressed: _saving
+                      ? null
+                      : () => setState(() {
+                          _newEvidence.clear();
+                          _evidenceMode = _EvidenceEditMode.keep;
+                        }),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _evidenceLabel() {
+    if (_evidenceMode == _EvidenceEditMode.remove) return 'Sin evidencia';
+    if (_newEvidence.isNotEmpty) {
+      return '${_newEvidence.length} nueva(s) evidencia(s)';
+    }
+    final current = widget.data['evidence'];
+    if (current is List && current.isNotEmpty) {
+      return '${current.length} evidencia(s) actual(es)';
+    }
+    return 'Sin evidencia actual';
+  }
+
+  Future<void> _pickEvidence() async {
+    final choice = await _wallEvidenceChoice(context);
+    if (choice == null) return;
+    XFile? file;
+    EvidenceType type;
+    if (choice == _WallEvidenceChoice.cameraPhoto) {
+      file = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      type = EvidenceType.image;
+    } else if (choice == _WallEvidenceChoice.galleryPhoto) {
+      file = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      type = EvidenceType.image;
+    } else {
+      file = await _picker.pickVideo(source: ImageSource.gallery);
+      type = EvidenceType.video;
+    }
+    if (file == null || !mounted) return;
+    setState(() {
+      _newEvidence.add(EvidenceDraft(file: file!, type: type));
+      _evidenceMode = _EvidenceEditMode.replace;
+    });
+  }
+
+  Future<void> _save() async {
+    final quantity = int.tryParse(_quantityController.text.trim());
+    if (quantity == null || quantity <= 0) {
+      _showEditorSnack(context, 'Ingresa una cantidad valida.', error: true);
+      return;
+    }
+    final observedAt = DateTime(
+      _recordDate.year,
+      _recordDate.month,
+      _recordDate.day,
+      _recordTime.hour,
+      _recordTime.minute,
+    );
+    setState(() => _saving = true);
+    try {
+      await _dataService.updateFieldRecord(
+        recordId: widget.recordId,
+        category: _category,
+        observedAt: observedAt,
+        quantity: quantity,
+        publishToWall: _publishToWall,
+        replaceEvidence: _evidenceMode != _EvidenceEditMode.keep,
+        evidence: _evidenceMode == _EvidenceEditMode.replace
+            ? List.of(_newEvidence)
+            : const [],
+        speciesName: _speciesController.text,
+        notes: _notesController.text,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      _showEditorSnack(context, 'No se pudo guardar: $error', error: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+Future<_WallEvidenceChoice?> _wallEvidenceChoice(BuildContext context) {
+  final eco = context.eco;
+  return showModalBottomSheet<_WallEvidenceChoice>(
+    context: context,
+    backgroundColor: eco.surfaceContainerLowest,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (context) {
+      Widget option({
+        required IconData icon,
+        required String title,
+        required _WallEvidenceChoice value,
+      }) {
+        return ListTile(
+          leading: Icon(icon, color: eco.primary),
+          title: Text(
+            title,
+            style: TextStyle(fontWeight: FontWeight.w800, color: eco.onSurface),
+          ),
+          onTap: () => Navigator.pop(context, value),
+        );
+      }
+
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: eco.outlineVariant,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 16),
+              option(
+                icon: Icons.photo_camera_rounded,
+                title: 'Tomar foto',
+                value: _WallEvidenceChoice.cameraPhoto,
+              ),
+              option(
+                icon: Icons.photo_library_rounded,
+                title: 'Elegir foto',
+                value: _WallEvidenceChoice.galleryPhoto,
+              ),
+              option(
+                icon: Icons.video_library_rounded,
+                title: 'Elegir video',
+                value: _WallEvidenceChoice.galleryVideo,
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+String _fieldCategoryLabel(String? value) {
+  return switch ((value ?? '').toLowerCase()) {
+    'fauna' => 'Fauna',
+    'flora' => 'Flora',
+    'incident' || 'incidente' => 'Incidente',
+    'trash' || 'basura' => 'Basura',
+    _ => 'Otro',
+  };
+}
+
+String _formatEditorDate(DateTime value) {
+  return '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/'
+      '${value.year}';
+}
+
+String _formatEditorTime(TimeOfDay value) {
+  return '${value.hour.toString().padLeft(2, '0')}:'
+      '${value.minute.toString().padLeft(2, '0')}';
+}
+
+void _showEditorSnack(
+  BuildContext context,
+  String message, {
+  bool error = false,
+}) {
+  if (!context.mounted) return;
+  final eco = context.eco;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: error ? eco.error : eco.primary,
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
+class _VideoPostPreview extends StatelessWidget {
+  const _VideoPostPreview({
+    required this.label,
+    required this.onTap,
+    this.posterUrl,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final String? posterUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: AspectRatio(
+          aspectRatio: 4 / 5,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF101412),
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (posterUrl != null)
+                  _CachedNetworkMediaImage(url: posterUrl!, fit: BoxFit.cover)
+                else
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          eco.primary.withValues(alpha: 0.48),
+                          const Color(0xFF101412),
+                          eco.tertiary.withValues(alpha: 0.36),
+                        ],
+                      ),
+                    ),
+                  ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.20),
+                  ),
+                ),
+                Center(
+                  child: Container(
+                    width: 78,
+                    height: 78,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.28),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 46,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: 18,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.32),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.videocam_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CachedNetworkMediaImage extends StatelessWidget {
+  const _CachedNetworkMediaImage({
+    required this.url,
+    required this.fit,
+    this.fallbackLabel,
+    this.borderRadius = 0,
+  });
+
+  final String url;
+  final BoxFit fit;
+  final String? fallbackLabel;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final cache = WallMediaCacheService.instance;
+    return StreamBuilder<FileResponse>(
+      stream: cache.fileStream(url),
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        if (data is FileInfo) {
+          return Image.file(
+            data.file,
+            fit: fit,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stack) {
+              if (fallbackLabel != null) {
+                return PhotoPlaceholder(
+                  label: fallbackLabel!,
+                  borderRadius: borderRadius,
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          );
+        }
+
+        if (snapshot.hasError && fallbackLabel != null) {
+          return PhotoPlaceholder(
+            label: fallbackLabel!,
+            borderRadius: borderRadius,
+          );
+        }
+
+        return _MediaLoadingFrame(
+          progress: data is DownloadProgress ? data.progress : null,
+        );
+      },
+    );
+  }
+}
+
+class _MediaLoadingFrame extends StatelessWidget {
+  const _MediaLoadingFrame({this.progress});
+
+  final double? progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    final value = progress;
+    return Container(
+      color: eco.surfaceContainerLow,
+      alignment: Alignment.center,
+      child: SizedBox(
+        width: 32,
+        height: 32,
+        child: CircularProgressIndicator(
+          value: value != null && value > 0 && value < 1 ? value : null,
+          strokeWidth: 2.6,
+          color: eco.primary,
+        ),
+      ),
+    );
+  }
+}
+
+void _openMediaViewer(BuildContext context, _FeedItem item) {
+  final mediaUrl = item.mediaUrl;
+  final mediaType = item.mediaType;
+  if (mediaUrl == null || mediaType == null) return;
+
+  Navigator.of(context, rootNavigator: true).push(
+    PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 220),
+      reverseTransitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return FadeTransition(
+          opacity: animation,
+          child: _FullScreenMediaViewer(
+            url: mediaUrl,
+            type: mediaType,
+            label: item.photoLabel,
+          ),
+        );
+      },
+    ),
+  );
+}
+
+class _FullScreenMediaViewer extends StatefulWidget {
+  const _FullScreenMediaViewer({
+    required this.url,
+    required this.type,
+    this.label,
+  });
+
+  final String url;
+  final _PostMediaType type;
+  final String? label;
+
+  @override
+  State<_FullScreenMediaViewer> createState() => _FullScreenMediaViewerState();
+}
+
+class _FullScreenMediaViewerState extends State<_FullScreenMediaViewer> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]),
+    );
+  }
+
+  @override
+  void dispose() {
+    unawaited(SystemChrome.setPreferredOrientations(DeviceOrientation.values));
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: widget.type == _PostMediaType.video
+                  ? _FullScreenVideoPlayer(
+                      url: widget.url,
+                      label: widget.label ?? 'Video',
+                    )
+                  : InteractiveViewer(
+                      minScale: 0.8,
+                      maxScale: 4,
+                      child: Center(
+                        child: _CachedNetworkMediaImage(
+                          url: widget.url,
+                          fit: BoxFit.contain,
+                          fallbackLabel: widget.label ?? 'Imagen no disponible',
+                        ),
+                      ),
+                    ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: _ViewerIconButton(
+                icon: Icons.close_rounded,
+                onTap: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FullScreenVideoPlayer extends StatefulWidget {
+  const _FullScreenVideoPlayer({required this.url, required this.label});
+
+  final String url;
+  final String label;
+
+  @override
+  State<_FullScreenVideoPlayer> createState() => _FullScreenVideoPlayerState();
+}
+
+class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
+  VideoPlayerController? _controller;
+  bool _ready = false;
+  bool _failed = false;
+  bool _controlsVisible = true;
+  bool _muted = false;
+  Timer? _hideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      final file = await WallMediaCacheService.instance.getFile(widget.url);
+      if (!mounted) return;
+      final controller = VideoPlayerController.file(file)
+        ..addListener(_onVideoTick);
+      _controller = controller;
+      await controller.initialize();
+      if (!mounted) {
+        if (identical(_controller, controller)) {
+          _controller = null;
+          await controller.dispose();
+        }
+        return;
+      }
+      await controller.setLooping(true);
+      await controller.play();
+      _scheduleHideControls();
+      if (mounted) setState(() => _ready = true);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  void _onVideoTick() {
+    if (mounted && _ready) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      controller
+        ..removeListener(_onVideoTick)
+        ..dispose();
+    }
+    super.dispose();
+  }
+
+  void _toggleControls() {
+    final controller = _controller;
+    if (controller == null) return;
+    setState(() => _controlsVisible = !_controlsVisible);
+    if (_controlsVisible && controller.value.isPlaying) {
+      _scheduleHideControls();
+    }
+  }
+
+  void _togglePlayback() {
+    final controller = _controller;
+    if (controller == null) return;
+    if (controller.value.isPlaying) {
+      controller.pause();
+      _hideTimer?.cancel();
+      setState(() => _controlsVisible = true);
+    } else {
+      controller.play();
+      setState(() => _controlsVisible = true);
+      _scheduleHideControls();
+    }
+  }
+
+  void _toggleMute() {
+    final controller = _controller;
+    if (controller == null) return;
+    _muted = !_muted;
+    controller.setVolume(_muted ? 0 : 1);
+    setState(() {});
+    _scheduleHideControls();
+  }
+
+  void _scheduleHideControls() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      final controller = _controller;
+      if (!mounted || controller == null || !controller.value.isPlaying) {
+        return;
+      }
+      setState(() => _controlsVisible = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.videocam_off, color: Colors.white70, size: 46),
+            SizedBox(height: 12),
+            Text(
+              'No se pudo reproducir el video',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final controller = _controller;
+    if (!_ready || controller == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    final value = controller.value;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _toggleControls,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio: value.aspectRatio == 0 ? 9 / 16 : value.aspectRatio,
+              child: VideoPlayer(controller),
+            ),
+          ),
+          AnimatedOpacity(
+            opacity: _controlsVisible ? 1 : 0,
+            duration: const Duration(milliseconds: 180),
+            child: IgnorePointer(
+              ignoring: !_controlsVisible,
+              child: Stack(
+                children: [
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0x66000000),
+                          Colors.transparent,
+                          Color(0x99000000),
+                        ],
+                      ),
+                    ),
+                    child: SizedBox.expand(),
+                  ),
+                  Center(
+                    child: GestureDetector(
+                      onTap: _togglePlayback,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: value.isPlaying ? 74 : 88,
+                        height: value.isPlaying ? 74 : 88,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.13),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.28),
+                          ),
+                        ),
+                        child: Icon(
+                          value.isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: value.isPlaying ? 34 : 48,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 18,
+                    right: 18,
+                    bottom: 18,
+                    child: _VideoControlDock(
+                      controller: controller,
+                      label: widget.label,
+                      muted: _muted,
+                      onPlayPause: _togglePlayback,
+                      onMute: _toggleMute,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VideoControlDock extends StatelessWidget {
+  const _VideoControlDock({
+    required this.controller,
+    required this.label,
+    required this.muted,
+    required this.onPlayPause,
+    required this.onMute,
+  });
+
+  final VideoPlayerController controller;
+  final String label;
+  final bool muted;
+  final VoidCallback onPlayPause;
+  final VoidCallback onMute;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = controller.value;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.52),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              _ViewerIconButton(
+                icon: value.isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
+                onTap: onPlayPause,
+                compact: true,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${_formatVideoTime(value.position)} / '
+                '${_formatVideoTime(value.duration)}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.76),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _ViewerIconButton(
+                icon: muted
+                    ? Icons.volume_off_rounded
+                    : Icons.volume_up_rounded,
+                onTap: onMute,
+                compact: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          VideoProgressIndicator(
+            controller,
+            allowScrubbing: true,
+            colors: VideoProgressColors(
+              playedColor: Colors.white,
+              bufferedColor: Colors.white.withValues(alpha: 0.32),
+              backgroundColor: Colors.white.withValues(alpha: 0.16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ViewerIconButton extends StatelessWidget {
+  const _ViewerIconButton({
+    required this.icon,
+    required this.onTap,
+    this.compact = false,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = compact ? 34.0 : 44.0;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: Icon(icon, color: Colors.white, size: compact ? 18 : 24),
+      ),
+    );
+  }
+}
+
+String _formatVideoTime(Duration duration) {
+  final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  final hours = duration.inHours;
+  if (hours > 0) return '$hours:$minutes:$seconds';
+  return '$minutes:$seconds';
 }
 
 class _InteractionBar extends StatelessWidget {
@@ -668,44 +2006,45 @@ class _InteractionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = WallInteractionService.instance;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        StreamBuilder<bool>(
-          stream: service.userConfirmationStream(target),
-          builder: (context, snap) {
-            final active = snap.data ?? false;
-            return _ActionPill(
-              icon: Icons.verified,
-              label: '${item.confirmations} confirmaciones',
-              active: active,
-              onTap: () => _runWallAction(
-                context,
-                () => service.toggleConfirmation(target),
-              ),
-            );
-          },
-        ),
-        StreamBuilder<bool>(
-          stream: service.userReactionStream(target),
-          builder: (context, snap) {
-            final active = snap.data ?? false;
-            return _ActionPill(
-              icon: Icons.favorite,
-              label: '${item.reactions} reacciones',
-              active: active,
-              onTap: () =>
-                  _runWallAction(context, () => service.toggleReaction(target)),
-            );
-          },
-        ),
-        _ActionPill(
-          icon: Icons.add_comment,
-          label: '${item.comments} comentarios',
-          onTap: () => _openComments(context, item, target),
-        ),
-      ],
+    return AnimatedBuilder(
+      animation: _wallOptimism,
+      builder: (context, _) {
+        final commentCount = _wallOptimism.commentCount(item, target);
+        final pendingReaction = _wallOptimism.reaction(target);
+        final reactionCount = pendingReaction?.count ?? item.reactions;
+
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            StreamBuilder<bool>(
+              stream: service.userReactionStream(target),
+              builder: (context, snap) {
+                final serverActive = snap.data ?? false;
+                final active = pendingReaction?.active ?? serverActive;
+                return _ActionPill(
+                  icon: Icons.favorite,
+                  label: '$reactionCount reacciones',
+                  active: active,
+                  onTap: pendingReaction == null
+                      ? () => _toggleReactionOptimistically(
+                          context,
+                          target,
+                          currentActive: active,
+                          baseCount: item.reactions,
+                        )
+                      : null,
+                );
+              },
+            ),
+            _ActionPill(
+              icon: Icons.add_comment,
+              label: '$commentCount comentarios',
+              onTap: () => _openComments(context, item, target),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -721,7 +2060,7 @@ class _ActionPill extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -779,7 +2118,13 @@ class _CommentsSheet extends StatefulWidget {
 
 class _CommentsSheetState extends State<_CommentsSheet> {
   final _controller = TextEditingController();
-  bool _sending = false;
+  late int _visibleCommentCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _visibleCommentCount = widget.item.comments;
+  }
 
   @override
   void dispose() {
@@ -819,7 +2164,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                       ),
                     ),
                   ),
-                  EcoChip('${widget.item.comments}', tone: ChipTone.slate),
+                  EcoChip('$_visibleCommentCount', tone: ChipTone.slate),
                 ],
               ),
               const SizedBox(height: 12),
@@ -844,7 +2189,12 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                       );
                     }
                     final comments = snap.data ?? const <WallComment>[];
-                    if (comments.isEmpty) {
+                    final visibleComments = _wallOptimism.commentsWithPending(
+                      widget.target,
+                      comments,
+                    );
+                    _scheduleCommentSync(comments, visibleComments.length);
+                    if (visibleComments.isEmpty) {
                       return _sheetState(
                         eco,
                         icon: Icons.chat_bubble_outline,
@@ -853,10 +2203,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                       );
                     }
                     return ListView.separated(
-                      itemCount: comments.length,
+                      itemCount: visibleComments.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) =>
-                          _CommentRow(comment: comments[index]),
+                          _CommentRow(comment: visibleComments[index]),
                     );
                   },
                 ),
@@ -876,7 +2226,6 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                     Expanded(
                       child: TextField(
                         controller: _controller,
-                        enabled: !_sending,
                         minLines: 1,
                         maxLines: 3,
                         style: TextStyle(color: eco.onSurface, fontSize: 14),
@@ -893,8 +2242,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                     ),
                     const SizedBox(width: 8),
                     CircleIconButton(
-                      icon: _sending ? Icons.hourglass_top : Icons.send,
-                      onTap: _sending ? null : _send,
+                      icon: Icons.send,
+                      onTap: _send,
                       bg: eco.primary,
                       iconColor: eco.onPrimary,
                     ),
@@ -908,20 +2257,65 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     );
   }
 
-  Future<void> _send() async {
+  void _send() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    setState(() => _sending = true);
+    late final QueuedWallComment queued;
     try {
-      await WallInteractionService.instance.addComment(widget.target, text);
-      _controller.clear();
+      queued = WallInteractionService.instance.queueComment(
+        widget.target,
+        text,
+      );
     } catch (error) {
-      if (!mounted) return;
       _showWallError(context, error);
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      return;
     }
+
+    _controller.clear();
+    _wallOptimism.addPendingComment(widget.target, queued.comment);
+    setState(() => _visibleCommentCount += 1);
+
+    unawaited(
+      queued.commit
+          .then((_) => Future<void>.delayed(const Duration(milliseconds: 500)))
+          .then(
+            (_) => _wallOptimism.removePendingComment(
+              widget.target,
+              queued.comment.id,
+            ),
+          )
+          .catchError((Object error) {
+            _wallOptimism.removePendingComment(
+              widget.target,
+              queued.comment.id,
+            );
+            if (!mounted) return;
+            setState(() {
+              if (_visibleCommentCount > 0) _visibleCommentCount -= 1;
+            });
+            _showWallError(context, error);
+          }),
+    );
+  }
+
+  void _scheduleCommentSync(
+    List<WallComment> serverComments,
+    int visibleCount,
+  ) {
+    if (_visibleCommentCount == visibleCount &&
+        !_wallOptimism.hasPendingComments(widget.target)) {
+      return;
+    }
+
+    final serverIds = serverComments.map((comment) => comment.id).toSet();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _wallOptimism.removePendingComments(widget.target, serverIds);
+      if (_visibleCommentCount != visibleCount) {
+        setState(() => _visibleCommentCount = visibleCount);
+      }
+    });
   }
 
   Widget _sheetState(
@@ -968,59 +2362,62 @@ class _CommentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _commentAvatar(),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: eco.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        comment.authorName,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: eco.onSurface,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
+    return Opacity(
+      opacity: comment.isPending ? 0.72 : 1,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _commentAvatar(),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: eco.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          comment.authorName,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: eco.onSurface,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
-                    ),
-                    if (comment.createdAt != null)
-                      Text(
-                        _relativeTime(comment.createdAt!),
-                        style: TextStyle(
-                          color: eco.onSurfaceVariant,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                      if (comment.createdAt != null)
+                        Text(
+                          _relativeTime(comment.createdAt!),
+                          style: TextStyle(
+                            color: eco.onSurfaceVariant,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  comment.body,
-                  style: TextStyle(
-                    color: eco.onSurface,
-                    fontSize: 13,
-                    height: 1.35,
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    comment.body,
+                    style: TextStyle(
+                      color: eco.onSurface,
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1043,16 +2440,30 @@ class _CommentRow extends StatelessWidget {
   }
 }
 
-Future<void> _runWallAction(
+void _toggleReactionOptimistically(
   BuildContext context,
-  Future<void> Function() action,
-) async {
-  try {
-    await action();
-  } catch (error) {
-    if (!context.mounted) return;
-    _showWallError(context, error);
-  }
+  WallInteractionTarget target, {
+  required bool currentActive,
+  required int baseCount,
+}) {
+  final started = _wallOptimism.startReaction(
+    target,
+    currentActive: currentActive,
+    baseCount: baseCount,
+  );
+  if (!started) return;
+
+  unawaited(
+    WallInteractionService.instance
+        .toggleReaction(target)
+        .then((_) => Future<void>.delayed(const Duration(milliseconds: 350)))
+        .then((_) => _wallOptimism.completeReaction(target))
+        .catchError((Object error) {
+          _wallOptimism.completeReaction(target);
+          if (!context.mounted) return;
+          _showWallError(context, error);
+        }),
+  );
 }
 
 void _openComments(
@@ -1081,6 +2492,106 @@ void _showWallError(BuildContext context, Object error) {
       behavior: SnackBarBehavior.floating,
     ),
   );
+}
+
+class _WallOptimism extends ChangeNotifier {
+  final _reactions = <String, _OptimisticReaction>{};
+  final _comments = <String, List<WallComment>>{};
+
+  _OptimisticReaction? reaction(WallInteractionTarget target) {
+    return _reactions[_targetKey(target)];
+  }
+
+  bool startReaction(
+    WallInteractionTarget target, {
+    required bool currentActive,
+    required int baseCount,
+  }) {
+    final key = _targetKey(target);
+    if (_reactions.containsKey(key)) return false;
+
+    final delta = currentActive ? -1 : 1;
+    final nextCount = baseCount + delta;
+    _reactions[key] = _OptimisticReaction(
+      active: !currentActive,
+      count: nextCount < 0 ? 0 : nextCount,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  void completeReaction(WallInteractionTarget target) {
+    if (_reactions.remove(_targetKey(target)) != null) {
+      notifyListeners();
+    }
+  }
+
+  int commentCount(_FeedItem item, WallInteractionTarget target) {
+    return item.comments + (_comments[_targetKey(target)]?.length ?? 0);
+  }
+
+  bool hasPendingComments(WallInteractionTarget target) {
+    return _comments[_targetKey(target)]?.isNotEmpty ?? false;
+  }
+
+  List<WallComment> commentsWithPending(
+    WallInteractionTarget target,
+    List<WallComment> serverComments,
+  ) {
+    final pending = _comments[_targetKey(target)];
+    if (pending == null || pending.isEmpty) return serverComments;
+
+    final serverIds = serverComments.map((comment) => comment.id).toSet();
+    return [
+      ...serverComments,
+      for (final comment in pending)
+        if (!serverIds.contains(comment.id)) comment,
+    ];
+  }
+
+  void addPendingComment(WallInteractionTarget target, WallComment comment) {
+    final key = _targetKey(target);
+    final comments = _comments.putIfAbsent(key, () => <WallComment>[]);
+    comments.add(comment);
+    notifyListeners();
+  }
+
+  void removePendingComment(WallInteractionTarget target, String commentId) {
+    final key = _targetKey(target);
+    final comments = _comments[key];
+    if (comments == null) return;
+
+    comments.removeWhere((comment) => comment.id == commentId);
+    if (comments.isEmpty) _comments.remove(key);
+    notifyListeners();
+  }
+
+  void removePendingComments(
+    WallInteractionTarget target,
+    Set<String> serverIds,
+  ) {
+    if (serverIds.isEmpty) return;
+
+    final key = _targetKey(target);
+    final comments = _comments[key];
+    if (comments == null) return;
+
+    final before = comments.length;
+    comments.removeWhere((comment) => serverIds.contains(comment.id));
+    if (comments.isEmpty) _comments.remove(key);
+    if (comments.length != before) notifyListeners();
+  }
+}
+
+class _OptimisticReaction {
+  const _OptimisticReaction({required this.active, required this.count});
+
+  final bool active;
+  final int count;
+}
+
+String _targetKey(WallInteractionTarget target) {
+  return '${target.collection}/${target.id}';
 }
 
 class _WallEvent {
@@ -1154,20 +2665,24 @@ class _WallEvent {
   }
 }
 
+enum _PostMediaType { image, video }
+
 class _FeedItem {
   const _FeedItem({
     required this.id,
     required this.sourceKey,
     required this.authorName,
     required this.body,
-    required this.chipLabel,
     required this.chipTone,
-    required this.confirmations,
     required this.reactions,
     required this.comments,
+    this.authorId,
+    this.chipLabel,
     this.authorPhotoUrl,
     this.rankLabel,
-    this.photoUrl,
+    this.mediaUrl,
+    this.mediaType,
+    this.posterUrl,
     this.photoLabel,
     this.placeLabel,
     this.createdAt,
@@ -1175,21 +2690,29 @@ class _FeedItem {
 
   final String id;
   final String sourceKey;
+  final String? authorId;
   final String authorName;
   final String? authorPhotoUrl;
   final String body;
-  final String chipLabel;
+  final String? chipLabel;
   final ChipTone chipTone;
   final String? rankLabel;
-  final String? photoUrl;
+  final String? mediaUrl;
+  final _PostMediaType? mediaType;
+  final String? posterUrl;
   final String? photoLabel;
   final String? placeLabel;
   final DateTime? createdAt;
-  final int confirmations;
   final int reactions;
   final int comments;
 
-  int get popularity => confirmations + reactions + comments;
+  int get popularity => reactions + comments;
+
+  String? get fieldRecordId {
+    const prefix = 'fieldRecords/';
+    if (!sourceKey.startsWith(prefix)) return null;
+    return sourceKey.substring(prefix.length);
+  }
 
   String get meta {
     final parts = [
@@ -1206,15 +2729,20 @@ class _FeedItem {
     final counts = data['reactionCounts'] is Map
         ? data['reactionCounts'] as Map
         : null;
-    final validation = data['validationSummary'] is Map
-        ? data['validationSummary'] as Map
-        : null;
     final category = _stringValue(data['category']);
     final species = _stringValue(data['speciesName']);
+    final mediaType = _mediaTypeFromData(data);
+    final mediaUrl = mediaType == _PostMediaType.video
+        ? _stringValue(data['videoUrl'])
+        : _firstNonEmpty([
+            _stringValue(data['photoUrl']),
+            _stringValue(data['photoThumbUrl']),
+          ]);
 
     return _FeedItem(
       id: id,
       sourceKey: _stringValue(data['sourceRecordId']) ?? 'publicFeed/$id',
+      authorId: _stringValue(data['authorId']),
       authorName:
           _firstNonEmpty([
             _stringValue(author?['name']),
@@ -1232,21 +2760,18 @@ class _FeedItem {
             species,
           ]) ??
           'Publicación sin descripción',
-      chipLabel:
-          _firstNonEmpty([
-            _stringValue(data['integrityLabel']),
-            _categoryLabel(category),
-          ]) ??
-          'Registro',
+      chipLabel: _categoryLabel(category),
       chipTone: _chipForCategory(category),
       rankLabel: _firstNonEmpty([
         _stringValue(data['rankLabel']),
         _stringValue(author?['userType']),
         _stringValue(author?['role']),
       ]),
-      photoUrl: _firstNonEmpty([
+      mediaUrl: mediaUrl,
+      mediaType: mediaType,
+      posterUrl: _firstNonEmpty([
+        _stringValue(data['videoThumbUrl']),
         _stringValue(data['photoThumbUrl']),
-        _stringValue(data['photoUrl']),
       ]),
       photoLabel: _firstNonEmpty([_stringValue(data['photoLabel']), species]),
       placeLabel: _firstNonEmpty([
@@ -1254,7 +2779,6 @@ class _FeedItem {
         _stringValue(data['placeName']),
       ]),
       createdAt: _toDate(data['createdAt']),
-      confirmations: _toInt(validation?['confirmations']) ?? 0,
       reactions: _sumMapCounts(counts),
       comments: _toInt(data['commentCount']) ?? 0,
     );
@@ -1263,9 +2787,6 @@ class _FeedItem {
   factory _FeedItem.fromFieldRecord(String id, Map<String, dynamic> data) {
     final author = data['authorSnapshot'] is Map
         ? data['authorSnapshot'] as Map
-        : null;
-    final validation = data['validationSummary'] is Map
-        ? data['validationSummary'] as Map
         : null;
     final reactions = data['reactionCounts'] is Map
         ? data['reactionCounts'] as Map
@@ -1283,12 +2804,24 @@ class _FeedItem {
         imageEvidenceMap == null || imageEvidenceMap.isEmpty
         ? null
         : imageEvidenceMap;
+    final videoEvidenceMap = evidence?.whereType<Map>().firstWhere(
+      (item) => _stringValue(item['type']) == 'video',
+      orElse: () => const {},
+    );
+    final selectedVideoEvidence =
+        videoEvidenceMap == null || videoEvidenceMap.isEmpty
+        ? null
+        : videoEvidenceMap;
     final category = _stringValue(data['category']);
     final species = _stringValue(data['speciesName']);
 
     return _FeedItem(
       id: id,
       sourceKey: 'fieldRecords/$id',
+      authorId: _firstNonEmpty([
+        _stringValue(data['authorId']),
+        _stringValue(data['createdBy']),
+      ]),
       authorName:
           _firstNonEmpty([
             _stringValue(author?['name']),
@@ -1306,25 +2839,38 @@ class _FeedItem {
             _categoryLabel(category),
           ]) ??
           'Registro sin descripción',
-      chipLabel:
-          _firstNonEmpty([
-            _stringValue(data['integrityLabel']),
-            _statusLabel(_stringValue(data['status'])),
-            _categoryLabel(category),
-          ]) ??
-          'Registro',
+      chipLabel: _categoryLabel(category),
       chipTone: _chipForCategory(category),
       rankLabel: _firstNonEmpty([
         _stringValue(author?['userType']),
         _stringValue(author?['role']),
       ]),
-      photoUrl: _firstNonEmpty([
+      mediaUrl: _firstNonEmpty([
         if (selectedImageEvidence != null)
-          _stringValue(selectedImageEvidence['thumbUrl']),
+          _stringValue(selectedImageEvidence['displayUrl']),
         if (selectedImageEvidence != null)
           _stringValue(selectedImageEvidence['downloadUrl']),
-        if (evidenceMap == null || selectedImageEvidence != null)
-          _stringValue(data['photoUrl']),
+        if (selectedImageEvidence != null) _stringValue(data['photoUrl']),
+        if (selectedImageEvidence != null)
+          _stringValue(selectedImageEvidence['thumbUrl']),
+        if (selectedImageEvidence != null) _stringValue(data['photoThumbUrl']),
+        if (selectedImageEvidence == null && selectedVideoEvidence != null)
+          _stringValue(selectedVideoEvidence['videoUrl']),
+        if (selectedImageEvidence == null && selectedVideoEvidence != null)
+          _stringValue(selectedVideoEvidence['downloadUrl']),
+        _stringValue(data['videoUrl']),
+        _stringValue(data['photoUrl']),
+      ]),
+      mediaType: selectedImageEvidence != null
+          ? _PostMediaType.image
+          : selectedVideoEvidence != null
+          ? _PostMediaType.video
+          : _mediaTypeFromData(data),
+      posterUrl: _firstNonEmpty([
+        if (selectedVideoEvidence != null)
+          _stringValue(selectedVideoEvidence['thumbUrl']),
+        _stringValue(data['videoThumbUrl']),
+        _stringValue(data['photoThumbUrl']),
       ]),
       photoLabel: evidenceMap == null
           ? null
@@ -1342,7 +2888,6 @@ class _FeedItem {
         _stringValue(data['zoneId']),
       ]),
       createdAt: _toDate(data['createdAt']) ?? _toDate(data['observedAt']),
-      confirmations: _toInt(validation?['confirmations']) ?? 0,
       reactions: _sumMapCounts(reactions),
       comments: _toInt(data['commentCount']) ?? 0,
     );
@@ -1418,14 +2963,16 @@ String? _categoryLabel(String? value) {
   };
 }
 
-String? _statusLabel(String? value) {
-  return switch ((value ?? '').toLowerCase()) {
-    'verified' || 'verificado' => 'Verificado',
-    'needs_review' || 'revision' => 'Revisión',
-    'submitted' || 'enviado' => 'Enviado',
-    'rejected' || 'rechazado' => 'Rechazado',
-    _ => null,
-  };
+_PostMediaType? _mediaTypeFromData(Map<String, dynamic> data) {
+  final explicit = (_stringValue(data['mediaType']) ?? '').toLowerCase();
+  if (explicit == 'video') return _PostMediaType.video;
+  if (explicit == 'image') return _PostMediaType.image;
+  if (_stringValue(data['videoUrl']) != null) return _PostMediaType.video;
+  if (_stringValue(data['photoUrl']) != null ||
+      _stringValue(data['photoThumbUrl']) != null) {
+    return _PostMediaType.image;
+  }
+  return null;
 }
 
 ChipTone _chipForCategory(String? value) {
