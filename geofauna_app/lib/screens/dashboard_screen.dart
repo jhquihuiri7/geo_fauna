@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
@@ -38,9 +39,7 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 const WeatherHeader(),
                 const SizedBox(height: 32),
-                _map(eco),
-                const SizedBox(height: 32),
-                _realDataSections(context, eco),
+                _liveData(context, eco),
               ],
             ),
           ),
@@ -59,9 +58,56 @@ class DashboardScreen extends StatelessWidget {
     ),
   );
 
-  Widget _map(AppColors eco) {
+  /// Un solo stream de `fieldRecords` alimenta tanto el mapa de avistamientos
+  /// como las secciones de estadísticas, para no abrir dos listeners.
+  Widget _liveData(BuildContext context, AppColors eco) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('fieldRecords').snapshots(),
+      builder: (context, snap) {
+        final docs = snap.data?.docs ?? const [];
+        final sightings = <MapSighting>[];
+        for (final doc in docs) {
+          final data = doc.data();
+          final point = _sightingPoint(data);
+          if (point == null) continue;
+          sightings.add(
+            MapSighting(
+              point: point,
+              categoryKey: _normalizeCategory(
+                _firstNonEmpty([
+                  _stringValue(data['category']),
+                  _stringValue(data['type']),
+                ]),
+              ),
+              species: _firstNonEmpty([
+                _stringValue(data['speciesName']),
+                _stringValue(data['species']),
+                _stringValue(data['commonName']),
+              ]),
+              placeLabel: _firstNonEmpty([
+                _stringValue(data['placeLabel']),
+                _stringValue(data['placeName']),
+              ]),
+            ),
+          );
+        }
+        return Column(
+          children: [
+            _mapView(eco, sightings),
+            const SizedBox(height: 32),
+            _dataSections(context, eco, snap),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _mapView(AppColors eco, List<MapSighting> sightings) {
     return LiveMap(
       height: 240,
+      expandable: true,
+      fullscreenTitle: 'Avistamientos',
+      sightings: sightings,
       overlays: [
         Positioned(
           top: 16,
@@ -109,34 +155,33 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _realDataSections(BuildContext context, AppColors eco) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('fieldRecords').snapshots(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-          return _loadingData(eco);
-        }
-        if (snap.hasError) {
-          return _dataError(eco, snap.error!);
-        }
+  Widget _dataSections(
+    BuildContext context,
+    AppColors eco,
+    AsyncSnapshot<QuerySnapshot<Map<String, dynamic>>> snap,
+  ) {
+    if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+      return _loadingData(eco);
+    }
+    if (snap.hasError) {
+      return _dataError(eco, snap.error!);
+    }
 
-        final records =
-            snap.data?.docs
-                .map((doc) => _FieldRecord.fromMap(doc.id, doc.data()))
-                .toList() ??
-            const <_FieldRecord>[];
-        final data = _DashboardData.fromRecords(records);
+    final records =
+        snap.data?.docs
+            .map((doc) => _FieldRecord.fromMap(doc.id, doc.data()))
+            .toList() ??
+        const <_FieldRecord>[];
+    final data = _DashboardData.fromRecords(records);
 
-        return Column(
-          children: [
-            _recognition(context, eco, data),
-            const SizedBox(height: 32),
-            _leaders(eco, data),
-            const SizedBox(height: 32),
-            _monitor(context, eco, data),
-          ],
-        );
-      },
+    return Column(
+      children: [
+        _recognition(context, eco, data),
+        const SizedBox(height: 32),
+        _leaders(eco, data),
+        const SizedBox(height: 32),
+        _monitor(context, eco, data),
+      ],
     );
   }
 
@@ -1071,6 +1116,40 @@ int? _toInt(Object? value) {
   if (value is num) return value.round().clamp(0, 100).toInt();
   if (value is String) return int.tryParse(value)?.clamp(0, 100).toInt();
   return null;
+}
+
+double? _toDouble(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
+/// Extrae la ubicación de un fieldRecord: `location` (GeoPoint) o los campos
+/// lat/lng sueltos. Devuelve null si no hay coordenadas válidas. Descarta
+/// valores no finitos (NaN / Infinity) y fuera de rango para que un registro
+/// con GPS corrupto no rompa el mapa ("LatLng is not finite").
+LatLng? _sightingPoint(Map<String, dynamic> data) {
+  double? latitude;
+  double? longitude;
+  final location = data['location'];
+  if (location is GeoPoint) {
+    latitude = location.latitude;
+    longitude = location.longitude;
+  } else {
+    latitude = _toDouble(
+      data['latitude'] ?? data['lat'] ?? data['locationLatitude'],
+    );
+    longitude = _toDouble(
+      data['longitude'] ??
+          data['lng'] ??
+          data['lon'] ??
+          data['locationLongitude'],
+    );
+  }
+  if (latitude == null || longitude == null) return null;
+  if (!latitude.isFinite || !longitude.isFinite) return null;
+  if (latitude.abs() > 90 || longitude.abs() > 180) return null;
+  return LatLng(latitude, longitude);
 }
 
 String _formatInt(int value) {

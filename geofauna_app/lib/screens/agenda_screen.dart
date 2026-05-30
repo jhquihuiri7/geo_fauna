@@ -1061,20 +1061,37 @@ class _TourRouteSection extends StatelessWidget {
 List<LatLng> _pointsFromTrack(Map<String, dynamic> data) {
   final path = data['path'];
   if (path is List && path.isNotEmpty) {
-    return [
-      for (final p in path)
-        if (p is GeoPoint) LatLng(p.latitude, p.longitude),
-    ];
+    final result = <LatLng>[];
+    for (final p in path) {
+      if (p is! GeoPoint) continue;
+      final point = _safeLatLng(p.latitude, p.longitude);
+      if (point != null) result.add(point);
+    }
+    if (result.isNotEmpty) return result;
   }
   final points = data['points'];
   if (points is List) {
-    return [
-      for (final p in points)
-        if (p is Map && p['lat'] is num && p['lng'] is num)
-          LatLng((p['lat'] as num).toDouble(), (p['lng'] as num).toDouble()),
-    ];
+    final result = <LatLng>[];
+    for (final p in points) {
+      if (p is! Map) continue;
+      final lat = p['lat'];
+      final lng = p['lng'];
+      if (lat is! num || lng is! num) continue;
+      final point = _safeLatLng(lat.toDouble(), lng.toDouble());
+      if (point != null) result.add(point);
+    }
+    return result;
   }
   return const [];
+}
+
+/// Crea un LatLng solo si las coordenadas son finitas y están en rango; evita
+/// "LatLng is not finite" por datos GPS corruptos.
+LatLng? _safeLatLng(double? lat, double? lng) {
+  if (lat == null || lng == null) return null;
+  if (!lat.isFinite || !lng.isFinite) return null;
+  if (lat.abs() > 90 || lng.abs() > 180) return null;
+  return LatLng(lat, lng);
 }
 
 List<_AgendaItem> _offlineAgendaItems(List<OfflineSyncOperation> operations) {

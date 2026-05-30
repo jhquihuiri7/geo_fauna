@@ -12,7 +12,8 @@
       "Bash(git -C c:/geofauna/geofauna_app diff --stat)",
       "Bash(git -C c:/geofauna/geofauna_app ls-files --others --exclude-standard)",
       "Bash(git -C c:/geofauna/geofauna_app diff pubspec.yaml lib/services/auth_service.dart android/app/src/main/AndroidManifest.xml)",
-      "Bash(git -C c:/geofauna/geofauna_app diff lib/main.dart)"
+      "Bash(git -C c:/geofauna/geofauna_app diff lib/main.dart)",
+      "Read(//c/geofauna/**)"
     ]
   }
 }

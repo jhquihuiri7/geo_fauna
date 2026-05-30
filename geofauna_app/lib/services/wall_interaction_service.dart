@@ -64,6 +64,46 @@ class WallComment {
   }
 }
 
+class WallReaction {
+  const WallReaction({
+    required this.id,
+    required this.type,
+    required this.authorName,
+    this.authorPhotoUrl,
+    this.createdAt,
+  });
+
+  final String id;
+  final String type;
+  final String authorName;
+  final String? authorPhotoUrl;
+  final DateTime? createdAt;
+
+  factory WallReaction.fromSnapshot(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final author = data['authorSnapshot'] is Map
+        ? data['authorSnapshot'] as Map
+        : null;
+    return WallReaction(
+      id: doc.id,
+      type: _normalizeReactionType(_stringValue(data['type'])),
+      authorName:
+          _firstNonEmpty([
+            _stringValue(author?['name']),
+            _stringValue(data['authorName']),
+          ]) ??
+          'Usuario sin nombre',
+      authorPhotoUrl: _firstNonEmpty([
+        _stringValue(author?['photoUrl']),
+        _stringValue(data['authorPhotoUrl']),
+      ]),
+      createdAt: _toDate(data['createdAt']),
+    );
+  }
+}
+
 class QueuedWallComment {
   const QueuedWallComment({required this.comment, required this.commit});
 
@@ -79,7 +119,8 @@ class WallInteractionService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<bool> userReactionStream(WallInteractionTarget target) {
+  /// Indica si el usuario actual ya dio "me gusta" a la publicacion.
+  Stream<bool> userLikeStream(WallInteractionTarget target) {
     final user = _auth.currentUser;
     if (user == null) return Stream.value(false);
     return _postRef(target)
@@ -112,8 +153,21 @@ class WallInteractionService {
         );
   }
 
-  Future<void> toggleReaction(WallInteractionTarget target) async {
+  Stream<List<WallReaction>> reactionsStream(WallInteractionTarget target) {
+    return _postRef(target)
+        .collection('reactions')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map(WallReaction.fromSnapshot).toList());
+  }
+
+  /// Alterna el "me gusta" del usuario actual sobre la publicacion. Si ya
+  /// reacciono (con cualquier tipo, incluido un tipo legado), se elimina la
+  /// marca y se descuenta del contador correspondiente; si no, se agrega un
+  /// "me gusta".
+  Future<void> toggleLike(WallInteractionTarget target) async {
     final user = _requireUser();
+    final author = await _authorSnapshot(user);
     final postRef = _postRef(target);
     final reactionRef = postRef.collection('reactions').doc(user.uid);
 
@@ -122,21 +176,32 @@ class WallInteractionService {
       final post = await tx.get(postRef);
       if (!post.exists) throw Exception('La publicacion ya no existe.');
 
-      final delta = reaction.exists ? -1 : 1;
+      final updates = <String, Object>{
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
       if (reaction.exists) {
+        // Descuenta del contador al que contribuyo esta marca; puede ser un
+        // tipo legado ('foto', 'proteger', etc.) de cuando habia varias
+        // reacciones.
+        final storedType = _rawReactionType(
+          _stringValue(reaction.data()?['type']),
+        );
+        updates['reactionCounts.$storedType'] = FieldValue.increment(-1);
         tx.delete(reactionRef);
       } else {
+        updates['reactionCounts.like'] = FieldValue.increment(1);
         tx.set(reactionRef, {
           'authorId': user.uid,
+          'authorName': author.name,
+          'authorPhotoUrl': author.photoUrl,
+          'authorSnapshot': author.toMap(),
           'type': 'like',
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
 
-      _updateCounters(tx, target, {
-        'reactionCounts.like': FieldValue.increment(delta),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      _updateCounters(tx, target, updates);
     });
   }
 
@@ -317,4 +382,19 @@ String? _firstNonEmpty(List<String?> values) {
     if (text != null) return text;
   }
   return null;
+}
+
+String _normalizeReactionType(String? value) {
+  return switch ((value ?? '').trim().toLowerCase()) {
+    'visto' => 'visto',
+    'confirmo' || 'confirmó' || 'confirm' => 'confirmo',
+    'proteger' || 'protect' => 'proteger',
+    'foto' || 'photo' || 'like' || 'heart' || 'love' => 'foto',
+    _ => 'foto',
+  };
+}
+
+String _rawReactionType(String? value) {
+  final text = value?.trim();
+  return text == null || text.isEmpty ? 'like' : text;
 }

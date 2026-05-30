@@ -24,11 +24,29 @@ void main() async {
   // Modo inmersivo: oculta la barra de navegación del sistema. El usuario la
   // revela deslizando desde el borde y se vuelve a ocultar automáticamente.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Solo Firebase es crítico antes del primer frame (el stream de auth lo
+  // necesita). Lo demás se inicializa en segundo plano para que la app pinte de
+  // inmediato y no dispare un ANR ("esperar o cerrar app") en el arranque.
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await OfflineSyncService.instance.initialize();
-  await TrackingService.instance.initialize();
-  await NotificationService.instance.initialize();
   runApp(const EcoGuiaApp());
+  _initBackgroundServices();
+}
+
+/// Inicializa los servicios no críticos tras `runApp`, en paralelo y sin
+/// bloquear el arranque. Cada uno se aísla para que un fallo no tumbe a los
+/// demás ni se vuelva una excepción asíncrona sin capturar.
+void _initBackgroundServices() {
+  Future<void> guard(String name, Future<void> Function() task) async {
+    try {
+      await task();
+    } catch (error, stack) {
+      debugPrint('Fallo al inicializar $name: $error\n$stack');
+    }
+  }
+
+  unawaited(guard('OfflineSync', OfflineSyncService.instance.initialize));
+  unawaited(guard('Tracking', TrackingService.instance.initialize));
+  unawaited(guard('Notificaciones', NotificationService.instance.initialize));
 }
 
 class EcoGuiaApp extends StatelessWidget {

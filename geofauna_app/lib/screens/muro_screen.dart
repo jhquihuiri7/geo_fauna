@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,6 +22,9 @@ import '../widgets/route_map.dart';
 import '../widgets/user_avatar.dart';
 
 final _wallOptimism = _WallOptimism();
+
+/// Color del "me gusta" (corazon) en el muro.
+const _likeColor = Color(0xFFE0556B);
 
 /// Muro — community wall with upcoming events + sighting feed.
 class MuroScreen extends StatefulWidget {
@@ -448,51 +453,51 @@ class _EventCard extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: () => _openEventDetail(context, event),
         child: EcoCard(
-        soft: true,
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            EcoChip(chipText, tone: event.chipTone),
-            const SizedBox(height: 16),
-            Text(
-              event.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                height: 1.1,
-                letterSpacing: -0.4,
-                color: eco.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Text(
-                event.body ?? event.locationLabel ?? 'Sin descripción',
-                maxLines: 3,
+          soft: true,
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              EcoChip(chipText, tone: event.chipTone),
+              const SizedBox(height: 16),
+              Text(
+                event.title,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12,
-                  height: 1.4,
-                  color: eco.onSurfaceVariant,
-                ),
-              ),
-            ),
-            if (event.participantCount != null || event.capacity != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _participantsLabel(event),
-                style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: eco.primary,
+                  height: 1.1,
+                  letterSpacing: -0.4,
+                  color: eco.onSurface,
                 ),
               ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Text(
+                  event.body ?? event.locationLabel ?? 'Sin descripción',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: eco.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              if (event.participantCount != null || event.capacity != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _participantsLabel(event),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: eco.primary,
+                  ),
+                ),
+              ],
             ],
-          ],
-        ),
+          ),
         ),
       ),
     );
@@ -911,107 +916,102 @@ class _SightingCard extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  _authorAvatar(item),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.authorName,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: eco.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.meta,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: eco.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (canEdit)
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Editar',
-                      onPressed: () =>
-                          _openFieldRecordEditor(context, fieldRecordId),
-                      icon: Icon(
-                        Icons.edit_rounded,
-                        size: 20,
-                        color: eco.primary,
-                      ),
-                    ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                _authorAvatar(item),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (item.chipLabel != null)
-                        EcoChip(item.chipLabel!, tone: item.chipTone),
-                      if (item.rankLabel != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          item.rankLabel!.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            color: eco.outline,
-                          ),
+                      Text(
+                        item.authorName,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: eco.onSurface,
                         ),
-                      ],
+                      ),
+                      const SizedBox(height: 4),
+                      _headerMeta(context, item),
                     ],
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.body,
-                    style: TextStyle(
-                      fontSize: 15,
-                      height: 1.4,
-                      color: eco.onSurface,
+                ),
+                if (canEdit)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Editar',
+                    onPressed: () =>
+                        _openFieldRecordEditor(context, fieldRecordId),
+                    icon: Icon(
+                      Icons.edit_rounded,
+                      size: 20,
+                      color: eco.primary,
                     ),
                   ),
-                  if (item.isRoute) ...[
-                    const SizedBox(height: 16),
-                    RouteMapPreview(points: item.routePoints!, height: 220),
-                  ] else if (item.mediaUrl != null ||
-                      item.photoLabel != null) ...[
-                    const SizedBox(height: 16),
-                    _media(context, item),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (item.chipLabel != null)
+                      EcoChip(item.chipLabel!, tone: item.chipTone),
+                    if (item.rankLabel != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        item.rankLabel!.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: eco.outline,
+                        ),
+                      ),
+                    ],
                   ],
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.body,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.4,
+                    color: eco.onSurface,
+                  ),
+                ),
+                if (item.isRoute) ...[
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => _openLocationMap(context, item),
+                    child: RouteMapPreview(
+                      points: item.routePoints!,
+                      height: 220,
+                    ),
+                  ),
+                ] else if (item.mediaUrl != null ||
+                    item.photoLabel != null) ...[
+                  const SizedBox(height: 16),
+                  _media(context, item),
                 ],
-              ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: _InteractionBar(item: item, target: target),
-            ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: _InteractionBar(item: item, target: target),
+          ),
+        ],
       ),
     );
   }
@@ -1032,20 +1032,86 @@ class _SightingCard extends StatelessWidget {
     return Avatar(name: item.authorName, tone: AvatarTone.forest, size: 42);
   }
 
+  Widget _headerMeta(BuildContext context, _FeedItem item) {
+    final eco = context.eco;
+    final timeText = item.createdAt == null
+        ? 'Sin fecha'
+        : _relativeTime(item.createdAt!);
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            timeText,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: eco.onSurfaceVariant,
+            ),
+          ),
+        ),
+        if (item.placeLabel != null && !item.isRoute) ...[
+          Text(
+            ' · ',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: eco.onSurfaceVariant,
+            ),
+          ),
+          Flexible(
+            child: GestureDetector(
+              onTap: item.hasMapLocation
+                  ? () => _openLocationMap(context, item)
+                  : null,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.location_on_rounded,
+                    size: 14,
+                    color: item.hasMapLocation ? eco.primary : eco.outline,
+                  ),
+                  const SizedBox(width: 2),
+                  Flexible(
+                    child: Text(
+                      item.placeLabel!,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: item.hasMapLocation
+                            ? eco.primary
+                            : eco.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _media(BuildContext context, _FeedItem item) {
     final mediaUrl = item.mediaUrl;
     if (mediaUrl != null && item.mediaType == _PostMediaType.image) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: GestureDetector(
-          onTap: () => _openMediaViewer(context, item),
-          child: AspectRatio(
-            aspectRatio: 4 / 5,
-            child: _CachedNetworkMediaImage(
-              url: mediaUrl,
-              fit: BoxFit.cover,
-              fallbackLabel: item.photoLabel ?? 'IMAGEN NO DISPONIBLE',
-              borderRadius: 28,
+      return _GeoMediaFrame(
+        item: item,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: GestureDetector(
+            onTap: () => _openMediaViewer(context, item),
+            child: AspectRatio(
+              aspectRatio: 4 / 5,
+              child: _CachedNetworkMediaImage(
+                url: mediaUrl,
+                fit: BoxFit.cover,
+                fallbackLabel: item.photoLabel ?? 'IMAGEN NO DISPONIBLE',
+                borderRadius: 28,
+              ),
             ),
           ),
         ),
@@ -1053,14 +1119,144 @@ class _SightingCard extends StatelessWidget {
     }
 
     if (mediaUrl != null && item.mediaType == _PostMediaType.video) {
-      return _VideoPostPreview(
-        label: item.photoLabel ?? 'Video cargado',
-        posterUrl: item.posterUrl,
-        onTap: () => _openMediaViewer(context, item),
+      return _GeoMediaFrame(
+        item: item,
+        child: _VideoPostPreview(
+          label: item.photoLabel ?? 'Video cargado',
+          posterUrl: item.posterUrl,
+          onTap: () => _openMediaViewer(context, item),
+        ),
       );
     }
 
-    return PhotoPlaceholder(label: item.photoLabel!, borderRadius: 28);
+    return _GeoMediaFrame(
+      item: item,
+      child: PhotoPlaceholder(label: item.photoLabel!, borderRadius: 28),
+    );
+  }
+}
+
+class _GeoMediaFrame extends StatelessWidget {
+  const _GeoMediaFrame({required this.item, required this.child});
+
+  final _FeedItem item;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!item.hasMapLocation) return child;
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          left: 12,
+          bottom: 12,
+          child: _GeoChip(item: item, compact: false),
+        ),
+      ],
+    );
+  }
+}
+
+class _GeoChip extends StatelessWidget {
+  const _GeoChip({required this.item, required this.compact});
+
+  final _FeedItem item;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    final title = item.placeLabel ?? 'Ubicación guardada';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openLocationMap(context, item),
+        borderRadius: BorderRadius.circular(999),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              constraints: BoxConstraints(maxWidth: compact ? 280 : 250),
+              padding: EdgeInsets.fromLTRB(10, 8, compact ? 14 : 12, 8),
+              decoration: BoxDecoration(
+                color: eco.glass,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.16),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: eco.primary.withValues(alpha: 0.28),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.pin_drop_rounded,
+                          size: 21,
+                          color: eco.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: eco.onSurface,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        if (!compact)
+                          Text(
+                            'Ver en el mapa',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: eco.onSurfaceVariant,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -1936,6 +2132,301 @@ void _openMediaViewer(BuildContext context, _FeedItem item) {
   );
 }
 
+void _openLocationMap(BuildContext context, _FeedItem item) {
+  if (!item.hasMapLocation) return;
+  final eco = context.eco;
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: eco.surfaceContainerLowest,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    ),
+    builder: (_) => _LocationMapSheet(item: item),
+  );
+}
+
+class _LocationMapSheet extends StatelessWidget {
+  const _LocationMapSheet({required this.item});
+
+  final _FeedItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    final point = item.locationPoint;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: eco.outlineVariant,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: eco.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.location_on_rounded, color: eco.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'DÓNDE SE REGISTRÓ',
+                        style: TextStyle(
+                          color: eco.onSurfaceVariant,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.placeLabel ?? 'Ubicación del monitoreo',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: eco.onSurface,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                CircleIconButton(
+                  icon: Icons.close_rounded,
+                  onTap: () => Navigator.pop(context),
+                  bg: eco.surfaceContainerLow,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _sheetMap(context),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (point != null)
+                  _MapMetaTile(
+                    icon: Icons.explore_rounded,
+                    label: 'Coordenadas',
+                    value:
+                        '${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}',
+                  ),
+                _MapMetaTile(
+                  icon: Icons.schedule_rounded,
+                  label: 'Capturado',
+                  value: item.createdAt == null
+                      ? 'Sin fecha'
+                      : _relativeTime(item.createdAt!),
+                ),
+                if (item.chipLabel != null)
+                  _MapMetaTile(
+                    icon: Icons.eco_rounded,
+                    label: 'Categoría',
+                    value: item.chipLabel!,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetMap(BuildContext context) {
+    final point = item.locationPoint;
+    if (item.isRoute) {
+      return RouteMapPreview(
+        points: item.routePoints!,
+        height: 300,
+        borderRadius: 26,
+        interactive: true,
+      );
+    }
+    if (point == null) {
+      return PhotoPlaceholder(
+        label: 'SIN COORDENADAS',
+        borderRadius: 26,
+        aspectRatio: 16 / 10,
+      );
+    }
+    final eco = context.eco;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: SizedBox(
+        height: 300,
+        child: FlutterMap(
+          options: MapOptions(
+            initialCenter: point,
+            initialZoom: 15,
+            interactionOptions: const InteractionOptions(
+              flags:
+                  InteractiveFlag.pinchZoom |
+                  InteractiveFlag.drag |
+                  InteractiveFlag.doubleTapZoom,
+            ),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.geofauna.app',
+              tileProvider: NetworkTileProvider(),
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: point,
+                  width: 54,
+                  height: 64,
+                  alignment: Alignment.topCenter,
+                  child: _MapPinMarker(color: eco.primary),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapPinMarker extends StatelessWidget {
+  const _MapPinMarker({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.28),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.eco_rounded, color: Colors.white, size: 22),
+        ),
+        CustomPaint(size: const Size(18, 12), painter: _PinTipPainter(color)),
+      ],
+    );
+  }
+}
+
+class _PinTipPainter extends CustomPainter {
+  const _PinTipPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = ui.Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PinTipPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
+class _MapMetaTile extends StatelessWidget {
+  const _MapMetaTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: eco.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: eco.onSurfaceVariant,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: eco.onSurface,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _FullScreenMediaViewer extends StatefulWidget {
   const _FullScreenMediaViewer({
     required this.url,
@@ -2351,54 +2842,88 @@ String _formatVideoTime(Duration duration) {
   return '$minutes:$seconds';
 }
 
-class _InteractionBar extends StatelessWidget {
+class _InteractionBar extends StatefulWidget {
   const _InteractionBar({required this.item, required this.target});
 
   final _FeedItem item;
   final WallInteractionTarget target;
 
   @override
+  State<_InteractionBar> createState() => _InteractionBarState();
+}
+
+class _InteractionBarState extends State<_InteractionBar> {
+  @override
   Widget build(BuildContext context) {
     final service = WallInteractionService.instance;
     return AnimatedBuilder(
       animation: _wallOptimism,
       builder: (context, _) {
-        final commentCount = _wallOptimism.commentCount(item, target);
-        final pendingReaction = _wallOptimism.reaction(target);
-        final reactionCount = pendingReaction?.count ?? item.reactions;
+        final commentCount = _wallOptimism.commentCount(
+          widget.item,
+          widget.target,
+        );
+        final pendingLike = _wallOptimism.like(widget.target);
 
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            StreamBuilder<bool>(
-              stream: service.userReactionStream(target),
-              builder: (context, snap) {
-                final serverActive = snap.data ?? false;
-                final active = pendingReaction?.active ?? serverActive;
-                return _ActionPill(
-                  icon: Icons.favorite,
-                  label: '$reactionCount reacciones',
-                  active: active,
-                  onTap: pendingReaction == null
-                      ? () => _toggleReactionOptimistically(
-                          context,
-                          target,
-                          currentActive: active,
-                          baseCount: item.reactions,
-                        )
-                      : null,
-                );
-              },
-            ),
-            _ActionPill(
-              icon: Icons.add_comment,
-              label: '$commentCount comentarios',
-              onTap: () => _openComments(context, item, target),
-            ),
-          ],
+        return StreamBuilder<bool>(
+          stream: service.userLikeStream(widget.target),
+          builder: (context, snap) {
+            final liked = pendingLike?.liked ?? (snap.data ?? false);
+            final reactionCounts =
+                pendingLike?.counts ?? widget.item.reactionCounts;
+            final likeCount = _sumMapCounts(reactionCounts);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _ActionPill(
+                      icon: liked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      label: likeCount > 0
+                          ? '$likeCount Me gusta'
+                          : 'Me gusta',
+                      active: liked,
+                      activeColor: _likeColor,
+                      onTap: pendingLike == null
+                          ? () => _toggleLike(liked, reactionCounts)
+                          : null,
+                    ),
+                    _ActionPill(
+                      icon: Icons.add_comment_rounded,
+                      label: '$commentCount comentarios',
+                      onTap: () =>
+                          _openComments(context, widget.item, widget.target),
+                    ),
+                  ],
+                ),
+                if (likeCount > 0) ...[
+                  const SizedBox(height: 12),
+                  _ReactionSummary(
+                    target: widget.target,
+                    count: likeCount,
+                    onOpen: () =>
+                        _openReactors(context, widget.item, widget.target),
+                  ),
+                ],
+              ],
+            );
+          },
         );
       },
+    );
+  }
+
+  void _toggleLike(bool liked, Map<String, int> reactionCounts) {
+    _toggleLikeOptimistically(
+      context,
+      widget.target,
+      currentlyLiked: liked,
+      baseCounts: reactionCounts,
     );
   }
 }
@@ -2408,21 +2933,22 @@ class _ActionPill extends StatelessWidget {
     required this.icon,
     required this.label,
     this.active = false,
+    this.activeColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool active;
+  final Color? activeColor;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    final bg = active
-        ? eco.primary.withValues(alpha: 0.10)
-        : eco.surfaceContainerLow;
-    final fg = active ? eco.primary : eco.onSurfaceVariant;
+    final color = activeColor ?? eco.primary;
+    final bg = active ? color.withValues(alpha: 0.12) : eco.surfaceContainerLow;
+    final fg = active ? color : eco.onSurfaceVariant;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
@@ -2435,7 +2961,7 @@ class _ActionPill extends StatelessWidget {
               color: bg,
               borderRadius: BorderRadius.circular(999),
               border: active
-                  ? Border.all(color: eco.primary.withValues(alpha: 0.22))
+                  ? Border.all(color: color.withValues(alpha: 0.22))
                   : null,
             ),
             child: Row(
@@ -2458,6 +2984,305 @@ class _ActionPill extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReactionSummary extends StatelessWidget {
+  const _ReactionSummary({
+    required this.target,
+    required this.count,
+    required this.onOpen,
+  });
+
+  final WallInteractionTarget target;
+  final int count;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == 0) return const SizedBox.shrink();
+    final eco = context.eco;
+
+    return StreamBuilder<List<WallReaction>>(
+      stream: WallInteractionService.instance.reactionsStream(target),
+      builder: (context, snap) {
+        final reactions = snap.data ?? const <WallReaction>[];
+        final leading = reactions.isEmpty ? null : reactions.first;
+        return InkWell(
+          onTap: onOpen,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            child: Row(
+              children: [
+                if (leading != null)
+                  _ReactionAvatar(reaction: leading, size: 26)
+                else
+                  const _LikeBubble(size: 24),
+                const SizedBox(width: 9),
+                Expanded(child: _likeText(eco, leading?.authorName)),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: eco.outline,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Texto estilo Instagram: "Le gusta a NOMBRE y N personas más", con los
+  /// nombres en negrita. Si aún no cargó la lista, muestra solo el conteo.
+  Widget _likeText(AppColors eco, String? name) {
+    final normal = TextStyle(
+      color: eco.onSurfaceVariant,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+    );
+    final bold = TextStyle(
+      color: eco.onSurface,
+      fontSize: 12,
+      fontWeight: FontWeight.w900,
+    );
+    if (name == null) {
+      return Text(
+        '$count Me gusta',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: bold,
+      );
+    }
+    final others = count - 1;
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: 'Le gusta a ', style: normal),
+          TextSpan(text: name, style: bold),
+          if (others > 0) ...[
+            TextSpan(text: ' y ', style: normal),
+            TextSpan(
+              text: others == 1 ? '1 persona más' : '$others personas más',
+              style: bold,
+            ),
+          ],
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+class _LikeBubble extends StatelessWidget {
+  const _LikeBubble({this.size = 22});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: eco.surfaceContainerLowest,
+        shape: BoxShape.circle,
+        border: Border.all(color: eco.surface, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Icon(
+        Icons.favorite_rounded,
+        size: size * 0.56,
+        color: _likeColor,
+      ),
+    );
+  }
+}
+
+class _ReactionAvatar extends StatelessWidget {
+  const _ReactionAvatar({required this.reaction, this.size = 26});
+
+  final WallReaction reaction;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = reaction.authorPhotoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        clipBehavior: Clip.antiAlias,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
+        child: _CachedNetworkMediaImage(url: photoUrl, fit: BoxFit.cover),
+      );
+    }
+    return Avatar(name: reaction.authorName, tone: AvatarTone.slate, size: size);
+  }
+}
+
+class _ReactorsSheet extends StatelessWidget {
+  const _ReactorsSheet({required this.item, required this.target});
+
+  final _FeedItem item;
+  final WallInteractionTarget target;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.72,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+          child: Column(
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: eco.outlineVariant,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 16),
+              StreamBuilder<List<WallReaction>>(
+                stream: WallInteractionService.instance.reactionsStream(target),
+                builder: (context, snap) {
+                  final reactions = snap.data ?? const <WallReaction>[];
+                  final total = reactions.isEmpty
+                      ? _sumMapCounts(item.reactionCounts)
+                      : reactions.length;
+
+                  return Expanded(
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Me gusta · $total',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: eco.onSurface,
+                                ),
+                              ),
+                            ),
+                            CircleIconButton(
+                              icon: Icons.close_rounded,
+                              onTap: () => Navigator.pop(context),
+                              bg: eco.surfaceContainerLow,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Expanded(
+                          child: _ReactorsList(
+                            reactions: reactions,
+                            loading:
+                                snap.connectionState ==
+                                    ConnectionState.waiting &&
+                                !snap.hasData,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReactorsList extends StatelessWidget {
+  const _ReactorsList({required this.reactions, required this.loading});
+
+  final List<WallReaction> reactions;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    if (loading) {
+      return Center(child: CircularProgressIndicator(color: eco.primary));
+    }
+    if (reactions.isEmpty) {
+      return Center(
+        child: Text(
+          'Aún no hay reacciones visibles.',
+          style: TextStyle(
+            color: eco.onSurfaceVariant,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      itemCount: reactions.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final reaction = reactions[index];
+        return Row(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                _ReactionAvatar(reaction: reaction, size: 46),
+                const Positioned(
+                  right: -3,
+                  bottom: -3,
+                  child: _LikeBubble(size: 24),
+                ),
+              ],
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    reaction.authorName,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: eco.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'le gusta',
+                    style: TextStyle(
+                      color: eco.onSurfaceVariant,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 }
 
 class _CommentsSheet extends StatefulWidget {
@@ -2794,22 +3619,22 @@ class _CommentRow extends StatelessWidget {
   }
 }
 
-void _toggleReactionOptimistically(
+void _toggleLikeOptimistically(
   BuildContext context,
   WallInteractionTarget target, {
-  required bool currentActive,
-  required int baseCount,
+  required bool currentlyLiked,
+  required Map<String, int> baseCounts,
 }) {
-  final started = _wallOptimism.startReaction(
+  final started = _wallOptimism.startLike(
     target,
-    currentActive: currentActive,
-    baseCount: baseCount,
+    currentlyLiked: currentlyLiked,
+    baseCounts: baseCounts,
   );
   if (!started) return;
 
   unawaited(
     WallInteractionService.instance
-        .toggleReaction(target)
+        .toggleLike(target)
         .then((_) => Future<void>.delayed(const Duration(milliseconds: 350)))
         .then((_) => _wallOptimism.completeReaction(target))
         .catchError((Object error) {
@@ -2837,6 +3662,23 @@ void _openComments(
   );
 }
 
+void _openReactors(
+  BuildContext context,
+  _FeedItem item,
+  WallInteractionTarget target,
+) {
+  final eco = context.eco;
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: eco.surfaceContainerLowest,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    ),
+    builder: (_) => _ReactorsSheet(item: item, target: target),
+  );
+}
+
 void _showWallError(BuildContext context, Object error) {
   final eco = context.eco;
   ScaffoldMessenger.of(context).showSnackBar(
@@ -2852,23 +3694,28 @@ class _WallOptimism extends ChangeNotifier {
   final _reactions = <String, _OptimisticReaction>{};
   final _comments = <String, List<WallComment>>{};
 
-  _OptimisticReaction? reaction(WallInteractionTarget target) {
+  _OptimisticReaction? like(WallInteractionTarget target) {
     return _reactions[_targetKey(target)];
   }
 
-  bool startReaction(
+  bool startLike(
     WallInteractionTarget target, {
-    required bool currentActive,
-    required int baseCount,
+    required bool currentlyLiked,
+    required Map<String, int> baseCounts,
   }) {
     final key = _targetKey(target);
     if (_reactions.containsKey(key)) return false;
 
-    final delta = currentActive ? -1 : 1;
-    final nextCount = baseCount + delta;
+    final nextCounts = Map<String, int>.from(baseCounts);
+    if (currentlyLiked) {
+      _removeOneLikeCount(nextCounts);
+    } else {
+      nextCounts['like'] = (nextCounts['like'] ?? 0) + 1;
+    }
+
     _reactions[key] = _OptimisticReaction(
-      active: !currentActive,
-      count: nextCount < 0 ? 0 : nextCount,
+      liked: !currentlyLiked,
+      counts: nextCounts,
     );
     notifyListeners();
     return true;
@@ -2938,10 +3785,30 @@ class _WallOptimism extends ChangeNotifier {
 }
 
 class _OptimisticReaction {
-  const _OptimisticReaction({required this.active, required this.count});
+  const _OptimisticReaction({required this.liked, required this.counts});
 
-  final bool active;
-  final int count;
+  final bool liked;
+  final Map<String, int> counts;
+}
+
+/// Descuenta un "me gusta" de un mapa de contadores para la vista optimista.
+/// Prefiere el contador canonico 'like' y, si no existe, descuenta del primer
+/// contador legado con valor positivo para que la suma total baje en 1.
+void _removeOneLikeCount(Map<String, int> counts) {
+  var key = (counts['like'] ?? 0) > 0 ? 'like' : null;
+  key ??= counts.entries
+      .firstWhere(
+        (entry) => entry.value > 0,
+        orElse: () => const MapEntry('', 0),
+      )
+      .key;
+  if (key.isEmpty) return;
+  final next = (counts[key] ?? 0) - 1;
+  if (next <= 0) {
+    counts.remove(key);
+  } else {
+    counts[key] = next;
+  }
 }
 
 String _targetKey(WallInteractionTarget target) {
@@ -3040,7 +3907,7 @@ class _FeedItem {
     required this.authorName,
     required this.body,
     required this.chipTone,
-    required this.reactions,
+    required this.reactionCounts,
     required this.comments,
     this.authorId,
     this.chipLabel,
@@ -3051,6 +3918,7 @@ class _FeedItem {
     this.posterUrl,
     this.photoLabel,
     this.placeLabel,
+    this.locationPoint,
     this.createdAt,
     this.routePoints,
   });
@@ -3069,14 +3937,19 @@ class _FeedItem {
   final String? posterUrl;
   final String? photoLabel;
   final String? placeLabel;
+  final LatLng? locationPoint;
   final DateTime? createdAt;
-  final int reactions;
+  final Map<String, int> reactionCounts;
   final int comments;
 
   /// Puntos del recorrido cuando la publicación es de tipo `route`.
   final List<LatLng>? routePoints;
 
   bool get isRoute => routePoints != null && routePoints!.isNotEmpty;
+
+  bool get hasMapLocation => isRoute || locationPoint != null;
+
+  int get reactions => _sumMapCounts(reactionCounts);
 
   int get popularity => reactions + comments;
 
@@ -3148,11 +4021,13 @@ class _FeedItem {
       ]),
       photoLabel: _firstNonEmpty([_stringValue(data['photoLabel']), species]),
       placeLabel: _firstNonEmpty([
+        _stringValue(data['locationLabel']),
         _stringValue(data['placeLabel']),
         _stringValue(data['placeName']),
       ]),
+      locationPoint: _locationPointFromData(data),
       createdAt: _toDate(data['createdAt']),
-      reactions: _sumMapCounts(counts),
+      reactionCounts: _normalizedReactionCounts(counts),
       comments: _toInt(data['commentCount']) ?? 0,
       routePoints: routePoints,
     );
@@ -3257,12 +4132,14 @@ class _FeedItem {
               _categoryLabel(category),
             ]),
       placeLabel: _firstNonEmpty([
+        _stringValue(data['locationLabel']),
         _stringValue(data['placeLabel']),
         _stringValue(data['placeName']),
         _stringValue(data['zoneId']),
       ]),
+      locationPoint: _locationPointFromData(data),
       createdAt: _toDate(data['createdAt']) ?? _toDate(data['observedAt']),
-      reactions: _sumMapCounts(reactions),
+      reactionCounts: _normalizedReactionCounts(reactions),
       comments: _toInt(data['commentCount']) ?? 0,
     );
   }
@@ -3315,6 +4192,62 @@ int _sumMapCounts(Map? map) {
   );
 }
 
+Map<String, int> _normalizedReactionCounts(Map? map) {
+  if (map == null) return const <String, int>{};
+  final counts = <String, int>{};
+  for (final entry in map.entries) {
+    final value = _toInt(entry.value) ?? 0;
+    if (value <= 0) continue;
+    final type = _normalizeReactionType(entry.key.toString());
+    counts[type] = (counts[type] ?? 0) + value;
+  }
+  return counts;
+}
+
+String _normalizeReactionType(String? value) {
+  return switch ((value ?? '').trim().toLowerCase()) {
+    'visto' => 'visto',
+    'confirmo' || 'confirmó' || 'confirm' => 'confirmo',
+    'proteger' || 'protect' => 'proteger',
+    'foto' || 'photo' || 'like' || 'heart' || 'love' => 'foto',
+    _ => 'foto',
+  };
+}
+
+LatLng? _locationPointFromData(Map<String, dynamic> data) {
+  final location = data['location'];
+  if (location is GeoPoint) {
+    return _safeLatLng(location.latitude, location.longitude);
+  }
+
+  final latitude = _toDouble(
+    data['latitude'] ?? data['lat'] ?? data['locationLatitude'],
+  );
+  final longitude = _toDouble(
+    data['longitude'] ??
+        data['lng'] ??
+        data['lon'] ??
+        data['locationLongitude'],
+  );
+  return _safeLatLng(latitude, longitude);
+}
+
+/// Crea un LatLng solo si las coordenadas son finitas y están en rango; si no,
+/// devuelve null para no propagar valores corruptos (NaN/Infinity) al mapa,
+/// que de otro modo lanza "LatLng is not finite".
+LatLng? _safeLatLng(double? lat, double? lng) {
+  if (lat == null || lng == null) return null;
+  if (!lat.isFinite || !lng.isFinite) return null;
+  if (lat.abs() > 90 || lng.abs() > 180) return null;
+  return LatLng(lat, lng);
+}
+
+double? _toDouble(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
 String? _stringValue(Object? value) {
   if (value == null) return null;
   return value.toString();
@@ -3344,11 +4277,15 @@ List<LatLng>? _routePointsFromData(Map<String, dynamic> data) {
   }
   final raw = data['routePoints'];
   if (raw is! List) return null;
-  final points = <LatLng>[
-    for (final item in raw)
-      if (item is Map && item['lat'] is num && item['lng'] is num)
-        LatLng((item['lat'] as num).toDouble(), (item['lng'] as num).toDouble()),
-  ];
+  final points = <LatLng>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final lat = item['lat'];
+    final lng = item['lng'];
+    if (lat is! num || lng is! num) continue;
+    final point = _safeLatLng(lat.toDouble(), lng.toDouble());
+    if (point != null) points.add(point);
+  }
   return points.isEmpty ? null : points;
 }
 

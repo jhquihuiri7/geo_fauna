@@ -174,7 +174,7 @@ class FieldDataService {
           'photoLabel': firstImageUrl == null
               ? 'Video cargado'
               : _firstNonEmpty([speciesName, _categoryLabel(categoryKey)]),
-        'placeLabel': location?.title,
+        if (location != null) ..._locationFields(location),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'visibility': 'public',
@@ -453,14 +453,23 @@ class FieldDataService {
     final user = _requireUser();
     final author = await _authorSnapshot(user);
 
-    // Para el muro basta una versión ligera de la ruta; reducimos los puntos.
-    final sampled = _downsamplePoints(points, 500);
+    // Para el muro basta una versión ligera de la ruta; reducimos los puntos y
+    // descartamos coordenadas inválidas para no publicar NaN.
+    final sampled = _downsamplePoints(
+      points,
+      500,
+    ).where(_isValidTrackPoint).toList();
     final routePoints = <Map<String, dynamic>>[
       for (final p in sampled)
-        {'lat': (p['lat'] as num).toDouble(), 'lng': (p['lng'] as num).toDouble()},
+        {
+          'lat': (p['lat'] as num).toDouble(),
+          'lng': (p['lng'] as num).toDouble(),
+        },
     ];
     if (routePoints.length < 2) {
-      throw StateError('El recorrido no tiene puntos suficientes para publicar.');
+      throw StateError(
+        'El recorrido no tiene puntos suficientes para publicar.',
+      );
     }
     final bounds = _routeBounds(routePoints);
 
@@ -523,13 +532,14 @@ class FieldDataService {
     final trackRef = _firestore.collection('tracks').doc(trackId);
 
     // Firestore limita el documento a 1 MB; reducimos la ruta si es muy larga.
-    final sampled = _downsamplePoints(points, 5000);
+    // Descartamos puntos con coordenadas inválidas para no guardar NaN.
+    final sampled = _downsamplePoints(
+      points,
+      5000,
+    ).where(_isValidTrackPoint).toList();
     final path = <GeoPoint>[
       for (final p in sampled)
-        GeoPoint(
-          (p['lat'] as num).toDouble(),
-          (p['lng'] as num).toDouble(),
-        ),
+        GeoPoint((p['lat'] as num).toDouble(), (p['lng'] as num).toDouble()),
     ];
 
     await trackRef.set({
@@ -1263,16 +1273,34 @@ class _AuthorSnapshot {
 }
 
 Map<String, dynamic> _locationFields(UserLocation location) {
-  return {
-    'location': GeoPoint(location.latitude, location.longitude),
-    'latitude': location.latitude,
-    'longitude': location.longitude,
+  final fields = <String, dynamic>{
     'placeLabel': location.title,
     'placeName': location.title,
     'locationLabel': location.subtitle == null
         ? location.title
         : '${location.title} - ${location.subtitle}',
   };
+  // Solo guardamos coordenadas válidas; nunca NaN/Infinity ni fuera de rango,
+  // para no corromper documentos que luego rompen el mapa.
+  final lat = location.latitude;
+  final lng = location.longitude;
+  if (lat.isFinite && lng.isFinite && lat.abs() <= 90 && lng.abs() <= 180) {
+    fields['location'] = GeoPoint(lat, lng);
+    fields['latitude'] = lat;
+    fields['longitude'] = lng;
+  }
+  return fields;
+}
+
+/// Valida un punto crudo `{lat, lng}` antes de escribirlo: numérico, finito y
+/// dentro de rango.
+bool _isValidTrackPoint(Map<String, dynamic> point) {
+  final lat = point['lat'];
+  final lng = point['lng'];
+  if (lat is! num || lng is! num) return false;
+  final dLat = lat.toDouble();
+  final dLng = lng.toDouble();
+  return dLat.isFinite && dLng.isFinite && dLat.abs() <= 90 && dLng.abs() <= 180;
 }
 
 DateTime _dateOnly(DateTime value) =>
