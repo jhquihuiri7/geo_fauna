@@ -30,7 +30,9 @@
       "Bash(adb -s RF8X20WLA7F pull /sdcard/screenshot.png /tmp/dashboard_screenshot.png)",
       "Bash(pkill -f \"flutter run\")",
       "PowerShell(\\(Get-Content \"c:\\\\geofauna\\\\geofauna_app\\\\lib\\\\screens\\\\muro_screen.dart\" | Measure-Object -Line\\).Lines)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "WebFetch(domain:pub.dev)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "additionalDirectories": [
       "\\tmp"

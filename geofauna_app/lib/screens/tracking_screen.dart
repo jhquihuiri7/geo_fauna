@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -55,6 +56,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
   bool _showCompass = false;
   String? _error;
 
+  /// Brújula: rumbo actual en grados (0 = norte) o `null` si aún no hay lectura.
+  double? _heading;
+
+  /// `false` cuando el dispositivo no tiene magnetómetro (la rosa se queda fija).
+  bool _compassAvailable = true;
+  StreamSubscription<CompassEvent>? _compassSub;
+
   @override
   void initState() {
     super.initState();
@@ -69,8 +77,28 @@ class _TrackingScreenState extends State<TrackingScreen> {
   void dispose() {
     _service.session.removeListener(_onSession);
     _ticker?.cancel();
+    _compassSub?.cancel();
     _mapController.dispose();
     super.dispose();
+  }
+
+  /// Muestra/oculta la brújula translúcida. Solo escuchamos el magnetómetro
+  /// mientras está visible para no gastar batería.
+  void _toggleCompass() {
+    setState(() => _showCompass = !_showCompass);
+    if (_showCompass) {
+      final events = FlutterCompass.events;
+      if (events == null) {
+        setState(() => _compassAvailable = false);
+        return;
+      }
+      _compassSub = events.listen((event) {
+        if (mounted) setState(() => _heading = event.heading);
+      });
+    } else {
+      _compassSub?.cancel();
+      _compassSub = null;
+    }
   }
 
   Future<void> _bootstrap() async {
@@ -145,6 +173,16 @@ class _TrackingScreenState extends State<TrackingScreen> {
             _buildMap(eco, session)
           else
             _loading(eco),
+          // Brújula translúcida integrada sobre el mapa (los toques la atraviesan
+          // hacia el mapa). Se dibuja antes que el HUD/controles para no taparlos.
+          if (_showCompass)
+            Positioned.fill(
+              child: _CompassOverlay(
+                heading: _heading,
+                available: _compassAvailable,
+                eco: eco,
+              ),
+            ),
           // Degradado superior para legibilidad del HUD.
           Positioned(
             top: 0,
@@ -203,19 +241,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
             bottom: 250,
             child: FloatingActionButton.small(
               heroTag: 'compass',
-              backgroundColor: eco.surfaceContainerLowest,
-              foregroundColor: eco.primary,
-              onPressed: () => setState(() => _showCompass = true),
-              child: const Icon(Icons.explore_rounded),
+              backgroundColor:
+                  _showCompass ? eco.primary : eco.surfaceContainerLowest,
+              foregroundColor: _showCompass ? eco.onPrimary : eco.primary,
+              onPressed: _toggleCompass,
+              child: Icon(_showCompass ? Icons.explore : Icons.explore_rounded),
             ),
           ),
-          if (_showCompass)
-            Positioned.fill(
-              child: _CompassFullscreen(
-                onClose: () => setState(() => _showCompass = false),
-                eco: eco,
-              ),
-            ),
         ],
       ),
     );
@@ -885,43 +917,96 @@ String _formatSpeed(double mps) {
   return '${kmh.toStringAsFixed(1)} km/h';
 }
 
-class _CompassFullscreen extends StatelessWidget {
-  const _CompassFullscreen({required this.onClose, required this.eco});
+/// Brújula translúcida superpuesta al mapa. Va envuelta en [IgnorePointer], así
+/// que los toques/arrastres la atraviesan y el mapa se sigue pudiendo mover con
+/// la brújula visible. La rosa gira para que la "N" apunte al norte real y un
+/// índice fijo arriba marca hacia dónde apunta el teléfono.
+class _CompassOverlay extends StatelessWidget {
+  const _CompassOverlay({
+    required this.heading,
+    required this.available,
+    required this.eco,
+  });
 
-  final VoidCallback onClose;
+  /// Rumbo en grados (0 = norte) o `null` mientras no llega la primera lectura.
+  final double? heading;
+
+  /// `false` si el dispositivo no tiene magnetómetro (la rosa queda fija).
+  final bool available;
   final AppColors eco;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black.withValues(alpha: 0.95),
-      child: Stack(
-        children: [
-          Center(
-            child: CustomPaint(
-              painter: _CompassPainter(eco: eco),
-              size: Size.square(MediaQuery.of(context).size.width * 0.85),
-            ),
-          ),
-          Positioned(
-            top: 20,
-            right: 20,
-            child: GestureDetector(
-              onTap: onClose,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: eco.surfaceContainerLowest,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.close, color: eco.onSurface, size: 24),
+    final dial = MediaQuery.of(context).size.width * 0.7;
+    final h = heading;
+    // La rosa gira en sentido contrario al rumbo para que "N" señale el norte.
+    final rotation = (h == null) ? 0.0 : -h * math.pi / 180;
+
+    return IgnorePointer(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: dial,
+              height: dial,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Transform.rotate(
+                    angle: rotation,
+                    child: CustomPaint(
+                      size: Size.square(dial),
+                      painter: _CompassPainter(eco: eco),
+                    ),
+                  ),
+                  // Índice fijo: apunta hacia dónde mira el teléfono.
+                  Positioned(
+                    top: -4,
+                    child: Icon(
+                      Icons.arrow_drop_down,
+                      size: 44,
+                      color: eco.primary,
+                      shadows: const [
+                        Shadow(color: Colors.black54, blurRadius: 6),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+              ),
+              child: Text(
+                !available
+                    ? 'Brújula no disponible'
+                    : h == null
+                        ? 'Orientando…'
+                        : '${h.round()}°  ${_cardinalLabel(h)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  /// Abreviatura cardinal (N, NE, E, …) más cercana a [deg].
+  static String _cardinalLabel(double deg) {
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return dirs[((deg % 360) / 45).round() % 8];
   }
 }
 
@@ -935,12 +1020,21 @@ class _CompassPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 20;
 
-    // Círculo exterior (fondo)
+    // Halo suave: hace legible la brújula sobre mapas claros u oscuros.
     canvas.drawCircle(
       center,
       radius,
       Paint()
-        ..color = Colors.grey[800]!
+        ..color = Colors.black.withValues(alpha: 0.30)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16),
+    );
+
+    // Disco translúcido: deja ver el mapa a través de la brújula.
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.38)
         ..style = PaintingStyle.fill,
     );
 
@@ -949,7 +1043,7 @@ class _CompassPainter extends CustomPainter {
       center,
       radius,
       Paint()
-        ..color = Colors.grey[600]!
+        ..color = Colors.white.withValues(alpha: 0.55)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
@@ -974,7 +1068,9 @@ class _CompassPainter extends CustomPainter {
         start,
         end,
         Paint()
-          ..color = isMainDirection ? Colors.white : Colors.grey[400]!
+          ..color = isMainDirection
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.55)
           ..strokeWidth = markWidth,
       );
 
@@ -987,6 +1083,7 @@ class _CompassPainter extends CustomPainter {
               color: Colors.white,
               fontSize: isMainDirection ? 18 : 12,
               fontWeight: isMainDirection ? FontWeight.bold : FontWeight.normal,
+              shadows: const [Shadow(color: Colors.black87, blurRadius: 4)],
             ),
           ),
           textDirection: TextDirection.ltr,
@@ -1066,6 +1163,7 @@ class _CompassPainter extends CustomPainter {
           color: color,
           fontSize: 32,
           fontWeight: FontWeight.bold,
+          shadows: const [Shadow(color: Colors.black87, blurRadius: 5)],
         ),
       ),
       textDirection: TextDirection.ltr,
