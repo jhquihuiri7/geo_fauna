@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -6,6 +7,8 @@ import 'package:latlong2/latlong.dart';
 
 import '../services/field_data_service.dart';
 import '../services/location_service.dart';
+import '../services/map_tile_service.dart';
+import '../services/marine_service.dart';
 import '../services/tracking_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
@@ -44,10 +47,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   Timer? _ticker;
   LatLng? _initialCenter;
+  MarineForecast? _marineForecast;
   bool _mapReady = false;
   bool _follow = true;
   bool _starting = true;
   bool _finishing = false;
+  bool _showCompass = false;
   String? _error;
 
   @override
@@ -71,7 +76,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Future<void> _bootstrap() async {
     // Centro inicial: último punto si reanudamos, o la ubicación actual.
     final existing = _service.session.value?.lastPoint;
-    if (existing != null) {
+    if (existing != null &&
+        existing.latLng.latitude.isFinite &&
+        existing.latLng.longitude.isFinite) {
       _initialCenter = existing.latLng;
     } else {
       try {
@@ -83,6 +90,17 @@ class _TrackingScreenState extends State<TrackingScreen> {
     }
     if (!mounted) return;
     setState(() {});
+
+    // Fetch marino en background — no bloquea el inicio del tracking.
+    MarineService()
+        .fetchForecast(
+          latitude: _initialCenter!.latitude,
+          longitude: _initialCenter!.longitude,
+        )
+        .then((m) {
+          if (mounted) setState(() => _marineForecast = m);
+        })
+        .catchError((_) {});
 
     try {
       if (widget.resume) {
@@ -104,7 +122,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   void _onSession() {
     final last = _service.session.value?.lastPoint;
-    if (last != null && _follow && _mapReady) {
+    if (last != null &&
+        _follow &&
+        _mapReady &&
+        last.latLng.latitude.isFinite &&
+        last.latLng.longitude.isFinite) {
       _mapController.move(last.latLng, _mapController.camera.zoom);
     }
     if (mounted) setState(() {});
@@ -119,7 +141,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
       backgroundColor: eco.surface,
       body: Stack(
         children: [
-          if (_initialCenter != null) _buildMap(eco, session) else _loading(eco),
+          if (_initialCenter != null)
+            _buildMap(eco, session)
+          else
+            _loading(eco),
           // Degradado superior para legibilidad del HUD.
           Positioned(
             top: 0,
@@ -163,11 +188,32 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 onPressed: () {
                   final last = _service.session.value?.lastPoint;
                   setState(() => _follow = true);
-                  if (last != null && _mapReady) {
+                  if (last != null &&
+                      _mapReady &&
+                      last.latLng.latitude.isFinite &&
+                      last.latLng.longitude.isFinite) {
                     _mapController.move(last.latLng, 16);
                   }
                 },
                 child: const Icon(Icons.my_location_rounded),
+              ),
+            ),
+          Positioned(
+            right: 16,
+            bottom: 250,
+            child: FloatingActionButton.small(
+              heroTag: 'compass',
+              backgroundColor: eco.surfaceContainerLowest,
+              foregroundColor: eco.primary,
+              onPressed: () => setState(() => _showCompass = true),
+              child: const Icon(Icons.explore_rounded),
+            ),
+          ),
+          if (_showCompass)
+            Positioned.fill(
+              child: _CompassFullscreen(
+                onClose: () => setState(() => _showCompass = false),
+                eco: eco,
               ),
             ),
         ],
@@ -197,7 +243,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 
   Widget _buildMap(AppColors eco, TrackingSession? session) {
-    final points = [for (final p in session?.points ?? const <TrackPoint>[]) p.latLng];
+    final points = [
+      for (final p in session?.points ?? const <TrackPoint>[]) p.latLng,
+    ];
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
@@ -208,27 +256,25 @@ class _TrackingScreenState extends State<TrackingScreen> {
           if (hasGesture && _follow) setState(() => _follow = false);
         },
         interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.pinchZoom |
+          flags:
+              InteractiveFlag.pinchZoom |
               InteractiveFlag.drag |
               InteractiveFlag.doubleTapZoom |
               InteractiveFlag.flingAnimation,
         ),
       ),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.geofauna.app',
-          tileProvider: NetworkTileProvider(),
-        ),
+        MapTileService.baseTileLayer(),
         if (points.length >= 2)
           PolylineLayer(
             polylines: [
               Polyline(
                 points: points,
-                strokeWidth: 6,
+                strokeWidth: 3,
                 color: eco.primary,
                 borderStrokeWidth: 2,
                 borderColor: Colors.white.withValues(alpha: 0.8),
+                pattern: StrokePattern.dashed(segments: const [6, 6]),
               ),
             ],
           ),
@@ -237,26 +283,26 @@ class _TrackingScreenState extends State<TrackingScreen> {
             if (points.isNotEmpty)
               Marker(
                 point: points.first,
-                width: 22,
-                height: 22,
+                width: 11,
+                height: 11,
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: eco.primary, width: 4),
+                    border: Border.all(color: eco.primary, width: 2),
                   ),
                 ),
               ),
             if (points.isNotEmpty)
               Marker(
                 point: points.last,
-                width: 44,
-                height: 44,
+                width: 22,
+                height: 22,
                 child: Container(
                   decoration: BoxDecoration(
                     color: eco.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
+                    border: Border.all(color: Colors.white, width: 2),
                     boxShadow: [
                       BoxShadow(
                         color: eco.primary.withValues(alpha: 0.4),
@@ -268,7 +314,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   child: const Icon(
                     Icons.navigation_rounded,
                     color: Colors.white,
-                    size: 22,
+                    size: 11,
                   ),
                 ),
               ),
@@ -284,10 +330,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
         children: [
-          CircleIconButton(
-            icon: Icons.arrow_back_rounded,
-            onTap: _onBack,
-          ),
+          CircleIconButton(icon: Icons.arrow_back_rounded, onTap: _onBack),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -337,20 +380,46 @@ class _TrackingScreenState extends State<TrackingScreen> {
     final duration = session?.movingDuration() ?? Duration.zero;
     final avg = session?.avgSpeedMps() ?? 0;
     final current = session?.currentSpeedMps ?? 0;
+    final now = DateTime.now();
+    final tide = _marineForecast?.tideAt(now);
+    final wave = _marineForecast?.atHour(now);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: EcoCard(
         radius: 28,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _metric(eco, 'DISTANCIA', _formatDistance(distance)),
-            _divider(eco),
-            _metric(eco, 'TIEMPO', _formatDuration(duration)),
-            _divider(eco),
-            _metric(eco, 'VEL. ACT.', _formatSpeed(current)),
-            _divider(eco),
-            _metric(eco, 'VEL. MED.', _formatSpeed(avg)),
+            Row(
+              children: [
+                _metric(eco, 'DISTANCIA', _formatDistance(distance)),
+                _divider(eco),
+                _metric(eco, 'TIEMPO', _formatDuration(duration)),
+                _divider(eco),
+                _metric(eco, 'VEL. ACT.', _formatSpeed(current)),
+                _divider(eco),
+                _metric(eco, 'VEL. MED.', _formatSpeed(avg)),
+              ],
+            ),
+            if (tide != null) ...[
+              const SizedBox(height: 10),
+              Divider(height: 1, color: eco.outlineVariant),
+              const SizedBox(height: 8),
+              Text(
+                [
+                  'MAREA ${tide.arrow} ${tide.label}  ·  ${tide.heightLabel}',
+                  if (wave != null)
+                    'OLA ${wave.waveHeight.toStringAsFixed(1)} M',
+                ].join('  ·  '),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                  color: eco.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -629,7 +698,9 @@ class _SummarySheetState extends State<_SummarySheet> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    s.saved ? Icons.check_circle_rounded : Icons.cloud_off_rounded,
+                    s.saved
+                        ? Icons.check_circle_rounded
+                        : Icons.cloud_off_rounded,
                     color: eco.primary,
                     size: 28,
                   ),
@@ -665,10 +736,12 @@ class _SummarySheetState extends State<_SummarySheet> {
             const SizedBox(height: 22),
             Row(
               children: [
-                _summaryStat(eco, 'Distancia',
-                    _formatDistance(s.distanceMeters)),
-                _summaryStat(eco, 'Tiempo',
-                    _formatDuration(s.movingDuration)),
+                _summaryStat(
+                  eco,
+                  'Distancia',
+                  _formatDistance(s.distanceMeters),
+                ),
+                _summaryStat(eco, 'Tiempo', _formatDuration(s.movingDuration)),
                 _summaryStat(eco, 'Vel. máx.', _formatSpeed(s.maxSpeedMps)),
               ],
             ),
@@ -700,7 +773,9 @@ class _SummarySheetState extends State<_SummarySheet> {
                 label: _publishing ? 'Publicando…' : 'Publicar en el muro',
                 icon: Icons.public_rounded,
                 loading: _publishing,
-                onPressed: (!s.saved || s.points.isEmpty) ? null : _publishToWall,
+                onPressed: (!s.saved || s.points.isEmpty)
+                    ? null
+                    : _publishToWall,
               ),
             if (!s.saved && !_published) ...[
               const SizedBox(height: 8),
@@ -808,4 +883,201 @@ String _formatDuration(Duration d) {
 String _formatSpeed(double mps) {
   final kmh = mps * 3.6;
   return '${kmh.toStringAsFixed(1)} km/h';
+}
+
+class _CompassFullscreen extends StatelessWidget {
+  const _CompassFullscreen({required this.onClose, required this.eco});
+
+  final VoidCallback onClose;
+  final AppColors eco;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.95),
+      child: Stack(
+        children: [
+          Center(
+            child: CustomPaint(
+              painter: _CompassPainter(eco: eco),
+              size: Size.square(MediaQuery.of(context).size.width * 0.85),
+            ),
+          ),
+          Positioned(
+            top: 20,
+            right: 20,
+            child: GestureDetector(
+              onTap: onClose,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: eco.surfaceContainerLowest,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.close, color: eco.onSurface, size: 24),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompassPainter extends CustomPainter {
+  _CompassPainter({required this.eco});
+
+  final AppColors eco;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 20;
+
+    // Círculo exterior (fondo)
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.grey[800]!
+        ..style = PaintingStyle.fill,
+    );
+
+    // Borde del círculo
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.grey[600]!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+
+    // Dibujar marcas y números de grados
+    for (int i = 0; i < 360; i += 10) {
+      final angle = (i - 90) * 3.14159 / 180;
+      final isMainDirection = i % 90 == 0;
+      final markLength = isMainDirection ? 20.0 : 12.0;
+      final markWidth = isMainDirection ? 3.0 : 1.5;
+
+      final start = Offset(
+        center.dx + (radius - markLength) * math.cos(angle),
+        center.dy + (radius - markLength) * math.sin(angle),
+      );
+      final end = Offset(
+        center.dx + radius * math.cos(angle),
+        center.dy + radius * math.sin(angle),
+      );
+
+      canvas.drawLine(
+        start,
+        end,
+        Paint()
+          ..color = isMainDirection ? Colors.white : Colors.grey[400]!
+          ..strokeWidth = markWidth,
+      );
+
+      // Dibujar números cada 30 grados
+      if (i % 30 == 0) {
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: i.toString(),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isMainDirection ? 18 : 12,
+              fontWeight: isMainDirection ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        );
+        textPainter.layout();
+
+        final textAngle = (i - 90) * 3.14159 / 180;
+        final textRadius = radius - 40;
+        final textOffset = Offset(
+          center.dx + textRadius * math.cos(textAngle),
+          center.dy + textRadius * math.sin(textAngle),
+        );
+
+        textPainter.paint(
+          canvas,
+          textOffset - Offset(textPainter.width / 2, textPainter.height / 2),
+        );
+      }
+    }
+
+    // Dibujar direcciones cardinales (N, S, E, W)
+    _drawCardinalDirection(canvas, center, radius - 60, 'N', 0, Colors.red);
+    _drawCardinalDirection(canvas, center, radius - 60, 'S', 180, Colors.white);
+    _drawCardinalDirection(canvas, center, radius - 60, 'E', 90, Colors.white);
+    _drawCardinalDirection(canvas, center, radius - 60, 'W', 270, Colors.white);
+
+    // Línea roja apuntando al norte
+    final northAngle = -90 * 3.14159 / 180;
+    canvas.drawLine(
+      center,
+      Offset(
+        center.dx + (radius - 40) * math.cos(northAngle),
+        center.dy + (radius - 40) * math.sin(northAngle),
+      ),
+      Paint()
+        ..color = Colors.red
+        ..strokeWidth = 4,
+    );
+
+    // Círculo central
+    canvas.drawCircle(
+      center,
+      12,
+      Paint()
+        ..color = Colors.blue
+        ..style = PaintingStyle.fill,
+    );
+
+    canvas.drawCircle(
+      center,
+      12,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  void _drawCardinalDirection(
+    Canvas canvas,
+    Offset center,
+    double distance,
+    String text,
+    double degree,
+    Color color,
+  ) {
+    final angle = (degree - 90) * 3.14159 / 180;
+    final textOffset = Offset(
+      center.dx + distance * math.cos(angle),
+      center.dy + distance * math.sin(angle),
+    );
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+
+    textPainter.paint(
+      canvas,
+      textOffset - Offset(textPainter.width / 2, textPainter.height / 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CompassPainter oldDelegate) => false;
 }

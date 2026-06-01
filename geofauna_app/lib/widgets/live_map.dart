@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../services/location_service.dart';
+import '../services/map_tile_service.dart';
 import '../theme/app_colors.dart';
 
 /// Un avistamiento a dibujar sobre el mapa (categoría normalizada + ubicación).
@@ -69,6 +70,7 @@ class LiveMap extends StatefulWidget {
     this.sightings = const [],
     this.expandable = false,
     this.fullscreenTitle,
+    this.location,
   });
 
   final double height;
@@ -77,6 +79,11 @@ class LiveMap extends StatefulWidget {
   final bool interactive;
   final List<Widget> overlays;
   final List<MapSighting> sightings;
+
+  /// Ubicación a mostrar/centrar en lugar del GPS. Cuando es `null` el mapa usa
+  /// la posición actual del dispositivo; cuando se provee (p. ej. una ubicación
+  /// editada en el mapa) el marcador se mueve allí y la cámara se recentra.
+  final LatLng? location;
 
   /// Muestra un botón para abrir el mapa a pantalla completa.
   final bool expandable;
@@ -99,56 +106,80 @@ class _LiveMapState extends State<LiveMap> {
       borderRadius: BorderRadius.circular(widget.borderRadius),
       child: SizedBox(
         height: widget.height,
-        child: FutureBuilder<UserLocation>(
-          future: _future,
-          builder: (context, snap) {
-            if (snap.connectionState == ConnectionState.done &&
-                snap.hasError) {
-              return _state(
-                eco,
-                icon: Icons.location_off,
-                message: _message(snap.error!),
-                action: TextButton(
-                    onPressed: _retry, child: const Text('Reintentar')),
-              );
-            }
-            if (!snap.hasData) {
-              return _state(
-                eco,
-                child: SizedBox(
-                  width: 30,
-                  height: 30,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: eco.primary),
-                ),
-                message: 'Centrando el mapa en tu ubicación…',
-              );
-            }
-            final center = LatLng(snap.data!.latitude, snap.data!.longitude);
-            return Stack(
-              children: [
-                Positioned.fill(
-                  child: SightingMapView(
-                    center: center,
-                    sightings: widget.sightings,
-                    initialZoom: widget.zoom,
-                    interactive: widget.interactive,
-                  ),
-                ),
-                ...widget.overlays,
-                if (widget.expandable)
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    child: _ExpandButton(
-                      onTap: () => _openFullscreen(context, center),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
+        // Con una ubicación explícita no necesitamos el GPS: dibujamos el mapa
+        // directamente centrado en ese punto.
+        child: widget.location != null
+            ? _map(eco, widget.location!)
+            : FutureBuilder<UserLocation>(
+                future: _future,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.done &&
+                      snap.hasError) {
+                    return _state(
+                      eco,
+                      icon: Icons.location_off,
+                      message: _message(snap.error!),
+                      action: TextButton(
+                        onPressed: _retry,
+                        child: const Text('Reintentar'),
+                      ),
+                    );
+                  }
+                  if (!snap.hasData) {
+                    return _state(
+                      eco,
+                      child: SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: eco.primary,
+                        ),
+                      ),
+                      message: 'Centrando el mapa en tu ubicación…',
+                    );
+                  }
+                  final lat = snap.data!.latitude;
+                  final lng = snap.data!.longitude;
+
+                  if (!lat.isFinite || !lng.isFinite) {
+                    return _state(
+                      eco,
+                      icon: Icons.location_off,
+                      message: 'Ubicación inválida. Reinicia el GPS.',
+                      action: TextButton(
+                        onPressed: _retry,
+                        child: const Text('Reintentar'),
+                      ),
+                    );
+                  }
+
+                  return _map(eco, LatLng(lat, lng));
+                },
+              ),
       ),
+    );
+  }
+
+  Widget _map(AppColors eco, LatLng center) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: SightingMapView(
+            center: center,
+            sightings: widget.sightings,
+            initialZoom: widget.zoom,
+            interactive: widget.interactive,
+          ),
+        ),
+        ...widget.overlays,
+        if (widget.expandable)
+          Positioned(
+            top: 16,
+            right: 16,
+            child: _ExpandButton(onTap: () => _openFullscreen(context, center)),
+          ),
+      ],
     );
   }
 
@@ -164,8 +195,13 @@ class _LiveMapState extends State<LiveMap> {
     );
   }
 
-  Widget _state(AppColors eco,
-      {IconData? icon, Widget? child, required String message, Widget? action}) {
+  Widget _state(
+    AppColors eco, {
+    IconData? icon,
+    Widget? child,
+    required String message,
+    Widget? action,
+  }) {
     return Container(
       color: eco.surfaceContainerLow,
       alignment: Alignment.center,
@@ -182,9 +218,10 @@ class _LiveMapState extends State<LiveMap> {
             message,
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: eco.onSurfaceVariant),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: eco.onSurfaceVariant,
+            ),
           ),
           if (action != null) action,
         ],
@@ -224,6 +261,18 @@ class _SightingMapViewState extends State<SightingMapView> {
   final MapController _controller = MapController();
   late double _zoom = widget.initialZoom;
   MapSighting? _selected;
+
+  @override
+  void didUpdateWidget(covariant SightingMapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // El mapa solo aplica `initialCenter` la primera vez; si el centro cambia
+    // (p. ej. al editar la ubicación) movemos la cámara al nuevo punto.
+    if (widget.center != oldWidget.center &&
+        widget.center.latitude.isFinite &&
+        widget.center.longitude.isFinite) {
+      _controller.move(widget.center, _zoom);
+    }
+  }
 
   @override
   void dispose() {
@@ -283,6 +332,31 @@ class _SightingMapViewState extends State<SightingMapView> {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
+
+    // Validación defensiva del centro
+    if (!widget.center.latitude.isFinite || !widget.center.longitude.isFinite) {
+      return Container(
+        color: eco.surfaceContainerLow,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.location_off, size: 32, color: eco.outline),
+            const SizedBox(height: 12),
+            Text(
+              'Ubicación inválida',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final clusters = _clusters(_zoom);
     final markers = <Marker>[];
 
@@ -364,18 +438,14 @@ class _SightingMapViewState extends State<SightingMapView> {
         interactionOptions: InteractionOptions(
           flags: widget.interactive
               ? InteractiveFlag.pinchZoom |
-                  InteractiveFlag.drag |
-                  InteractiveFlag.doubleTapZoom |
-                  InteractiveFlag.flingAnimation
+                    InteractiveFlag.drag |
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.flingAnimation
               : InteractiveFlag.none,
         ),
       ),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.geofauna.app',
-          tileProvider: NetworkTileProvider(),
-        ),
+        MapTileService.baseTileLayer(),
         MarkerLayer(markers: markers),
       ],
     );
@@ -421,7 +491,11 @@ class _CategoryPin extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(mapCategoryIcon(categoryKey), color: Colors.white, size: 18),
+          child: Icon(
+            mapCategoryIcon(categoryKey),
+            color: Colors.white,
+            size: 18,
+          ),
         ),
         CustomPaint(size: const Size(14, 9), painter: _PinTail(color)),
       ],
@@ -524,7 +598,11 @@ class _SightingPopup extends StatelessWidget {
               color: color.withValues(alpha: 0.14),
               shape: BoxShape.circle,
             ),
-            child: Icon(mapCategoryIcon(sighting.categoryKey), size: 16, color: color),
+            child: Icon(
+              mapCategoryIcon(sighting.categoryKey),
+              size: 16,
+              color: color,
+            ),
           ),
           const SizedBox(width: 9),
           Flexible(

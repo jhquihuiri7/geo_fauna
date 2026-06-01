@@ -53,6 +53,8 @@ class FieldDataService {
     required List<EvidenceDraft> evidence,
     String? speciesName,
     String? notes,
+    double? latitude,
+    double? longitude,
   }) async {
     final recordId = _firestore.collection('fieldRecords').doc().id;
     try {
@@ -65,6 +67,8 @@ class FieldDataService {
         evidence: evidence,
         speciesName: speciesName,
         notes: notes,
+        latitude: latitude,
+        longitude: longitude,
       );
     } catch (_) {
       await _enqueueCreateFieldRecord(
@@ -76,6 +80,8 @@ class FieldDataService {
         evidence: evidence,
         speciesName: speciesName,
         notes: notes,
+        latitude: latitude,
+        longitude: longitude,
       );
       return recordId;
     }
@@ -90,10 +96,16 @@ class FieldDataService {
     required List<EvidenceDraft> evidence,
     String? speciesName,
     String? notes,
+    double? latitude,
+    double? longitude,
   }) async {
     final user = _requireUser();
     final author = await _authorSnapshot(user);
-    final location = await _bestEffortLocation();
+    // Si el usuario eligió una ubicación personalizada la resolvemos; si no,
+    // caemos al GPS actual (best-effort).
+    final location = (latitude != null && longitude != null)
+        ? await _resolveCustomLocation(latitude, longitude)
+        : await _bestEffortLocation();
     final recordRef = _firestore.collection('fieldRecords').doc(recordId);
 
     final uploadedEvidence = <Map<String, dynamic>>[];
@@ -817,6 +829,8 @@ class FieldDataService {
     required List<EvidenceDraft> evidence,
     String? speciesName,
     String? notes,
+    double? latitude,
+    double? longitude,
   }) async {
     final localEvidence = await _persistEvidenceForQueue(evidence);
     await OfflineSyncService.instance.enqueue(
@@ -830,6 +844,8 @@ class FieldDataService {
         'speciesName': speciesName,
         'notes': notes,
         'evidence': localEvidence,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       },
     );
   }
@@ -979,6 +995,8 @@ class FieldDataService {
           evidence: _evidenceDraftsFromQueue(payload['evidence']),
           speciesName: _stringValue(payload['speciesName']),
           notes: _stringValue(payload['notes']),
+          latitude: _doubleValue(payload['latitude']),
+          longitude: _doubleValue(payload['longitude']),
         );
       case 'updateFieldRecord':
         await _updateFieldRecordOnline(
@@ -1112,6 +1130,22 @@ class FieldDataService {
       return await _locationService.getCurrentLocation();
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Resuelve un punto elegido manualmente en el mapa a un [UserLocation] con
+  /// nombre de lugar. Si el reverse-geocoding falla conservamos las coordenadas.
+  Future<UserLocation> _resolveCustomLocation(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      return await _locationService.resolveLocation(
+        latitude: latitude,
+        longitude: longitude,
+      );
+    } catch (_) {
+      return UserLocation(latitude: latitude, longitude: longitude);
     }
   }
 
@@ -1420,6 +1454,12 @@ String? _stringValue(Object? value) {
   if (value == null) return null;
   final text = value.toString().trim();
   return text.isEmpty ? null : text;
+}
+
+double? _doubleValue(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
 }
 
 String? _firstNonEmpty(List<String?> values) {

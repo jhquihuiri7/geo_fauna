@@ -1,45 +1,29 @@
 import 'dart:convert';
-
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class CurrentWeather {
   const CurrentWeather({
     required this.time,
     required this.temperature,
-    required this.apparentTemperature,
     required this.humidity,
     required this.windSpeed,
     required this.isDay,
     required this.weatherCode,
-    required this.precipitation,
-    required this.rain,
-    required this.showers,
-    required this.snowfall,
     required this.cloudCover,
-    required this.pressureMsl,
-    required this.surfacePressure,
-    required this.windDirection,
-    required this.windGusts,
+    required this.rain,
     this.dayMinTemperature,
     this.dayMaxTemperature,
   });
 
   final DateTime time;
   final double temperature;
-  final double apparentTemperature;
   final int humidity;
   final double windSpeed;
   final bool isDay;
   final int weatherCode;
-  final double precipitation;
-  final double rain;
-  final double showers;
-  final double snowfall;
   final int cloudCover;
-  final double pressureMsl;
-  final double surfacePressure;
-  final int windDirection;
-  final double windGusts;
+  final double rain;
   final double? dayMinTemperature;
   final double? dayMaxTemperature;
 
@@ -51,20 +35,12 @@ class CurrentWeather {
     return CurrentWeather(
       time: _dateValue(c['time']) ?? DateTime.now(),
       temperature: _doubleValue(c['temperature_2m']),
-      apparentTemperature: _doubleValue(c['apparent_temperature']),
       humidity: _doubleValue(c['relative_humidity_2m']).round(),
       windSpeed: _doubleValue(c['wind_speed_10m']),
       isDay: _doubleValue(c['is_day']).round() == 1,
       weatherCode: _doubleValue(c['weather_code']).round(),
-      precipitation: _doubleValue(c['precipitation']),
-      rain: _doubleValue(c['rain']),
-      showers: _doubleValue(c['showers']),
-      snowfall: _doubleValue(c['snowfall']),
       cloudCover: _doubleValue(c['cloud_cover']).round(),
-      pressureMsl: _doubleValue(c['pressure_msl']),
-      surfacePressure: _doubleValue(c['surface_pressure']),
-      windDirection: _doubleValue(c['wind_direction_10m']).round(),
-      windGusts: _doubleValue(c['wind_gusts_10m']),
+      rain: _doubleValue(c['rain']),
     );
   }
 
@@ -73,20 +49,12 @@ class CurrentWeather {
     return CurrentWeather(
       time: time,
       temperature: _doubleAt(hourly, 'temperature_2m', index),
-      apparentTemperature: _doubleAt(hourly, 'apparent_temperature', index),
       humidity: _doubleAt(hourly, 'relative_humidity_2m', index).round(),
       windSpeed: _doubleAt(hourly, 'wind_speed_10m', index),
       isDay: _isDayHour(time),
       weatherCode: _doubleAt(hourly, 'weather_code', index).round(),
-      precipitation: _doubleAt(hourly, 'precipitation', index),
-      rain: _doubleAt(hourly, 'rain', index),
-      showers: _doubleAt(hourly, 'showers', index),
-      snowfall: _doubleAt(hourly, 'snowfall', index),
       cloudCover: _doubleAt(hourly, 'cloud_cover', index).round(),
-      pressureMsl: _doubleAt(hourly, 'pressure_msl', index),
-      surfacePressure: _doubleAt(hourly, 'surface_pressure', index),
-      windDirection: _doubleAt(hourly, 'wind_direction_10m', index).round(),
-      windGusts: _doubleAt(hourly, 'wind_gusts_10m', index),
+      rain: _doubleAt(hourly, 'rain', index),
     );
   }
 
@@ -94,20 +62,12 @@ class CurrentWeather {
     return CurrentWeather(
       time: time,
       temperature: temperature,
-      apparentTemperature: apparentTemperature,
       humidity: humidity,
       windSpeed: windSpeed,
       isDay: isDay,
       weatherCode: weatherCode,
-      precipitation: precipitation,
-      rain: rain,
-      showers: showers,
-      snowfall: snowfall,
       cloudCover: cloudCover,
-      pressureMsl: pressureMsl,
-      surfacePressure: surfacePressure,
-      windDirection: windDirection,
-      windGusts: windGusts,
+      rain: rain,
       dayMinTemperature: range?.minTemperature,
       dayMaxTemperature: range?.maxTemperature,
     );
@@ -191,24 +151,27 @@ class WeatherService {
     required double latitude,
     required double longitude,
   }) async {
-    final uri = Uri.parse(
-      'https://api.open-meteo.com/v1/forecast'
-      '?latitude=$latitude&longitude=$longitude'
-      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,'
-      'is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,'
-      'pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,'
-      'wind_gusts_10m'
-      '&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,'
-      'precipitation,rain,showers,snowfall,weather_code,cloud_cover,'
-      'pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,'
-      'wind_gusts_10m'
-      '&temperature_unit=celsius&wind_speed_unit=kmh'
-      '&precipitation_unit=mm&timezone=auto&forecast_days=15',
+    final uri = Uri.https(
+      'api.open-meteo.com',
+      '/v1/forecast',
+      {
+        'latitude': latitude.toString(),
+        'longitude': longitude.toString(),
+        'current': 'temperature_2m,relative_humidity_2m,is_day,rain,weather_code,cloud_cover,wind_speed_10m',
+        'hourly': 'temperature_2m,relative_humidity_2m,rain,weather_code,cloud_cover,wind_speed_10m',
+        'temperature_unit': 'celsius',
+        'wind_speed_unit': 'kmh',
+        'precipitation_unit': 'mm',
+        'timezone': 'auto',
+        'forecast_days': '15',
+      },
     );
 
+    debugPrint('🌤️ Weather request: ${uri.toString()}');
     final res = await http.get(uri);
+    debugPrint('🌤️ Weather response: ${res.statusCode}');
     if (res.statusCode != 200) {
-      throw Exception('Open-Meteo respondio ${res.statusCode}');
+      throw Exception('Open-Meteo respondio ${res.statusCode} - ${res.body}');
     }
 
     return WeatherForecast.fromJson(

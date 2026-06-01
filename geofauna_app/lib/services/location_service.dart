@@ -58,11 +58,20 @@ class LocationService {
       ),
     );
 
+    return resolveLocation(latitude: pos.latitude, longitude: pos.longitude);
+  }
+
+  /// Convierte coordenadas arbitrarias (p. ej. un punto elegido en el mapa) en
+  /// un [UserLocation] con nombre de lugar legible. No pide permisos ni usa el
+  /// GPS, así que sirve para resolver una ubicación personalizada.
+  Future<UserLocation> resolveLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
     String? locality;
     String? area;
     try {
-      final placemarks =
-          await placemarkFromCoordinates(pos.latitude, pos.longitude);
+      final placemarks = await placemarkFromCoordinates(latitude, longitude);
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
         locality = (p.locality?.isNotEmpty ?? false)
@@ -79,8 +88,8 @@ class LocationService {
     }
 
     return UserLocation(
-      latitude: pos.latitude,
-      longitude: pos.longitude,
+      latitude: latitude,
+      longitude: longitude,
       locality: locality,
       area: area,
     );

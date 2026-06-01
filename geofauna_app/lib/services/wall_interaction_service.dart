@@ -30,6 +30,7 @@ class WallComment {
     this.authorPhotoUrl,
     this.createdAt,
     this.isPending = false,
+    this.replies = const [],
   });
 
   final String id;
@@ -38,6 +39,7 @@ class WallComment {
   final String body;
   final DateTime? createdAt;
   final bool isPending;
+  final List<WallReply> replies;
 
   factory WallComment.fromSnapshot(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
@@ -62,6 +64,55 @@ class WallComment {
       createdAt: _toDate(data['createdAt']),
     );
   }
+}
+
+class WallReply {
+  const WallReply({
+    required this.id,
+    required this.authorName,
+    required this.body,
+    this.authorPhotoUrl,
+    this.createdAt,
+    this.isPending = false,
+  });
+
+  final String id;
+  final String authorName;
+  final String? authorPhotoUrl;
+  final String body;
+  final DateTime? createdAt;
+  final bool isPending;
+
+  factory WallReply.fromSnapshot(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final author = data['authorSnapshot'] is Map
+        ? data['authorSnapshot'] as Map
+        : null;
+    return WallReply(
+      id: doc.id,
+      authorName:
+          _firstNonEmpty([
+            _stringValue(author?['name']),
+            _stringValue(data['authorName']),
+          ]) ??
+          'Usuario sin nombre',
+      authorPhotoUrl: _firstNonEmpty([
+        _stringValue(author?['photoUrl']),
+        _stringValue(data['authorPhotoUrl']),
+      ]),
+      body: _stringValue(data['body']) ?? '',
+      createdAt: _toDate(data['createdAt']),
+    );
+  }
+}
+
+class QueuedWallReply {
+  const QueuedWallReply({required this.reply, required this.commit});
+
+  final WallReply reply;
+  final Future<void> commit;
 }
 
 class WallReaction {
@@ -149,6 +200,27 @@ class WallInteractionService {
           (snap) => snap.docs
               .map((doc) => WallComment.fromSnapshot(doc))
               .where((comment) => comment.body.isNotEmpty)
+              .toList(),
+        );
+  }
+
+  /// Respuestas (segundo nivel) de un comentario principal. Viven en la
+  /// subcoleccion `comments/{commentId}/replies` para que el modelo solo
+  /// permita dos niveles: una respuesta nunca tiene su propia subcoleccion.
+  Stream<List<WallReply>> repliesStream(
+    WallInteractionTarget target,
+    String commentId,
+  ) {
+    return _postRef(target)
+        .collection('comments')
+        .doc(commentId)
+        .collection('replies')
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((doc) => WallReply.fromSnapshot(doc))
+              .where((reply) => reply.body.isNotEmpty)
               .toList(),
         );
   }
@@ -285,6 +357,74 @@ class WallInteractionService {
 
       _updateCounters(tx, target, {
         'commentCount': FieldValue.increment(1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  Future<void> addReply(
+    WallInteractionTarget target,
+    String commentId,
+    String body,
+  ) async {
+    final queued = queueReply(target, commentId, body);
+    await queued.commit;
+  }
+
+  QueuedWallReply queueReply(
+    WallInteractionTarget target,
+    String commentId,
+    String body,
+  ) {
+    final user = _requireUser();
+    final text = body.trim();
+    if (text.isEmpty) {
+      throw ArgumentError.value(body, 'body', 'La respuesta esta vacia.');
+    }
+
+    final commentRef = _postRef(target).collection('comments').doc(commentId);
+    final replyRef = commentRef.collection('replies').doc();
+    final localAuthor = _localAuthorSnapshot(user);
+
+    return QueuedWallReply(
+      reply: WallReply(
+        id: replyRef.id,
+        authorName: localAuthor.name,
+        authorPhotoUrl: localAuthor.photoUrl,
+        body: text,
+        createdAt: DateTime.now(),
+        isPending: true,
+      ),
+      commit: _commitReply(target, text, commentRef, replyRef, user),
+    );
+  }
+
+  Future<void> _commitReply(
+    WallInteractionTarget target,
+    String text,
+    DocumentReference<Map<String, dynamic>> commentRef,
+    DocumentReference<Map<String, dynamic>> replyRef,
+    User user,
+  ) async {
+    final author = await _authorSnapshot(user);
+
+    await _firestore.runTransaction((tx) async {
+      final comment = await tx.get(commentRef);
+      if (!comment.exists) throw Exception('El comentario ya no existe.');
+
+      tx.set(replyRef, {
+        'authorId': user.uid,
+        'authorName': author.name,
+        'authorPhotoUrl': author.photoUrl,
+        'authorSnapshot': author.toMap(),
+        'body': text,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Contador propio del comentario; el `commentCount` de la publicacion
+      // se deja para los comentarios de primer nivel.
+      tx.update(commentRef, {
+        'replyCount': FieldValue.increment(1),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     });

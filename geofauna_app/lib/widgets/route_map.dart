@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../services/map_tile_service.dart';
 import '../theme/app_colors.dart';
 
 /// Mapa estático y "bonito" de un recorrido ya grabado: dibuja la ruta completa
@@ -31,6 +32,16 @@ class RouteMapPreview extends StatelessWidget {
       return _placeholder(eco, 'Recorrido sin puntos GPS');
     }
 
+    // Filtra puntos con coordenadas inválidas
+    final validPoints = [
+      for (final p in points)
+        if (p.latitude.isFinite && p.longitude.isFinite) p,
+    ];
+
+    if (validPoints.isEmpty) {
+      return _placeholder(eco, 'Coordenadas GPS inválidas');
+    }
+
     final flags = interactive
         ? (InteractiveFlag.pinchZoom |
               InteractiveFlag.drag |
@@ -38,10 +49,10 @@ class RouteMapPreview extends StatelessWidget {
         : InteractiveFlag.none;
 
     // Un solo punto: centramos en él; varios: ajustamos a los límites.
-    final cameraFit = points.length == 1
+    final cameraFit = validPoints.length == 1
         ? null
         : CameraFit.bounds(
-            bounds: LatLngBounds.fromPoints(points),
+            bounds: LatLngBounds.fromPoints(validPoints),
             padding: const EdgeInsets.all(28),
             maxZoom: 17,
           );
@@ -52,52 +63,49 @@ class RouteMapPreview extends StatelessWidget {
         height: height,
         child: FlutterMap(
           options: MapOptions(
-            initialCenter: points.first,
+            initialCenter: validPoints.first,
             initialZoom: 15,
             initialCameraFit: cameraFit,
             interactionOptions: InteractionOptions(flags: flags),
           ),
           children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.geofauna.app',
-              tileProvider: NetworkTileProvider(),
-            ),
-            if (points.length >= 2)
+            MapTileService.baseTileLayer(),
+            if (validPoints.length >= 2)
               PolylineLayer(
                 polylines: [
                   Polyline(
-                    points: points,
-                    strokeWidth: 5,
+                    points: validPoints,
+                    strokeWidth: 2.5,
                     color: eco.primary,
                     borderStrokeWidth: 2,
                     borderColor: Colors.white.withValues(alpha: 0.85),
+                    pattern: StrokePattern.dashed(segments: const [6, 6]),
                   ),
                 ],
               ),
             MarkerLayer(
               markers: [
                 Marker(
-                  point: points.first,
-                  width: 20,
-                  height: 20,
+                  point: validPoints.first,
+                  width: 10,
+                  height: 10,
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(color: eco.primary, width: 4),
+                      border: Border.all(color: eco.primary, width: 2),
                     ),
                   ),
                 ),
                 Marker(
-                  point: points.last,
-                  width: 40,
-                  height: 40,
+                  point: validPoints.last,
+                  width: 20,
+                  height: 20,
                   child: Container(
                     decoration: BoxDecoration(
                       color: eco.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
+                      border: Border.all(color: Colors.white, width: 2),
                       boxShadow: [
                         BoxShadow(
                           color: eco.primary.withValues(alpha: 0.4),
@@ -109,7 +117,7 @@ class RouteMapPreview extends StatelessWidget {
                     child: const Icon(
                       Icons.flag_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: 10,
                     ),
                   ),
                 ),

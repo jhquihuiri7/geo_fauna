@@ -14,6 +14,7 @@ import 'package:video_player/video_player.dart';
 import '../services/auth_service.dart';
 import '../services/calendar_service.dart';
 import '../services/field_data_service.dart';
+import '../services/map_tile_service.dart';
 import '../services/wall_interaction_service.dart';
 import '../services/wall_media_cache_service.dart';
 import '../theme/app_colors.dart';
@@ -2289,11 +2290,7 @@ class _LocationMapSheet extends StatelessWidget {
             ),
           ),
           children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.geofauna.app',
-              tileProvider: NetworkTileProvider(),
-            ),
+            MapTileService.baseTileLayer(),
             MarkerLayer(
               markers: [
                 Marker(
@@ -2884,9 +2881,7 @@ class _InteractionBarState extends State<_InteractionBar> {
                       icon: liked
                           ? Icons.favorite_rounded
                           : Icons.favorite_border_rounded,
-                      label: likeCount > 0
-                          ? '$likeCount Me gusta'
-                          : 'Me gusta',
+                      label: likeCount > 0 ? '$likeCount Me gusta' : 'Me gusta',
                       active: liked,
                       activeColor: _likeColor,
                       onTap: pendingLike == null
@@ -3020,11 +3015,7 @@ class _ReactionSummary extends StatelessWidget {
                   const _LikeBubble(size: 24),
                 const SizedBox(width: 9),
                 Expanded(child: _likeText(eco, leading?.authorName)),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: eco.outline,
-                ),
+                Icon(Icons.chevron_right_rounded, size: 18, color: eco.outline),
               ],
             ),
           ),
@@ -3099,11 +3090,7 @@ class _LikeBubble extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(
-        Icons.favorite_rounded,
-        size: size * 0.56,
-        color: _likeColor,
-      ),
+      child: Icon(Icons.favorite_rounded, size: size * 0.56, color: _likeColor),
     );
   }
 }
@@ -3126,7 +3113,11 @@ class _ReactionAvatar extends StatelessWidget {
         child: _CachedNetworkMediaImage(url: photoUrl, fit: BoxFit.cover),
       );
     }
-    return Avatar(name: reaction.authorName, tone: AvatarTone.slate, size: size);
+    return Avatar(
+      name: reaction.authorName,
+      tone: AvatarTone.slate,
+      size: size,
+    );
   }
 }
 
@@ -3282,7 +3273,6 @@ class _ReactorsList extends StatelessWidget {
       },
     );
   }
-
 }
 
 class _CommentsSheet extends StatefulWidget {
@@ -3297,7 +3287,12 @@ class _CommentsSheet extends StatefulWidget {
 
 class _CommentsSheetState extends State<_CommentsSheet> {
   final _controller = TextEditingController();
+  final _focus = FocusNode();
   late int _visibleCommentCount;
+
+  /// Comentario principal al que se esta respondiendo, o `null` si el texto
+  /// que se escribe es un comentario nuevo de primer nivel.
+  WallComment? _replyingTo;
 
   @override
   void initState() {
@@ -3308,6 +3303,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
   @override
   void dispose() {
     _controller.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
@@ -3384,13 +3380,17 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                     return ListView.separated(
                       itemCount: visibleComments.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) =>
-                          _CommentRow(comment: visibleComments[index]),
+                      itemBuilder: (context, index) => _CommentRow(
+                        comment: visibleComments[index],
+                        target: widget.target,
+                        onReply: _startReply,
+                      ),
                     );
                   },
                 ),
               ),
               const SizedBox(height: 12),
+              if (_replyingTo != null) _replyBanner(eco),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -3405,13 +3405,16 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                     Expanded(
                       child: TextField(
                         controller: _controller,
+                        focusNode: _focus,
                         minLines: 1,
                         maxLines: 3,
                         style: TextStyle(color: eco.onSurface, fontSize: 14),
                         decoration: InputDecoration(
                           isCollapsed: true,
                           border: InputBorder.none,
-                          hintText: 'Escribe un comentario...',
+                          hintText: _replyingTo == null
+                              ? 'Escribe un comentario...'
+                              : 'Respondiendo a ${_replyingTo!.authorName}...',
                           hintStyle: TextStyle(
                             color: eco.outline,
                             fontSize: 14,
@@ -3436,10 +3439,57 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     );
   }
 
+  void _startReply(WallComment comment) {
+    // No se puede responder a un comentario que aun no se confirma en el
+    // servidor (no tiene id real todavia).
+    if (comment.isPending) return;
+    setState(() => _replyingTo = comment);
+    _focus.requestFocus();
+  }
+
+  Widget _replyBanner(AppColors eco) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 6, right: 6),
+      child: Row(
+        children: [
+          Icon(Icons.reply_rounded, size: 16, color: eco.primary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Respondiendo a ${_replyingTo!.authorName}',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () => setState(() => _replyingTo = null),
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 16, color: eco.outline),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _send() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final replyingTo = _replyingTo;
+    if (replyingTo != null) {
+      _sendReply(replyingTo, text);
+    } else {
+      _sendComment(text);
+    }
+  }
 
+  void _sendComment(String text) {
     late final QueuedWallComment queued;
     try {
       queued = WallInteractionService.instance.queueComment(
@@ -3473,6 +3523,45 @@ class _CommentsSheetState extends State<_CommentsSheet> {
             setState(() {
               if (_visibleCommentCount > 0) _visibleCommentCount -= 1;
             });
+            _showWallError(context, error);
+          }),
+    );
+  }
+
+  void _sendReply(WallComment comment, String text) {
+    late final QueuedWallReply queued;
+    try {
+      queued = WallInteractionService.instance.queueReply(
+        widget.target,
+        comment.id,
+        text,
+      );
+    } catch (error) {
+      _showWallError(context, error);
+      return;
+    }
+
+    _controller.clear();
+    setState(() => _replyingTo = null);
+    _wallOptimism.addPendingReply(widget.target, comment.id, queued.reply);
+
+    unawaited(
+      queued.commit
+          .then((_) => Future<void>.delayed(const Duration(milliseconds: 500)))
+          .then(
+            (_) => _wallOptimism.removePendingReply(
+              widget.target,
+              comment.id,
+              queued.reply.id,
+            ),
+          )
+          .catchError((Object error) {
+            _wallOptimism.removePendingReply(
+              widget.target,
+              comment.id,
+              queued.reply.id,
+            );
+            if (!mounted) return;
             _showWallError(context, error);
           }),
     );
@@ -3534,69 +3623,102 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 }
 
 class _CommentRow extends StatelessWidget {
-  const _CommentRow({required this.comment});
+  const _CommentRow({
+    required this.comment,
+    required this.target,
+    required this.onReply,
+  });
 
   final WallComment comment;
+  final WallInteractionTarget target;
+  final ValueChanged<WallComment> onReply;
 
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    return Opacity(
-      opacity: comment.isPending ? 0.72 : 1,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _commentAvatar(),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: eco.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Opacity(
+          opacity: comment.isPending ? 0.72 : 1,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _commentAvatar(),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: eco.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          comment.authorName,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: eco.onSurface,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              comment.authorName,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: eco.onSurface,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
+                          if (comment.createdAt != null)
+                            Text(
+                              _relativeTime(comment.createdAt!),
+                              style: TextStyle(
+                                color: eco.onSurfaceVariant,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        comment.body,
+                        style: TextStyle(
+                          color: eco.onSurface,
+                          fontSize: 13,
+                          height: 1.35,
                         ),
                       ),
-                      if (comment.createdAt != null)
-                        Text(
-                          _relativeTime(comment.createdAt!),
-                          style: TextStyle(
-                            color: eco.onSurfaceVariant,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    comment.body,
-                    style: TextStyle(
-                      color: eco.onSurface,
-                      fontSize: 13,
-                      height: 1.35,
-                    ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Solo los comentarios de primer nivel ofrecen "Responder"; las
+        // respuestas no, para que la conversacion no pase de dos niveles.
+        if (!comment.isPending)
+          Padding(
+            padding: const EdgeInsets.only(left: 44, top: 4),
+            child: InkWell(
+              onTap: () => onReply(comment),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Text(
+                  'Responder',
+                  style: TextStyle(
+                    color: eco.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ],
-      ),
+        if (!comment.isPending) _RepliesList(target: target, comment: comment),
+      ],
     );
   }
 
@@ -3616,6 +3738,152 @@ class _CommentRow extends StatelessWidget {
       );
     }
     return Avatar(name: comment.authorName, tone: AvatarTone.teal, size: 34);
+  }
+}
+
+/// Lista de respuestas (segundo nivel) de un comentario. Combina las respuestas
+/// del servidor con las pendientes (optimistas) de [_wallOptimism].
+class _RepliesList extends StatelessWidget {
+  const _RepliesList({required this.target, required this.comment});
+
+  final WallInteractionTarget target;
+  final WallComment comment;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _wallOptimism,
+      builder: (context, _) {
+        return StreamBuilder<List<WallReply>>(
+          stream: WallInteractionService.instance.repliesStream(
+            target,
+            comment.id,
+          ),
+          builder: (context, snap) {
+            final server = snap.data ?? const <WallReply>[];
+            final replies = _wallOptimism.repliesWithPending(
+              target,
+              comment.id,
+              server,
+            );
+
+            // Cuando una respuesta pendiente ya llego del servidor, la
+            // limpiamos del cache optimista para no mostrarla dos veces.
+            if (server.isNotEmpty &&
+                _wallOptimism.hasPendingReplies(target, comment.id)) {
+              final serverIds = server.map((reply) => reply.id).toSet();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _wallOptimism.removePendingReplies(
+                  target,
+                  comment.id,
+                  serverIds,
+                );
+              });
+            }
+
+            if (replies.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(left: 44, top: 8),
+              child: Column(
+                children: [
+                  for (final reply in replies)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _ReplyRow(reply: reply),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ReplyRow extends StatelessWidget {
+  const _ReplyRow({required this.reply});
+
+  final WallReply reply;
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return Opacity(
+      opacity: reply.isPending ? 0.72 : 1,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _replyAvatar(),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: eco.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          reply.authorName,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: eco.onSurface,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      if (reply.createdAt != null)
+                        Text(
+                          _relativeTime(reply.createdAt!),
+                          style: TextStyle(
+                            color: eco.onSurfaceVariant,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    reply.body,
+                    style: TextStyle(
+                      color: eco.onSurface,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _replyAvatar() {
+    final photoUrl = reply.authorPhotoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          image: DecorationImage(
+            image: NetworkImage(photoUrl),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+    return Avatar(name: reply.authorName, tone: AvatarTone.teal, size: 28);
   }
 }
 
@@ -3693,6 +3961,9 @@ void _showWallError(BuildContext context, Object error) {
 class _WallOptimism extends ChangeNotifier {
   final _reactions = <String, _OptimisticReaction>{};
   final _comments = <String, List<WallComment>>{};
+
+  /// Respuestas pendientes por comentario, con clave `coleccion/post/comentario`.
+  final _replies = <String, List<WallReply>>{};
 
   _OptimisticReaction? like(WallInteractionTarget target) {
     return _reactions[_targetKey(target)];
@@ -3782,6 +4053,69 @@ class _WallOptimism extends ChangeNotifier {
     if (comments.isEmpty) _comments.remove(key);
     if (comments.length != before) notifyListeners();
   }
+
+  bool hasPendingReplies(WallInteractionTarget target, String commentId) {
+    return _replies[_targetKeyForComment(target, commentId)]?.isNotEmpty ??
+        false;
+  }
+
+  List<WallReply> repliesWithPending(
+    WallInteractionTarget target,
+    String commentId,
+    List<WallReply> serverReplies,
+  ) {
+    final pending = _replies[_targetKeyForComment(target, commentId)];
+    if (pending == null || pending.isEmpty) return serverReplies;
+
+    final serverIds = serverReplies.map((reply) => reply.id).toSet();
+    return [
+      ...serverReplies,
+      for (final reply in pending)
+        if (!serverIds.contains(reply.id)) reply,
+    ];
+  }
+
+  void addPendingReply(
+    WallInteractionTarget target,
+    String commentId,
+    WallReply reply,
+  ) {
+    final key = _targetKeyForComment(target, commentId);
+    final replies = _replies.putIfAbsent(key, () => <WallReply>[]);
+    replies.add(reply);
+    notifyListeners();
+  }
+
+  void removePendingReply(
+    WallInteractionTarget target,
+    String commentId,
+    String replyId,
+  ) {
+    final key = _targetKeyForComment(target, commentId);
+    final replies = _replies[key];
+    if (replies == null) return;
+
+    replies.removeWhere((reply) => reply.id == replyId);
+    if (replies.isEmpty) _replies.remove(key);
+    notifyListeners();
+  }
+
+  void removePendingReplies(
+    WallInteractionTarget target,
+    String commentId,
+    Set<String> serverIds,
+  ) {
+    if (serverIds.isEmpty) return;
+
+    final key = _targetKeyForComment(target, commentId);
+    final replies = _replies[key];
+    if (replies == null) return;
+
+    final before = replies.length;
+    replies.removeWhere((reply) => serverIds.contains(reply.id));
+    if (replies.isEmpty) _replies.remove(key);
+    if (replies.length != before) notifyListeners();
+  }
 }
 
 class _OptimisticReaction {
@@ -3813,6 +4147,12 @@ void _removeOneLikeCount(Map<String, int> counts) {
 
 String _targetKey(WallInteractionTarget target) {
   return '${target.collection}/${target.id}';
+}
+
+/// Clave para el cache optimista de respuestas: identifica un comentario
+/// concreto dentro de una publicacion (`coleccion/postId/commentId`).
+String _targetKeyForComment(WallInteractionTarget target, String commentId) {
+  return '${target.collection}/${target.id}/$commentId';
 }
 
 class _WallEvent {

@@ -13,7 +13,27 @@
       "Bash(git -C c:/geofauna/geofauna_app ls-files --others --exclude-standard)",
       "Bash(git -C c:/geofauna/geofauna_app diff pubspec.yaml lib/services/auth_service.dart android/app/src/main/AndroidManifest.xml)",
       "Bash(git -C c:/geofauna/geofauna_app diff lib/main.dart)",
-      "Read(//c/geofauna/**)"
+      "Read(//c/geofauna/**)",
+      "Bash(flutter devices *)",
+      "Bash(flutter run *)",
+      "Bash(timeout 30 type \"C:\\\\Users\\\\JHONAT~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--geofauna-geofauna-app\\\\f623fd80-b22b-43eb-bcef-fd84cbd1c039\\\\tasks\\\\b2ffppn8z.output\")",
+      "PowerShell(Set-Location \"c:\\\\geofauna\\\\geofauna_app\"; flutter run -d RF8X20WLA7F 2>&1 | Tee-Object -FilePath \"$env:TEMP\\\\flutter_run.log\")",
+      "Bash(findstr /n \"Polyline createDashed StrokePattern pattern\")",
+      "PowerShell(flutter analyze lib\\\\widgets\\\\route_map.dart lib\\\\screens\\\\tracking_screen.dart)",
+      "Bash(git -C c:/geofauna diff -- geofauna_app/lib/services/weather_service.dart geofauna_app/lib/widgets/weather_header.dart)",
+      "Bash(git -C c:/geofauna diff -- geofauna_app/lib/screens/dashboard_screen.dart)",
+      "Bash(git -C c:/geofauna diff -- geofauna_app/lib/screens/nuevo_hub_screen.dart)",
+      "PowerShell(flutter analyze lib 2>&1)",
+      "Bash(tee /tmp/flutter_logs.txt)",
+      "Read(//tmp/**)",
+      "Bash(adb -s RF8X20WLA7F shell screencap -p /sdcard/screenshot.png)",
+      "Bash(adb -s RF8X20WLA7F pull /sdcard/screenshot.png /tmp/dashboard_screenshot.png)",
+      "Bash(pkill -f \"flutter run\")",
+      "PowerShell(\\(Get-Content \"c:\\\\geofauna\\\\geofauna_app\\\\lib\\\\screens\\\\muro_screen.dart\" | Measure-Object -Line\\).Lines)",
+      "Bash(echo \"EXIT=$?\")"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

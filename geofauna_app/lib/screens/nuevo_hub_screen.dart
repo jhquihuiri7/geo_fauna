@@ -1,10 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 
 import '../services/calendar_service.dart';
 import '../services/field_data_service.dart';
+import '../services/location_service.dart';
+import '../services/map_tile_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import '../widgets/live_map.dart';
@@ -91,6 +95,7 @@ class _FieldRecordState extends State<_FieldRecord> {
   late TimeOfDay _recordTime = TimeOfDay.fromDateTime(DateTime.now());
   bool _saving = false;
   final List<EvidenceDraft> _evidence = [];
+  LatLng? _selectedLocation;
 
   static const _cats = [
     ['Fauna', '🐢'],
@@ -171,39 +176,47 @@ class _FieldRecordState extends State<_FieldRecord> {
         const SizedBox(height: 24),
         _sectionLabel(eco, 'Ubicación del Registro'),
         const SizedBox(height: 8),
-        LiveMap(
-          height: 168,
-          borderRadius: 28,
-          zoom: 15,
-          overlays: [
-            Positioned(
-              bottom: 12,
-              left: 12,
-              child: Glass(
-                borderRadius: BorderRadius.circular(18),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.my_location, size: 14, color: eco.primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      'UBICACIÓN ACTUAL',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
-                        color: eco.onSurface,
+        GestureDetector(
+          onTap: _saving ? null : _openLocationPicker,
+          child: LiveMap(
+            height: 168,
+            borderRadius: 28,
+            zoom: 15,
+            location: _selectedLocation,
+            overlays: [
+              Positioned(
+                bottom: 12,
+                left: 12,
+                child: Glass(
+                  borderRadius: BorderRadius.circular(18),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.my_location, size: 14, color: eco.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        _selectedLocation != null
+                            ? 'UBICACIÓN EDITADA'
+                            : 'UBICACIÓN ACTUAL',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                          color: _selectedLocation != null
+                              ? eco.tertiary
+                              : eco.onSurface,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 24),
         _sectionLabel(eco, 'Seleccionar Categoría'),
@@ -459,6 +472,31 @@ class _FieldRecordState extends State<_FieldRecord> {
     );
   }
 
+  Future<void> _openLocationPicker() async {
+    final location = await LocationService().getCurrentLocation();
+    final selectedLoc =
+        _selectedLocation ?? LatLng(location.latitude, location.longitude);
+
+    if (!mounted) return;
+
+    final result = await showModalBottomSheet<LatLng>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.eco.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => _LocationPickerSheet(
+        initialLocation: selectedLoc,
+        currentLocation: LatLng(location.latitude, location.longitude),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() => _selectedLocation = result);
+    }
+  }
+
   Future<void> _pickEvidence() async {
     final choice = await _evidenceChoice(context);
     if (choice == null) return;
@@ -516,6 +554,8 @@ class _FieldRecordState extends State<_FieldRecord> {
         evidence: List.of(_evidence),
         speciesName: _speciesController.text,
         notes: _notesController.text,
+        latitude: _selectedLocation?.latitude,
+        longitude: _selectedLocation?.longitude,
       );
       if (!mounted) return;
       setState(() {
@@ -527,6 +567,7 @@ class _FieldRecordState extends State<_FieldRecord> {
         _publish = true;
         _recordDate = DateTime.now();
         _recordTime = TimeOfDay.fromDateTime(DateTime.now());
+        _selectedLocation = null;
       });
       _showSnack(context, 'Reporte guardado correctamente.');
       widget.onSaved?.call(publishToWall ? 'fieldRecords/$recordId' : null);
@@ -1428,6 +1469,162 @@ Future<_EvidenceChoice?> _evidenceChoice(BuildContext context) {
       );
     },
   );
+}
+
+class _LocationPickerSheet extends StatefulWidget {
+  const _LocationPickerSheet({
+    required this.initialLocation,
+    required this.currentLocation,
+  });
+
+  final LatLng initialLocation;
+  final LatLng currentLocation;
+
+  @override
+  State<_LocationPickerSheet> createState() => _LocationPickerSheetState();
+}
+
+class _LocationPickerSheetState extends State<_LocationPickerSheet> {
+  late LatLng _selectedPoint = widget.initialLocation;
+  final _mapController = MapController();
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: eco.outlineVariant,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cambiar Ubicación',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: eco.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Haz tap en el mapa para seleccionar ubicación',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: eco.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(40, 40),
+                      ),
+                      child: Icon(Icons.close, color: eco.outline),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ClipRRect(
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _selectedPoint,
+                  initialZoom: 15,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.all,
+                  ),
+                  onTap: (tapPosition, point) {
+                    setState(() => _selectedPoint = point);
+                  },
+                ),
+                children: [
+                  MapTileService.baseTileLayer(),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _selectedPoint,
+                        width: 40,
+                        height: 40,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: eco.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: eco.primary.withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.location_on,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Row(
+              children: [
+                TextButton(
+                  onPressed: () =>
+                      setState(() => _selectedPoint = widget.currentLocation),
+                  child: Text(
+                    'Ubicación Actual',
+                    style: TextStyle(color: eco.primary),
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancelar', style: TextStyle(color: eco.outline)),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, _selectedPoint),
+                  child: const Text('Confirmar'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 Widget _evidenceOption(

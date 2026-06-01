@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../services/location_service.dart';
+import '../services/marine_service.dart';
 import '../services/weather_service.dart';
 import '../theme/app_colors.dart';
 import 'eco_widgets.dart';
 
 /// Ubicación + clima actual ya resueltos.
 class WeatherData {
-  const WeatherData(this.location, this.forecast);
+  const WeatherData(this.location, this.forecast, [this.marineForecast]);
 
   final UserLocation location;
   final WeatherForecast forecast;
+  final MarineForecast? marineForecast;
 
   CurrentWeather get weather => forecast.current;
 }
@@ -39,11 +41,23 @@ class _WeatherBuilderState extends State<WeatherBuilder> {
 
   Future<WeatherData> _load() async {
     final loc = await LocationService().getCurrentLocation();
-    final forecast = await WeatherService().fetchForecast(
+    final weatherFuture = WeatherService().fetchForecast(
       latitude: loc.latitude,
       longitude: loc.longitude,
     );
-    return WeatherData(loc, forecast);
+    final marineFuture = (() async {
+      try {
+        return await MarineService().fetchForecast(
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        );
+      } catch (_) {
+        return null;
+      }
+    })();
+    final forecast = await weatherFuture;
+    final marine = await marineFuture;
+    return WeatherData(loc, forecast, marine);
   }
 
   void _retry() {
@@ -75,30 +89,13 @@ Widget _weatherMetrics(
     children: [
       if (min != null && max != null)
         _metric(eco, Icons.thermostat, '${min.round()}-${max.round()}°C'),
-      _metric(
-        eco,
-        Icons.device_thermostat,
-        'SENS ${weather.apparentTemperature.round()}°',
-      ),
       _metric(eco, Icons.water_drop, '${weather.humidity}% HUM'),
       _metric(eco, Icons.air, '${weather.windSpeed.round()} KM/H'),
-      _metric(eco, Icons.speed, 'RACH ${weather.windGusts.round()}'),
-      _metric(eco, Icons.explore, '${weather.windDirection}°'),
-      _metric(eco, Icons.grain, '${_oneDecimal(weather.precipitation)} MM'),
       if (!compact) ...[
         _metric(eco, Icons.water, 'LLUV ${_oneDecimal(weather.rain)}'),
-        _metric(eco, Icons.waves, 'CHUB ${_oneDecimal(weather.showers)}'),
-        _metric(eco, Icons.ac_unit, 'NIEVE ${_oneDecimal(weather.snowfall)}'),
         _metric(eco, Icons.cloud, '${weather.cloudCover}% NUBES'),
-        _metric(eco, Icons.compress, '${weather.pressureMsl.round()} HPA'),
-        _metric(
-          eco,
-          Icons.vertical_align_bottom,
-          '${weather.surfacePressure.round()} HPA SUP',
-        ),
       ] else ...[
         _metric(eco, Icons.cloud, '${weather.cloudCover}% NUBES'),
-        _metric(eco, Icons.compress, '${weather.pressureMsl.round()} HPA'),
       ],
     ],
   );
@@ -291,6 +288,9 @@ class WeatherHeader extends StatelessWidget {
     }
 
     final w = snap.data!.weather;
+    final now = DateTime.now();
+    final wave = snap.data!.marineForecast?.atHour(now);
+    final tide = snap.data!.marineForecast?.tideAt(now);
     return EcoCard(
       radius: 28,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -332,8 +332,7 @@ class WeatherHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'HUMEDAD ${w.humidity}% · '
-                  'VIENTO ${w.windSpeed.round()} KM/H · '
-                  'SENS. ${w.apparentTemperature.round()}°',
+                  'VIENTO ${w.windSpeed.round()} KM/H',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -343,6 +342,32 @@ class WeatherHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 _weatherMetrics(eco, w),
+                if (wave != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'OLEAJE ${_oneDecimal(wave.waveHeight)} M  ·  '
+                    'PER. ${wave.wavePeriod.round()}S  ·  '
+                    '${wave.directionLabel}  ·  ${wave.waveCondition.toUpperCase()}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: eco.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                if (tide != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'MAREA ${tide.arrow} ${tide.label}  ·  ${tide.heightLabel}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: eco.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

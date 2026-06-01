@@ -1,17 +1,33 @@
 import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import 'dashboard_screen.dart' show SpeciesRow;
 
-/// Reporte — detailed impact report (screens-extra.jsx).
-class ReporteScreen extends StatelessWidget {
+class ReporteScreen extends StatefulWidget {
   const ReporteScreen({super.key});
+
+  @override
+  State<ReporteScreen> createState() => _ReporteScreenState();
+}
+
+class _ReporteScreenState extends State<ReporteScreen> {
+  late final FirebaseFirestore _firestore;
+
+  @override
+  void initState() {
+    super.initState();
+    _firestore = FirebaseFirestore.instance;
+  }
 
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
+    final thirtyDaysAgo =
+        DateTime.now().subtract(const Duration(days: 30));
+
     return Scaffold(
       backgroundColor: eco.surface,
       body: SafeArea(
@@ -24,232 +40,435 @@ class ReporteScreen extends StatelessWidget {
                   tone: ChipTone.slate, small: true),
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-                children: [
-                  Row(
-                    children: const [
-                      Expanded(
-                          child: _Kpi(
-                              label: 'Total Sightings',
-                              value: '15,402',
-                              delta: '+4.2%')),
-                      SizedBox(width: 12),
-                      Expanded(
-                          child: _Kpi(
-                              label: 'Species Recorded',
-                              value: '87',
-                              delta: 'Stable',
-                              deltaTone: ChipTone.tertiary)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: const [
-                      Expanded(
-                          child: _Kpi(
-                              label: 'Data Precision',
-                              value: '94.2%',
-                              delta: '✓')),
-                      SizedBox(width: 12),
-                      Expanded(
-                          child: _Kpi(
-                              label: 'Area Covered', value: '1.2k km²')),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  GradientPanel(
-                    radius: 28,
-                    dots: true,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Text('🌱',
-                              style: TextStyle(fontSize: 22)),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text('Logro de Conservación del Mes',
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                color: Colors.white)),
-                        const SizedBox(height: 8),
-                        Text.rich(
-                          TextSpan(
-                            style: const TextStyle(
-                                fontSize: 14,
-                                height: 1.4,
-                                color: Colors.white),
-                            children: const [
-                              TextSpan(text: 'Reducción del '),
-                              TextSpan(
-                                  text: '12% en incidentes de basura',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w900)),
-                              TextSpan(
-                                  text:
-                                      ' en zonas críticas gracias a las nuevas patrullas comunitarias en Bahía Academia.'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  EcoCard(
-                    radius: 28,
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text('Tendencia de Avistamientos',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: eco.onSurface)),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestore
+                    .collection('fieldRecords')
+                    .where('createdAt',
+                        isGreaterThanOrEqualTo: Timestamp.fromDate(thirtyDaysAgo))
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(
+                      child: Text('Sin datos disponibles',
+                          style: TextStyle(color: eco.onSurface)),
+                    );
+                  }
+
+                  final records = snapshot.data!.docs;
+                  final totalSightings = records.fold<int>(
+                      0, (acc, doc) => acc + (doc['quantity'] as int? ?? 1));
+                  final uniqueSpecies = records
+                      .map((doc) => doc['speciesName'] as String?)
+                      .where((s) => s != null && s.isNotEmpty)
+                      .toSet()
+                      .length;
+                  final areaCovered = _calculateAreaCovered(records);
+
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _Kpi(
+                              label: 'Total de Avistamientos',
+                              value: _formatNumber(totalSightings),
+                              delta: '+4.2%',
                             ),
-                            const SizedBox(width: 8),
-                            Icon(Icons.more_horiz, color: eco.outline),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 150,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              _bar(eco, 50, 'SEM 01'),
-                              _bar(eco, 70, 'SEM 02'),
-                              _bar(eco, 60, 'SEM 03',
-                                  highlight: true, peak: '1.2k'),
-                              _bar(eco, 80, 'SEM 03'),
-                              _bar(eco, 55, 'SEM 04'),
-                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  EcoCard(
-                    radius: 28,
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Text('Distribución de Hallazgos',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: eco.onSurface)),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: 170,
-                          height: 170,
-                          child: CustomPaint(painter: _DonutChartPainter(eco)),
-                        ),
-                        const SizedBox(height: 16),
-                        _legend(eco, eco.primary, 'Fauna', '60%'),
-                        const SizedBox(height: 10),
-                        _legend(eco, eco.tertiary, 'Flora', '25%'),
-                        const SizedBox(height: 10),
-                        _legend(
-                            eco, const Color(0xFFDC2626), 'Incidentes', '15%'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  EcoCard(
-                    radius: 28,
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Especies con Mayor Impacto',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: eco.onSurface)),
-                        const SizedBox(height: 16),
-                        SpeciesRow(
-                            name: 'Tortuga Gigante',
-                            emoji: '🐢',
-                            pts: '4,820',
-                            pct: 95,
-                            color: eco.primary),
-                        const SizedBox(height: 16),
-                        SpeciesRow(
-                            name: 'Iguana Marina',
-                            emoji: '🦎',
-                            pts: '3,510',
-                            pct: 70,
-                            color: const Color(0xFF10B981)),
-                        const SizedBox(height: 16),
-                        SpeciesRow(
-                            name: 'Piquero Patas Azules',
-                            emoji: '🐦',
-                            pts: '2,105',
-                            pct: 42,
-                            color: eco.tertiary),
-                        const SizedBox(height: 16),
-                        SpeciesRow(
-                            name: 'Lobo Marino',
-                            emoji: '🦭',
-                            pts: '1,920',
-                            pct: 38,
-                            color: const Color(0xFFF59E0B)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text('Actividad por Zonas',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: eco.onSurface)),
-                  ),
-                  const SizedBox(height: 12),
-                  const _ZoneRow(
-                      name: 'Santa Cruz',
-                      visits: '6.2k',
-                      incidents: '12',
-                      status: 'Alta',
-                      tone: ChipTone.warning),
-                  const SizedBox(height: 12),
-                  const _ZoneRow(
-                      name: 'Isabela',
-                      visits: '4.8k',
-                      incidents: '08',
-                      status: 'Media',
-                      tone: ChipTone.tertiary),
-                  const SizedBox(height: 12),
-                  const _ZoneRow(
-                      name: 'San Cristóbal',
-                      visits: '3.4k',
-                      incidents: '05',
-                      status: 'Estable',
-                      tone: ChipTone.emerald),
-                ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _Kpi(
+                              label: 'Especies Registradas',
+                              value: uniqueSpecies.toString(),
+                              delta: 'Estable',
+                              deltaTone: ChipTone.tertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _Kpi(
+                              label: 'Área Cubierta',
+                              value: areaCovered,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildConservationPanel(context, eco),
+                      const SizedBox(height: 16),
+                      _buildTrendPanel(context, eco, records),
+                      const SizedBox(height: 16),
+                      _buildDistributionPanel(context, eco, records),
+                      const SizedBox(height: 16),
+                      _buildTopSpeciesPanel(context, eco, records),
+                      const SizedBox(height: 16),
+                      _buildZoneActivityPanel(context, eco, records),
+                    ],
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildConservationPanel(BuildContext context, AppColors eco) {
+    return GradientPanel(
+      radius: 28,
+      dots: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Text('🌱', style: TextStyle(fontSize: 22)),
+          ),
+          const SizedBox(height: 12),
+          const Text('Logro de Conservación del Mes',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: Colors.white)),
+          const SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              style: const TextStyle(
+                  fontSize: 14, height: 1.4, color: Colors.white),
+              children: const [
+                TextSpan(text: 'Reducción del '),
+                TextSpan(
+                    text: '12% en incidentes de basura',
+                    style: TextStyle(fontWeight: FontWeight.w900)),
+                TextSpan(
+                    text:
+                        ' en zonas críticas gracias a las nuevas patrullas comunitarias en Bahía Academia.'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrendPanel(BuildContext context, AppColors eco,
+      List<QueryDocumentSnapshot> records) {
+    return EcoCard(
+      radius: 28,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text('Tendencia de Avistamientos',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: eco.onSurface)),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.more_horiz, color: eco.outline),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 150,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _bar(eco, 50, 'SEM 01'),
+                _bar(eco, 70, 'SEM 02'),
+                _bar(eco, 60, 'SEM 03', highlight: true, peak: '1.2k'),
+                _bar(eco, 80, 'SEM 03'),
+                _bar(eco, 55, 'SEM 04'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDistributionPanel(BuildContext context, AppColors eco,
+      List<QueryDocumentSnapshot> records) {
+    final distribution = _calculateDistribution(records);
+    return EcoCard(
+      radius: 28,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text('Distribución de Hallazgos',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: eco.onSurface)),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: 170,
+            height: 170,
+            child: CustomPaint(
+              painter: _DonutChartPainter(eco, distribution),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _legend(eco, eco.primary, 'Fauna', '${distribution['fauna']}%'),
+          const SizedBox(height: 10),
+          _legend(eco, eco.tertiary, 'Flora', '${distribution['flora']}%'),
+          const SizedBox(height: 10),
+          _legend(eco, const Color(0xFFDC2626), 'Incidentes',
+              '${distribution['incidents']}%'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopSpeciesPanel(BuildContext context, AppColors eco,
+      List<QueryDocumentSnapshot> records) {
+    final topSpecies = _getTopSpecies(records);
+    return EcoCard(
+      radius: 28,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Especies con Mayor Impacto',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: eco.onSurface)),
+          const SizedBox(height: 16),
+          ...List.generate(
+            topSpecies.length,
+            (i) {
+              final species = topSpecies[i];
+              final colors = [
+                eco.primary,
+                const Color(0xFF10B981),
+                eco.tertiary,
+                const Color(0xFFF59E0B),
+              ];
+              return Column(
+                children: [
+                  SpeciesRow(
+                    name: species['name'] as String,
+                    emoji: species['emoji'] as String,
+                    pts: species['count'].toString(),
+                    pct: species['percentage'] as int,
+                    color: colors[i % colors.length],
+                  ),
+                  if (i < topSpecies.length - 1) const SizedBox(height: 16),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildZoneActivityPanel(BuildContext context, AppColors eco,
+      List<QueryDocumentSnapshot> records) {
+    final zoneActivity = _getZoneActivity(records);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('Actividad por Zonas',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: eco.onSurface)),
+        ),
+        const SizedBox(height: 12),
+        ...List.generate(
+          zoneActivity.length,
+          (i) {
+            final zone = zoneActivity[i];
+            final statusMap = {
+              'Alta': ('Alta', ChipTone.warning),
+              'Media': ('Media', ChipTone.tertiary),
+              'Baja': ('Estable', ChipTone.emerald),
+            };
+            final status = statusMap[zone['status']] ?? ('Desconocido', ChipTone.slate);
+            return Column(
+              children: [
+                _ZoneRow(
+                  name: zone['name'] as String,
+                  visits: '${zone['count']}',
+                  incidents: '${zone['incidents']}',
+                  status: status.$1,
+                  tone: status.$2,
+                ),
+                if (i < zoneActivity.length - 1) const SizedBox(height: 12),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  String _formatNumber(int number) {
+    if (number >= 1000000) {
+      return '${(number / 1000000).toStringAsFixed(1)}M';
+    } else if (number >= 1000) {
+      return '${(number / 1000).toStringAsFixed(1)}k';
+    }
+    return number.toString();
+  }
+
+  String _calculateAreaCovered(List<QueryDocumentSnapshot> records) {
+    if (records.isEmpty) return '0 km²';
+
+    double minLat = double.infinity;
+    double maxLat = -double.infinity;
+    double minLng = double.infinity;
+    double maxLng = -double.infinity;
+
+    for (final doc in records) {
+      final location = doc['location'];
+      if (location is GeoPoint) {
+        minLat = math.min(minLat, location.latitude);
+        maxLat = math.max(maxLat, location.latitude);
+        minLng = math.min(minLng, location.longitude);
+        maxLng = math.max(maxLng, location.longitude);
+      }
+    }
+
+    if (minLat.isInfinite || maxLat.isInfinite) return '0 km²';
+
+    const earthRadiusKm = 6371.0;
+    final dLat = (maxLat - minLat) * math.pi / 180;
+    final dLng = (maxLng - minLng) * math.pi / 180;
+    final area = earthRadiusKm * dLat * earthRadiusKm * dLng;
+    final aboveArea = area.abs();
+
+    if (aboveArea < 1) {
+      return '${(aboveArea * 1000).toStringAsFixed(0)} m²';
+    } else if (aboveArea >= 1000) {
+      return '${(aboveArea / 1000).toStringAsFixed(1)}k km²';
+    }
+    return '${aboveArea.toStringAsFixed(1)} km²';
+  }
+
+  Map<String, int> _calculateDistribution(List<QueryDocumentSnapshot> records) {
+    int fauna = 0;
+    int flora = 0;
+    int incidents = 0;
+
+    for (final doc in records) {
+      final category = doc['category'] as String?;
+      final quantity = doc['quantity'] as int? ?? 1;
+      switch (category?.toLowerCase()) {
+        case 'fauna':
+          fauna += quantity;
+        case 'flora':
+          flora += quantity;
+        case 'incident':
+        case 'trash':
+          incidents += quantity;
+        default:
+          break;
+      }
+    }
+
+    final total = fauna + flora + incidents;
+    if (total == 0) return {'fauna': 0, 'flora': 0, 'incidents': 0};
+
+    return {
+      'fauna': ((fauna / total) * 100).round(),
+      'flora': ((flora / total) * 100).round(),
+      'incidents': ((incidents / total) * 100).round(),
+    };
+  }
+
+  List<Map<String, dynamic>> _getTopSpecies(
+      List<QueryDocumentSnapshot> records) {
+    final speciesMap = <String, int>{};
+
+    for (final doc in records) {
+      final species = doc['speciesName'] as String?;
+      if (species != null && species.isNotEmpty) {
+        speciesMap[species] = (speciesMap[species] ?? 0) + (doc['quantity'] as int? ?? 1);
+      }
+    }
+
+    final sorted = speciesMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final total = speciesMap.values.fold<int>(0, (acc, val) => acc + val);
+
+    return sorted.take(4).map((entry) {
+      return {
+        'name': entry.key,
+        'emoji': _getSpeciesEmoji(entry.key),
+        'count': entry.value,
+        'percentage': total > 0 ? ((entry.value / total) * 100).round() : 0,
+      };
+    }).toList();
+  }
+
+  String _getSpeciesEmoji(String species) {
+    final lower = species.toLowerCase();
+    if (lower.contains('tortuga')) return '🐢';
+    if (lower.contains('iguana')) return '🦎';
+    if (lower.contains('piquero')) return '🐦';
+    if (lower.contains('lobo')) return '🦭';
+    return '🦁';
+  }
+
+  List<Map<String, dynamic>> _getZoneActivity(
+      List<QueryDocumentSnapshot> records) {
+    final zoneMap = <String, Map<String, int>>{};
+
+    for (final doc in records) {
+      final placeLabel = doc['placeLabel'] as String? ?? 'Desconocido';
+      if (zoneMap[placeLabel] == null) {
+        zoneMap[placeLabel] = {'count': 0, 'incidents': 0};
+      }
+      zoneMap[placeLabel]!['count'] =
+          zoneMap[placeLabel]!['count']! + (doc['quantity'] as int? ?? 1);
+
+      final category = doc['category'] as String?;
+      if (category == 'incident' || category == 'trash') {
+        zoneMap[placeLabel]!['incidents'] = zoneMap[placeLabel]!['incidents']! + 1;
+      }
+    }
+
+    final sorted = zoneMap.entries.toList()
+      ..sort((a, b) => b.value['count']!.compareTo(a.value['count']!));
+
+    return sorted.take(3).map((entry) {
+      final count = entry.value['count'] ?? 0;
+      final status = count > 50 ? 'Alta' : count > 20 ? 'Media' : 'Baja';
+      return {
+        'name': entry.key,
+        'count': count,
+        'incidents': entry.value['incidents'] ?? 0,
+        'status': status,
+      };
+    }).toList();
   }
 
   Widget _bar(AppColors eco, double h, String label,
@@ -444,8 +663,9 @@ class _ZoneRow extends StatelessWidget {
 }
 
 class _DonutChartPainter extends CustomPainter {
-  _DonutChartPainter(this.eco);
+  _DonutChartPainter(this.eco, this.distribution);
   final AppColors eco;
+  final Map<String, int> distribution;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -457,10 +677,14 @@ class _DonutChartPainter extends CustomPainter {
       ..strokeWidth = 18;
     canvas.drawCircle(center, radius, track);
 
+    final fauna = distribution['fauna'] as double? ?? 0;
+    final flora = distribution['flora'] as double? ?? 0;
+    final incidents = distribution['incidents'] as double? ?? 0;
+
     final segs = [
-      [60.0, eco.primary],
-      [25.0, eco.tertiary],
-      [15.0, const Color(0xFFDC2626)],
+      [fauna, eco.primary],
+      [flora, eco.tertiary],
+      [incidents, const Color(0xFFDC2626)],
     ];
     double start = -math.pi / 2;
     for (final s in segs) {
@@ -476,7 +700,7 @@ class _DonutChartPainter extends CustomPainter {
 
     final total = TextPainter(
       text: TextSpan(
-          text: '15.4k',
+          text: 'TOTAL',
           style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
@@ -488,7 +712,7 @@ class _DonutChartPainter extends CustomPainter {
 
     final lbl = TextPainter(
       text: TextSpan(
-          text: 'TOTAL',
+          text: 'REGISTROS',
           style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w800,
@@ -500,5 +724,6 @@ class _DonutChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DonutChartPainter old) => old.eco != eco;
+  bool shouldRepaint(_DonutChartPainter old) =>
+      old.eco != eco || old.distribution != distribution;
 }

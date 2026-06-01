@@ -299,31 +299,55 @@ class DashboardScreen extends StatelessWidget {
                       'Cuando existan documentos en fieldRecords, aparecerán aquí.',
                 )
               else
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                Column(
                   children: [
-                    for (var i = 0; i < data.contributors.take(3).length; i++)
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(left: i == 0 ? 0 : 12),
-                          child: _Podium(
-                            icon: switch (i) {
-                              0 => Icons.emoji_events,
-                              1 => Icons.military_tech,
-                              _ => Icons.workspace_premium,
-                            },
-                            iconColor: switch (i) {
-                              0 => const Color(0xFFF59E0B),
-                              1 => const Color(0xFF9CA3AF),
-                              _ => const Color(0xFFC87F5B),
-                            },
-                            name: data.contributors[i].name,
-                            pts: _formatInt(data.contributors[i].count),
-                            tone: _toneForIndex(i),
-                            photoUrl: data.contributors[i].photoUrl,
-                            highlight: i == 0,
+                    // 1er lugar: centrado arriba
+                    Center(
+                      child: _Podium(
+                        icon: Icons.emoji_events,
+                        iconColor: const Color(0xFFF59E0B),
+                        name: data.contributors[0].name,
+                        pts: _formatInt(data.contributors[0].count),
+                        tone: _toneForIndex(0),
+                        photoUrl: data.contributors[0].photoUrl,
+                        highlight: true,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // 2do y 3er lugar: abajo en fila
+                    if (data.contributors.length > 1)
+                      Row(
+                        children: [
+                          // 2do lugar: izquierda
+                          Expanded(
+                            child: Center(
+                              child: _Podium(
+                                icon: Icons.military_tech,
+                                iconColor: const Color(0xFF9CA3AF),
+                                name: data.contributors[1].name,
+                                pts: _formatInt(data.contributors[1].count),
+                                tone: _toneForIndex(1),
+                                photoUrl: data.contributors[1].photoUrl,
+                                highlight: false,
+                              ),
+                            ),
                           ),
-                        ),
+                          // 3er lugar: derecha
+                          if (data.contributors.length > 2)
+                            Expanded(
+                              child: Center(
+                                child: _Podium(
+                                  icon: Icons.workspace_premium,
+                                  iconColor: const Color(0xFFC87F5B),
+                                  name: data.contributors[2].name,
+                                  pts: _formatInt(data.contributors[2].count),
+                                  tone: _toneForIndex(2),
+                                  photoUrl: data.contributors[2].photoUrl,
+                                  highlight: false,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                   ],
                 ),
@@ -510,70 +534,6 @@ class DashboardScreen extends StatelessWidget {
         EcoCard(
           radius: 28,
           padding: const EdgeInsets.all(18),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'PRECISIÓN DE DATOS',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                      color: eco.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    data.precisionLabel,
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -1.5,
-                      color: eco.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.check_circle, size: 14, color: eco.primary),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          data.precisionDescription,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: eco.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 72,
-                height: 72,
-                child: data.precision == null
-                    ? Icon(
-                        Icons.fact_check_outlined,
-                        size: 36,
-                        color: eco.outline,
-                      )
-                    : CustomPaint(painter: _DonutPainter(data.precision!, eco)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        EcoCard(
-          radius: 28,
-          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -735,8 +695,6 @@ class _DashboardData {
     required this.contributors,
     required this.categoryLeaders,
     required this.species,
-    required this.precision,
-    required this.precisionDescription,
   });
 
   final int totalRecords;
@@ -746,10 +704,6 @@ class _DashboardData {
   final List<_ContributorStat> contributors;
   final List<_CategoryLeader> categoryLeaders;
   final List<_SpeciesStat> species;
-  final int? precision;
-  final String precisionDescription;
-
-  String get precisionLabel => precision == null ? '—' : '$precision%';
 
   String get deltaLabel {
     if (currentPeriodRecords == 0 && previousPeriodRecords == 0) {
@@ -779,9 +733,6 @@ class _DashboardData {
     final categories = <String, Map<String, _MutableContributor>>{};
     final species = <String, _MutableSpecies>{};
     final weeklyCounts = List<int>.filled(7, 0);
-    final scores = <int>[];
-    var recordsWithStatus = 0;
-    var verifiedRecords = 0;
     var currentPeriodRecords = 0;
     var previousPeriodRecords = 0;
 
@@ -841,11 +792,6 @@ class _DashboardData {
             .count++;
       }
 
-      if (record.integrityScore != null) scores.add(record.integrityScore!);
-      if (record.status != null) {
-        recordsWithStatus++;
-        if (_isVerifiedStatus(record.status!)) verifiedRecords++;
-      }
     }
 
     final contributorStats =
@@ -897,19 +843,6 @@ class _DashboardData {
             .toList()
           ..sort((a, b) => b.count.compareTo(a.count));
 
-    int? precision;
-    String precisionDescription;
-    if (scores.isNotEmpty) {
-      precision = (scores.reduce((a, b) => a + b) / scores.length).round();
-      precisionDescription = 'Promedio de integridad real';
-    } else if (recordsWithStatus > 0) {
-      precision = (verifiedRecords * 100 / recordsWithStatus).round();
-      precisionDescription = 'Registros verificados';
-    } else {
-      precision = null;
-      precisionDescription = 'Sin validaciones registradas';
-    }
-
     return _DashboardData(
       totalRecords: records.length,
       currentPeriodRecords: currentPeriodRecords,
@@ -918,8 +851,6 @@ class _DashboardData {
       contributors: contributorStats,
       categoryLeaders: categoryLeaderStats,
       species: speciesStats,
-      precision: precision,
-      precisionDescription: precisionDescription,
     );
   }
 }
@@ -1093,15 +1024,6 @@ String _categoryLabel(String key) {
     'trash' => 'Basura',
     _ => 'Otros',
   };
-}
-
-bool _isVerifiedStatus(String status) {
-  final s = status.trim().toLowerCase();
-  return s == 'verified' ||
-      s == 'verificado' ||
-      s == 'approved' ||
-      s == 'aprobado' ||
-      s == 'validado';
 }
 
 DateTime? _toDate(Object? value) {
@@ -1450,46 +1372,3 @@ class SpeciesRow extends StatelessWidget {
   }
 }
 
-class _DonutPainter extends CustomPainter {
-  _DonutPainter(this.value, this.eco);
-  final int value;
-  final AppColors eco;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = size.width / 2 - 4;
-    final track = Paint()
-      ..color = eco.surfaceContainerHigh
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8;
-    final arc = Paint()
-      ..color = eco.primary
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round;
-    canvas.drawCircle(center, radius, track);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      2 * math.pi * value / 100,
-      false,
-      arc,
-    );
-    final tp = TextPainter(
-      text: TextSpan(
-        text: '$value%',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w900,
-          color: eco.onSurface,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
-  }
-
-  @override
-  bool shouldRepaint(_DonutPainter old) => old.value != value || old.eco != eco;
-}

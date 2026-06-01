@@ -284,26 +284,10 @@ class PerfilScreen extends StatelessWidget {
         final docs = recSnap.data?.docs ??
             const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
 
-        // Precisión = confirmaciones / (confirmaciones + disputas) sobre los
-        // registros del usuario. Si aún no hay votos, queda en "—".
-        var confirmations = 0;
-        var disputes = 0;
-        for (final d in docs) {
-          final vs = d.data()['validationSummary'];
-          if (vs is Map) {
-            confirmations += _statNum(vs['confirmations']).round();
-            disputes += _statNum(vs['disputes']).round();
-          }
-        }
-        final totalVotes = confirmations + disputes;
-        final precisionLabel = totalVotes == 0
-            ? '—'
-            : '${(confirmations / totalVotes * 100).round()}%';
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _stats(eco, user, precisionLabel),
+            _stats(eco, user),
             const SizedBox(height: 24),
             _wall(eco, docs),
           ],
@@ -312,7 +296,7 @@ class PerfilScreen extends StatelessWidget {
     );
   }
 
-  Widget _stats(AppColors eco, User? user, String precisionLabel) {
+  Widget _stats(AppColors eco, User? user) {
     // Métricas reales agregadas en `userStats` por FieldDataService.
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: user != null
@@ -333,7 +317,6 @@ class PerfilScreen extends StatelessWidget {
         final cells = [
           [Icons.visibility, 'Avistamientos', '$sightings', false],
           [Icons.route, 'Recorridos', '$tracks', false],
-          [Icons.verified, 'Precisión', precisionLabel, false],
           [Icons.timer, 'En Campo', '${hours.toStringAsFixed(hours < 10 ? 1 : 0)}h', false],
           [Icons.map, 'Distancia', '${km.toStringAsFixed(km < 100 ? 1 : 0)}km', false],
           [Icons.workspace_premium, 'Nivel', 'Nv $level', false],
