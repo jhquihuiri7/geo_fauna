@@ -42,6 +42,49 @@ service cloud.firestore {
       return signedIn() && resource.data.authorId == request.auth.uid;
     }
 
+    function existingReplyCount() {
+      return resource.data.replyCount is number ? resource.data.replyCount : 0;
+    }
+
+    function existingRepliesSize() {
+      return resource.data.replies is list ? resource.data.replies.size() : 0;
+    }
+
+    function isValidReplyTimestampUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(["updatedAt"])
+        || request.resource.data.updatedAt is timestamp;
+    }
+
+    function isValidReplyCountUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(["replyCount"])
+        || (
+          request.resource.data.replyCount is number
+          && request.resource.data.replyCount >= existingReplyCount()
+          && request.resource.data.replyCount <= existingReplyCount() + 1
+        );
+    }
+
+    function isValidEmbeddedRepliesUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(["replies"])
+        || (
+          request.resource.data.replies is list
+          && request.resource.data.replies.size() >= existingRepliesSize()
+          && request.resource.data.replies.size() <= existingRepliesSize() + 1
+        );
+    }
+
+    function isReplyMetadataUpdate() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["replyCount", "updatedAt", "replies"])
+        && isValidReplyCountUpdate()
+        && isValidEmbeddedRepliesUpdate()
+        && isValidReplyTimestampUpdate();
+    }
+
     match /users/{userId} {
       allow read: if signedIn();
       allow create, update: if isOwner(userId);
@@ -73,7 +116,14 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read: if signedIn();
         allow create: if ownsCreatedComment();
-        allow update, delete: if ownsExistingComment();
+        allow update: if ownsExistingComment() || isReplyMetadataUpdate();
+        allow delete: if ownsExistingComment();
+
+        match /replies/{replyId} {
+          allow read: if signedIn();
+          allow create: if ownsCreatedComment();
+          allow update, delete: if ownsExistingComment();
+        }
       }
     }
 
@@ -96,7 +146,14 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read: if signedIn();
         allow create: if ownsCreatedComment();
-        allow update, delete: if ownsExistingComment();
+        allow update: if ownsExistingComment() || isReplyMetadataUpdate();
+        allow delete: if ownsExistingComment();
+
+        match /replies/{replyId} {
+          allow read: if signedIn();
+          allow create: if ownsCreatedComment();
+          allow update, delete: if ownsExistingComment();
+        }
       }
     }
 

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 class WallInteractionTarget {
   const WallInteractionTarget({required this.collection, required this.id});
@@ -408,26 +409,33 @@ class WallInteractionService {
   ) async {
     final author = await _authorSnapshot(user);
 
-    await _firestore.runTransaction((tx) async {
-      final comment = await tx.get(commentRef);
-      if (!comment.exists) throw Exception('El comentario ya no existe.');
+    final comment = await commentRef.get();
+    if (!comment.exists) throw Exception('El comentario ya no existe.');
 
-      tx.set(replyRef, {
-        'authorId': user.uid,
-        'authorName': author.name,
-        'authorPhotoUrl': author.photoUrl,
-        'authorSnapshot': author.toMap(),
-        'body': text,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+    await replyRef.set({
+      'authorId': user.uid,
+      'authorName': author.name,
+      'authorPhotoUrl': author.photoUrl,
+      'authorSnapshot': author.toMap(),
+      'body': text,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
-      // Contador propio del comentario; el `commentCount` de la publicacion
-      // se deja para los comentarios de primer nivel.
-      tx.update(commentRef, {
+    try {
+      // Este contador es auxiliar: la UI principal lee la subcoleccion
+      // `replies`, asi que un fallo de permisos aqui no debe cancelar
+      // la respuesta ya creada.
+      await commentRef.update({
         'replyCount': FieldValue.increment(1),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-    });
+    } catch (error, stack) {
+      debugPrint(
+        'No se pudo actualizar replyCount para '
+        '${target.collection}/${target.id}/comments/${commentRef.id}: '
+        '$error\n$stack',
+      );
+    }
   }
 
   User _requireUser() {
