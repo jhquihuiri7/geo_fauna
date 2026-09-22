@@ -283,9 +283,14 @@ class Kicker extends StatelessWidget {
 
 /// Tiny uppercase caption used above form fields (`Cap`).
 class Cap extends StatelessWidget {
-  const Cap(this.label, {super.key, this.action});
+  const Cap(this.label, {super.key, this.action, this.onCard = false});
   final String label;
   final Widget? action;
+
+  /// Whether the caption sits on `surface-container-lowest` (an EcoCard or a
+  /// sheet). Only there does `outline` clear 4.5:1 in the light theme; on any
+  /// other background the caption falls back to `on-surface-variant`.
+  final bool onCard;
 
   @override
   Widget build(BuildContext context) {
@@ -296,7 +301,11 @@ class Cap extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: AppTextStyles.cap.copyWith(color: context.eco.outline),
+            style: AppTextStyles.cap.copyWith(
+              color: onCard
+                  ? context.eco.outline
+                  : context.eco.onSurfaceVariant,
+            ),
           ),
           if (action != null) action!,
         ],
@@ -851,6 +860,10 @@ class GradientButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
+    // El degradado arranca en `primary`, asi que el color legible encima es
+    // `on-primary`. En claro vale #FFFFFF (igual que antes); en oscuro arregla
+    // el blanco sobre #68DBA9, que no llegaba a 3:1.
+    final fg = eco.onPrimary;
     return PressableScale(
       onTap: loading ? null : onPressed,
       child: Container(
@@ -862,28 +875,25 @@ class GradientButton extends StatelessWidget {
         ),
         child: Center(
           child: loading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 22,
                   height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: fg),
                 )
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[
-                      Icon(icon, color: Colors.white, size: 20),
+                      Icon(icon, color: fg, size: 20),
                       const SizedBox(width: AppSpacing.space2),
                     ],
                     Text(
                       label,
-                      style: AppTextStyles.button.copyWith(color: Colors.white),
+                      style: AppTextStyles.button.copyWith(color: fg),
                     ),
                     if (trailingIcon != null) ...[
                       const SizedBox(width: AppSpacing.space2),
-                      Icon(trailingIcon, color: Colors.white, size: 20),
+                      Icon(trailingIcon, color: fg, size: 20),
                     ],
                   ],
                 ),

@@ -166,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: AppSpacing.space6),
-                          const Cap('Email de usuario'),
+                          const Cap('Email de usuario', onCard: true),
                           const SizedBox(height: AppSpacing.space2),
                           EcoTextField(
                             icon: Icons.alternate_email,
@@ -177,6 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: AppSpacing.space5),
                           Cap(
                             'Clave de acceso',
+                            onCard: true,
                             action: GestureDetector(
                               onTap: () => Navigator.push(
                                 context,

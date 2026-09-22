@@ -236,7 +236,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Cap(cap),
+        Cap(cap, onCard: true),
         const SizedBox(height: AppSpacing.space2),
         Container(
           height: 52,

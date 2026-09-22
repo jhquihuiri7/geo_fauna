@@ -498,7 +498,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Cap(label),
+        Cap(label, onCard: true),
         const SizedBox(height: AppSpacing.space2),
         Container(
           height: 52,
@@ -542,7 +542,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Cap(label),
+        Cap(label, onCard: true),
         const SizedBox(height: AppSpacing.space2),
         Container(
           height: 52,
