@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../services/app_log.dart';
 import '../services/location_service.dart';
 import '../services/marine_service.dart';
 import '../services/weather_service.dart';
 import '../theme/app_colors.dart';
 import 'eco_widgets.dart';
+
+const _log = AppLog('HEADER');
 
 /// Ubicación + clima actual ya resueltos.
 class WeatherData {
@@ -40,27 +43,49 @@ class _WeatherBuilderState extends State<WeatherBuilder> {
   late Future<WeatherData> _future = _cachedFuture ??= _load();
 
   Future<WeatherData> _load() async {
-    final loc = await LocationService().getCurrentLocation();
-    final weatherFuture = WeatherService().fetchForecast(
-      latitude: loc.latitude,
-      longitude: loc.longitude,
-    );
-    final marineFuture = (() async {
-      try {
-        return await MarineService().fetchForecast(
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-        );
-      } catch (_) {
-        return null;
-      }
-    })();
-    final forecast = await weatherFuture;
-    final marine = await marineFuture;
-    return WeatherData(loc, forecast, marine);
+    final trace = _log.trace('cargar ubicación + clima');
+    try {
+      final loc = await trace.step(
+        'ubicación',
+        LocationService().getCurrentLocation,
+        describe: (l) => '${l.title} (${l.latitude}, ${l.longitude})',
+      );
+
+      final weatherFuture = WeatherService().fetchForecast(
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+      );
+      final marineFuture = (() async {
+        try {
+          return await MarineService().fetchForecast(
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          );
+        } catch (error) {
+          // El pronóstico marino es opcional: su fallo no tumba la tarjeta,
+          // pero deja rastro en lugar de desaparecer en silencio.
+          trace.note('marino no disponible ($error); se sigue sin oleaje');
+          return null;
+        }
+      })();
+
+      final forecast = await trace.step('clima', () => weatherFuture);
+      final marine = await trace.step(
+        'marino',
+        () => marineFuture,
+        describe: (m) => m == null ? 'omitido' : '${m.hourly.length} horas',
+      );
+
+      trace.done();
+      return WeatherData(loc, forecast, marine);
+    } catch (error) {
+      trace.failed(error);
+      rethrow;
+    }
   }
 
   void _retry() {
+    _log.info('el usuario pulsó "Reintentar"');
     setState(() {
       _cachedFuture = _load();
       _future = _cachedFuture!;
