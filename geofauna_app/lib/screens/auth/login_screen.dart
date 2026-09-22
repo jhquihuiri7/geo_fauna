@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/eco_widgets.dart';
 import '../../widgets/animations.dart';
+import '../../widgets/brand_logo.dart';
 import '../../widgets/painters.dart';
 import '../../pages/auth/forgot_password_page.dart';
 import 'signup_screen.dart';
@@ -105,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       child:
-                          const Icon(Icons.eco, color: Colors.white, size: 42),
+                          const TortugaTopoMark.onFill(size: 52),
                     ),
                   ),
                   const SizedBox(height: 20),
