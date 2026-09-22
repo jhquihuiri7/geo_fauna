@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/eco_widgets.dart';
+import '../theme/app_text_styles.dart';
 
 class _AccountProfile {
   _AccountProfile(Map<String, dynamic>? data, User? user)
@@ -170,8 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Text(
                             'Español',
-                            style: TextStyle(
-                              fontSize: 14,
+                            style: AppTextStyles.body.copyWith(
                               color: eco.onSurfaceVariant,
                             ),
                           ),
@@ -185,12 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Center(
                     child: Text(
                       'ECOGUÍA GALÁPAGOS · V2.4.0',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.8,
-                        color: eco.outline,
-                      ),
+                      style: AppTextStyles.eyebrow.copyWith(color: eco.outline),
                     ),
                   ),
                 ],
@@ -505,12 +500,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: TextField(
                   controller: controller,
                   obscureText: obscure,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
                     hintText: label,
-                    hintStyle: TextStyle(fontSize: 14, color: eco.outline),
+                    hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
                   ),
                 ),
               ),
@@ -620,7 +615,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text(
             profile.email,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: eco.onSurfaceVariant),
+            style: AppTextStyles.body.copyWith(color: eco.onSurfaceVariant),
           ),
           if (profile.badges.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -685,12 +680,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             title.toUpperCase(),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.8,
-              color: eco.onSurfaceVariant,
-            ),
+            style: AppTextStyles.eyebrow.copyWith(color: eco.onSurfaceVariant),
           ),
         ),
         EcoCard(

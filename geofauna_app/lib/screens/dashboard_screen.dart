@@ -9,6 +9,7 @@ import '../widgets/live_map.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/weather_header.dart';
 import 'reporte_screen.dart';
+import '../theme/app_text_styles.dart';
 
 /// Dashboard (Inicio) — weather, live map, leaderboards, community monitor.
 class DashboardScreen extends StatelessWidget {
@@ -50,12 +51,7 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _label(AppColors eco, String t) => Text(
     t.toUpperCase(),
-    style: TextStyle(
-      fontSize: 10,
-      fontWeight: FontWeight.w800,
-      letterSpacing: 1.8,
-      color: eco.primary,
-    ),
+    style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
   );
 
   /// Un solo stream de `fieldRecords` alimenta tanto el mapa de avistamientos
@@ -122,11 +118,7 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   'Tu ubicación',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: eco.onSurface,
-                  ),
+                  style: AppTextStyles.label.copyWith(color: eco.onSurface),
                 ),
                 const SizedBox(width: 12),
                 Container(
@@ -224,11 +216,7 @@ class DashboardScreen extends StatelessWidget {
           Expanded(
             child: Text(
               'No se pudieron cargar los registros reales: $error',
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                color: eco.onSurfaceVariant,
-              ),
+              style: AppTextStyles.bodySm.copyWith(color: eco.onSurfaceVariant),
             ),
           ),
         ],
@@ -256,12 +244,7 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Centro de Reconocimiento',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                      color: eco.onSurface,
-                    ),
+                    style: AppTextStyles.titleLg.copyWith(color: eco.onSurface),
                   ),
                 ],
               ),
@@ -282,10 +265,7 @@ class DashboardScreen extends StatelessWidget {
             children: [
               Text(
                 'TOP CONTRIBUIDORES',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.8,
+                style: AppTextStyles.eyebrow.copyWith(
                   color: eco.onSurfaceVariant,
                 ),
               ),
@@ -370,9 +350,7 @@ class DashboardScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Líderes por Categoría',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                  style: AppTextStyles.bodyStrong.copyWith(
                     color: eco.onSurface,
                   ),
                 ),
@@ -438,12 +416,7 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Análisis de Datos',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                      color: eco.onSurface,
-                    ),
+                    style: AppTextStyles.titleLg.copyWith(color: eco.onSurface),
                   ),
                 ],
               ),
@@ -458,11 +431,7 @@ class DashboardScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Ver reporte',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: eco.primary,
-                    ),
+                    style: AppTextStyles.label.copyWith(color: eco.primary),
                   ),
                   const SizedBox(width: 4),
                   Icon(Icons.arrow_forward, size: 14, color: eco.primary),
@@ -543,9 +512,7 @@ class DashboardScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Especies con Mayor Impacto',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.bodyStrong.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -791,7 +758,6 @@ class _DashboardData {
             )
             .count++;
       }
-
     }
 
     final contributorStats =
@@ -1175,11 +1141,7 @@ class _Podium extends StatelessWidget {
         Text(
           name,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: eco.onSurface,
-          ),
+          style: AppTextStyles.kicker.copyWith(color: eco.onSurface),
         ),
         const SizedBox(height: 2),
         Text(
@@ -1250,9 +1212,7 @@ class _LeaderCard extends StatelessWidget {
                     Text(
                       name,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.bodyStrong.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -1349,11 +1309,7 @@ class SpeciesRow extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               '$pts registros',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurfaceVariant,
-              ),
+              style: AppTextStyles.kicker.copyWith(color: eco.onSurfaceVariant),
             ),
           ],
         ),
@@ -1371,4 +1327,3 @@ class SpeciesRow extends StatelessWidget {
     );
   }
 }
-

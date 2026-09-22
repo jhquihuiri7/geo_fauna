@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/eco_widgets.dart';
 import '../../widgets/painters.dart';
+import '../../theme/app_text_styles.dart';
 
 /// Signup — port of `SignupScreen` in screens-auth.jsx, wired to Firebase.
 class SignupScreen extends StatefulWidget {
@@ -77,13 +78,17 @@ class _SignupScreenState extends State<SignupScreen> {
             top: 100,
             right: -80,
             child: BlurBlob(
-                color: eco.primary.withValues(alpha: 0.08), size: 220),
+              color: eco.primary.withValues(alpha: 0.08),
+              size: 220,
+            ),
           ),
           Positioned(
             bottom: 80,
             left: -100,
             child: BlurBlob(
-                color: eco.tertiaryContainer.withValues(alpha: 0.30), size: 280),
+              color: eco.tertiaryContainer.withValues(alpha: 0.30),
+              size: 280,
+            ),
           ),
           SafeArea(
             child: Column(
@@ -129,20 +134,14 @@ class _SignupScreenState extends State<SignupScreen> {
                             children: [
                               Text(
                                 'Registro de\nGuardaparque',
-                                style: TextStyle(
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.05,
-                                  letterSpacing: -1.2,
+                                style: AppTextStyles.headline.copyWith(
                                   color: eco.onSurface,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Inicie su sesión en el Archivo Orgánico para la preservación del ecosistema de Galápagos.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  height: 1.4,
+                                style: AppTextStyles.body.copyWith(
                                   color: eco.onSurfaceVariant,
                                 ),
                               ),
@@ -157,49 +156,74 @@ class _SignupScreenState extends State<SignupScreen> {
                           soft: true,
                           child: Column(
                             children: [
-                              _field(eco,
-                                  cap: 'Tipo de Usuario',
-                                  icon: Icons.account_circle,
-                                  child: _select(eco, _userType)),
+                              _field(
+                                eco,
+                                cap: 'Tipo de Usuario',
+                                icon: Icons.account_circle,
+                                child: _select(eco, _userType),
+                              ),
                               const SizedBox(height: 20),
-                              _field(eco,
-                                  cap: 'Nombre Completo',
-                                  icon: Icons.person,
-                                  child: _input(eco, _nameCtrl,
-                                      'Ej. Dr. Julián Castro')),
+                              _field(
+                                eco,
+                                cap: 'Nombre Completo',
+                                icon: Icons.person,
+                                child: _input(
+                                  eco,
+                                  _nameCtrl,
+                                  'Ej. Dr. Julián Castro',
+                                ),
+                              ),
                               const SizedBox(height: 20),
-                              _field(eco,
-                                  cap: 'Correo Institucional',
-                                  icon: Icons.mail,
-                                  child: _input(eco, _emailCtrl,
-                                      'julian.castro@galapagos.gob.ec',
-                                      keyboard: TextInputType.emailAddress)),
+                              _field(
+                                eco,
+                                cap: 'Correo Institucional',
+                                icon: Icons.mail,
+                                child: _input(
+                                  eco,
+                                  _emailCtrl,
+                                  'julian.castro@galapagos.gob.ec',
+                                  keyboard: TextInputType.emailAddress,
+                                ),
+                              ),
                               const SizedBox(height: 20),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
-                                    child: _field(eco,
-                                        cap: 'ID Guardaparque',
-                                        icon: Icons.badge,
-                                        child: _input(eco, _idCtrl,
-                                            'GNPS-2024-00X')),
+                                    child: _field(
+                                      eco,
+                                      cap: 'ID Guardaparque',
+                                      icon: Icons.badge,
+                                      child: _input(
+                                        eco,
+                                        _idCtrl,
+                                        'GNPS-2024-00X',
+                                      ),
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: _field(eco,
-                                        cap: 'Especialidad',
-                                        icon: Icons.science,
-                                        child: _select(eco, _specialty)),
+                                    child: _field(
+                                      eco,
+                                      cap: 'Especialidad',
+                                      icon: Icons.science,
+                                      child: _select(eco, _specialty),
+                                    ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 20),
-                              _field(eco,
-                                  cap: 'Contraseña',
-                                  icon: Icons.lock,
-                                  child: _input(eco, _passCtrl, '••••••••••••',
-                                      obscure: true)),
+                              _field(
+                                eco,
+                                cap: 'Contraseña',
+                                icon: Icons.lock,
+                                child: _input(
+                                  eco,
+                                  _passCtrl,
+                                  '••••••••••••',
+                                  obscure: true,
+                                ),
+                              ),
                               const SizedBox(height: 20),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,8 +233,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                     height: 24,
                                     child: Checkbox(
                                       value: _accepted,
-                                      onChanged: (v) =>
-                                          setState(() => _accepted = v ?? false),
+                                      onChanged: (v) => setState(
+                                        () => _accepted = v ?? false,
+                                      ),
                                       activeColor: eco.primary,
                                     ),
                                   ),
@@ -234,8 +259,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                             ),
                                           ),
                                           const TextSpan(
-                                              text:
-                                                  ' y los términos de uso para el monitoreo de biodiversidad de la Dirección del Parque Nacional Galápagos.'),
+                                            text:
+                                                ' y los términos de uso para el monitoreo de biodiversidad de la Dirección del Parque Nacional Galápagos.',
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -263,8 +289,10 @@ class _SignupScreenState extends State<SignupScreen> {
                                 color: eco.secondaryContainer,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Text('🐢',
-                                  style: TextStyle(fontSize: 20)),
+                              child: const Text(
+                                '🐢',
+                                style: TextStyle(fontSize: 20),
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Column(
@@ -296,8 +324,9 @@ class _SignupScreenState extends State<SignupScreen> {
                         Center(
                           child: Text.rich(
                             TextSpan(
-                              style: TextStyle(
-                                  fontSize: 14, color: eco.onSurfaceVariant),
+                              style: AppTextStyles.body.copyWith(
+                                color: eco.onSurfaceVariant,
+                              ),
                               children: [
                                 const TextSpan(text: '¿Ya es miembro? '),
                                 TextSpan(
@@ -331,8 +360,12 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _field(AppColors eco,
-      {required String cap, required IconData icon, required Widget child}) {
+  Widget _field(
+    AppColors eco, {
+    required String cap,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -357,18 +390,23 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _input(AppColors eco, TextEditingController ctrl, String hint,
-      {bool obscure = false, TextInputType? keyboard}) {
+  Widget _input(
+    AppColors eco,
+    TextEditingController ctrl,
+    String hint, {
+    bool obscure = false,
+    TextInputType? keyboard,
+  }) {
     return TextField(
       controller: ctrl,
       obscureText: obscure,
       keyboardType: keyboard,
-      style: TextStyle(fontSize: 14, color: eco.onSurface),
+      style: AppTextStyles.body.copyWith(color: eco.onSurface),
       decoration: InputDecoration(
         isCollapsed: true,
         border: InputBorder.none,
         hintText: hint,
-        hintStyle: TextStyle(color: eco.outline, fontSize: 13),
+        hintStyle: AppTextStyles.bodySm.copyWith(color: eco.outline),
       ),
     );
   }
@@ -382,9 +420,10 @@ class _SignupScreenState extends State<SignupScreen> {
             value,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-                fontSize: 14,
-                color: eco.onSurface,
-                fontWeight: FontWeight.w500),
+              fontSize: 14,
+              color: eco.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         Icon(Icons.expand_more, color: eco.outline),

@@ -10,23 +10,26 @@ import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import 'settings_screen.dart';
 import 'integridad_screen.dart';
+import '../theme/app_text_styles.dart';
 
 /// Datos del perfil resueltos a partir de Firestore + Firebase Auth.
 class _Profile {
   _Profile(Map<String, dynamic>? data, User? user)
-      : name = _firstNonEmpty(
-            [data?['name'] as String?, user?.displayName, 'Investigador'])!,
-        userType = _firstNonEmpty([data?['userType'] as String?]) ?? '—',
-        rangerId = _firstNonEmpty([data?['rangerId'] as String?]) ?? '—',
-        specialty = _firstNonEmpty([data?['specialty'] as String?]) ?? '—',
-        email =
-            _firstNonEmpty([data?['email'] as String?, user?.email]) ?? '—',
-        photoUrl = _firstNonEmpty([data?['photoUrl'] as String?, user?.photoURL]),
-        parkName = _firstNonEmpty([data?['parkName'] as String?]) ??
-            'Parque Nacional\nGalápagos',
-        statusLabel =
-            (_firstNonEmpty([data?['status'] as String?]) ?? 'Activo')
-                .toUpperCase();
+    : name = _firstNonEmpty([
+        data?['name'] as String?,
+        user?.displayName,
+        'Investigador',
+      ])!,
+      userType = _firstNonEmpty([data?['userType'] as String?]) ?? '—',
+      rangerId = _firstNonEmpty([data?['rangerId'] as String?]) ?? '—',
+      specialty = _firstNonEmpty([data?['specialty'] as String?]) ?? '—',
+      email = _firstNonEmpty([data?['email'] as String?, user?.email]) ?? '—',
+      photoUrl = _firstNonEmpty([data?['photoUrl'] as String?, user?.photoURL]),
+      parkName =
+          _firstNonEmpty([data?['parkName'] as String?]) ??
+          'Parque Nacional\nGalápagos',
+      statusLabel = (_firstNonEmpty([data?['status'] as String?]) ?? 'Activo')
+          .toUpperCase();
 
   final String name;
   final String userType;
@@ -45,18 +48,13 @@ class _Profile {
   /// Contenido del QR de identificación: prioriza el ID de guardaparque y, si
   /// no existe, recurre al correo o al nombre para que siga siendo escaneable.
   String get qrData {
-    final id = rangerId != '—'
-        ? rangerId
-        : (email != '—' ? email : name);
+    final id = rangerId != '—' ? rangerId : (email != '—' ? email : name);
     return 'geofauna:ranger:$id';
   }
 
   /// Subtítulo del encabezado: "Guía Naturalista · GNPS-2024-001".
   String get roleLine {
-    final bits = [
-      if (userType != '—') userType,
-      if (rangerId != '—') rangerId,
-    ];
+    final bits = [if (userType != '—') userType, if (rangerId != '—') rangerId];
     return bits.isEmpty ? 'Perfil de campo' : bits.join(' · ');
   }
 
@@ -97,24 +95,24 @@ class PerfilScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('PERFIL DEL AGENTE',
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.8,
-                            color: eco.primary)),
+                    Text(
+                      'PERFIL DEL AGENTE',
+                      style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
+                    ),
                     const SizedBox(height: 4),
-                    Text(p.name,
-                        style: TextStyle(
-                            fontSize: 40,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -1.5,
-                            height: 1,
-                            color: eco.onSurface)),
+                    Text(
+                      p.name,
+                      style: AppTextStyles.display.copyWith(
+                        color: eco.onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text(p.roleLine,
-                        style: TextStyle(
-                            fontSize: 14, color: eco.onSurfaceVariant)),
+                    Text(
+                      p.roleLine,
+                      style: AppTextStyles.body.copyWith(
+                        color: eco.onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     _idCard(eco, p),
                     const SizedBox(height: 24),
@@ -147,30 +145,30 @@ class PerfilScreen extends StatelessWidget {
       );
     }
     return Avatar(
-        name: p.name,
-        size: size,
-        tone: AvatarTone.forest,
-        status: AvatarStatus.on);
+      name: p.name,
+      size: size,
+      tone: AvatarTone.forest,
+      status: AvatarStatus.on,
+    );
   }
 
   Widget _idCard(AppColors eco, _Profile p) {
     Widget cell(String label, String value) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label.toUpperCase(),
-                style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                    color: Colors.white70)),
-            const SizedBox(height: 2),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white)),
-          ],
-        );
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: Colors.white70,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(value, style: AppTextStyles.kicker.copyWith(color: Colors.white)),
+      ],
+    );
     return GradientPanel(
       radius: 32,
       dots: true,
@@ -182,19 +180,25 @@ class PerfilScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('IDENTIFICACIÓN DIGITAL',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                        color: Colors.white70)),
+                const Text(
+                  'IDENTIFICACIÓN DIGITAL',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: Colors.white70,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(p.parkName,
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                        color: Colors.white)),
+                Text(
+                  p.parkName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -211,8 +215,10 @@ class PerfilScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(999),
@@ -221,19 +227,25 @@ class PerfilScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(
-                          width: 6,
-                          height: 6,
-                          child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                  color: Color(0xFF86EFAC),
-                                  shape: BoxShape.circle))),
+                        width: 6,
+                        height: 6,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Color(0xFF86EFAC),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      Text(p.statusLabel,
-                          style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                              color: Colors.white)),
+                      Text(
+                        p.statusLabel,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: Colors.white,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -276,12 +288,13 @@ class PerfilScreen extends StatelessWidget {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: user != null
           ? FirebaseFirestore.instance
-              .collection('fieldRecords')
-              .where('authorId', isEqualTo: user.uid)
-              .snapshots()
+                .collection('fieldRecords')
+                .where('authorId', isEqualTo: user.uid)
+                .snapshots()
           : null,
       builder: (context, recSnap) {
-        final docs = recSnap.data?.docs ??
+        final docs =
+            recSnap.data?.docs ??
             const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
 
         return Column(
@@ -301,9 +314,9 @@ class PerfilScreen extends StatelessWidget {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: user != null
           ? FirebaseFirestore.instance
-              .collection('userStats')
-              .doc(user.uid)
-              .snapshots()
+                .collection('userStats')
+                .doc(user.uid)
+                .snapshots()
           : null,
       builder: (context, snap) {
         final s = snap.data?.data() ?? const <String, dynamic>{};
@@ -317,8 +330,18 @@ class PerfilScreen extends StatelessWidget {
         final cells = [
           [Icons.visibility, 'Avistamientos', '$sightings', false],
           [Icons.route, 'Recorridos', '$tracks', false],
-          [Icons.timer, 'En Campo', '${hours.toStringAsFixed(hours < 10 ? 1 : 0)}h', false],
-          [Icons.map, 'Distancia', '${km.toStringAsFixed(km < 100 ? 1 : 0)}km', false],
+          [
+            Icons.timer,
+            'En Campo',
+            '${hours.toStringAsFixed(hours < 10 ? 1 : 0)}h',
+            false,
+          ],
+          [
+            Icons.map,
+            'Distancia',
+            '${km.toStringAsFixed(km < 100 ? 1 : 0)}km',
+            false,
+          ],
           [Icons.workspace_premium, 'Nivel', 'Nv $level', false],
         ];
         return GridView.count(
@@ -331,10 +354,11 @@ class PerfilScreen extends StatelessWidget {
           children: [
             for (final c in cells)
               _StatCell(
-                  icon: c[0] as IconData,
-                  label: c[1] as String,
-                  value: c[2] as String,
-                  small: c[3] as bool),
+                icon: c[0] as IconData,
+                label: c[1] as String,
+                value: c[2] as String,
+                small: c[3] as bool,
+              ),
           ],
         );
       },
@@ -361,29 +385,29 @@ class PerfilScreen extends StatelessWidget {
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) {
     // Orden por fecha desc en cliente: evita un índice compuesto en Firestore.
-    final sorted = [...docs]..sort((a, b) {
-      final ta = a.data()['createdAt'];
-      final tb = b.data()['createdAt'];
-      final va = ta is Timestamp ? ta.toDate() : DateTime(0);
-      final vb = tb is Timestamp ? tb.toDate() : DateTime(0);
-      return vb.compareTo(va);
-    });
+    final sorted = [...docs]
+      ..sort((a, b) {
+        final ta = a.data()['createdAt'];
+        final tb = b.data()['createdAt'];
+        final va = ta is Timestamp ? ta.toDate() : DateTime(0);
+        final vb = tb is Timestamp ? tb.toDate() : DateTime(0);
+        return vb.compareTo(va);
+      });
     final withMedia = [
       for (final d in sorted)
         if (_thumbUrl(d.data()) != null) d,
     ];
-    WallMediaCacheService.instance
-        .warm([for (final d in withMedia) _thumbUrl(d.data())]);
+    WallMediaCacheService.instance.warm([
+      for (final d in withMedia) _thumbUrl(d.data()),
+    ]);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('MI MURO DE AVISTAMIENTO',
-            style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.8,
-                color: eco.primary)),
+        Text(
+          'MI MURO DE AVISTAMIENTO',
+          style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
+        ),
         const SizedBox(height: 16),
         if (withMedia.isEmpty)
           _wallEmpty(eco)
@@ -398,7 +422,8 @@ class PerfilScreen extends StatelessWidget {
               for (final d in withMedia.take(12))
                 _WallThumb(
                   url: _thumbUrl(d.data())!,
-                  label: (d.data()['speciesName'] as String?) ??
+                  label:
+                      (d.data()['speciesName'] as String?) ??
                       (d.data()['categoryLabel'] as String?) ??
                       'AVISTAMIENTO',
                 ),
@@ -423,15 +448,17 @@ class PerfilScreen extends StatelessWidget {
               color: eco.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.photo_camera_outlined,
-                color: eco.primary, size: 26),
+            child: Icon(
+              Icons.photo_camera_outlined,
+              color: eco.primary,
+              size: 26,
+            ),
           ),
           const SizedBox(height: 12),
-          Text('Aún no tienes avistamientos',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: eco.onSurface)),
+          Text(
+            'Aún no tienes avistamientos',
+            style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
+          ),
           const SizedBox(height: 4),
           Text(
             'Registra tu primer hallazgo desde la pestaña "Nuevo".',
@@ -458,11 +485,12 @@ class PerfilScreen extends StatelessWidget {
               Icon(icon, color: eco.onSurface, size: 22),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(label,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: eco.onSurface)),
+                child: Text(
+                  label,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: eco.onSurface,
+                  ),
+                ),
               ),
               Icon(Icons.chevron_right, color: eco.outline),
             ],
@@ -474,13 +502,17 @@ class PerfilScreen extends StatelessWidget {
     return Column(
       children: [
         tile(Icons.settings, 'Configuración de Cuenta', () {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          );
         }),
         const SizedBox(height: 12),
         tile(Icons.shield, 'Protocolo de Integridad de Datos', () {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const IntegridadScreen()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const IntegridadScreen()),
+          );
         }),
         const SizedBox(height: 12),
         GestureDetector(
@@ -496,12 +528,15 @@ class PerfilScreen extends StatelessWidget {
               children: [
                 Icon(Icons.logout, color: eco.error),
                 const SizedBox(width: 8),
-                Text('CERRAR SESIÓN',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                        color: eco.error)),
+                Text(
+                  'CERRAR SESIÓN',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: eco.error,
+                  ),
+                ),
               ],
             ),
           ),
@@ -548,22 +583,28 @@ class _StatCell extends StatelessWidget {
                 child: Icon(icon, size: 18, color: eco.primary),
               ),
               const SizedBox(height: 8),
-              Text(value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: small ? 14 : 20,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                      color: eco.onSurface)),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: small ? 14 : 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                  color: eco.onSurface,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(label.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                      color: eco.onSurfaceVariant)),
+              Text(
+                label.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                  color: eco.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),
@@ -620,4 +661,3 @@ class _WallThumb extends StatelessWidget {
     );
   }
 }
-

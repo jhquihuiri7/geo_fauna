@@ -6,6 +6,7 @@ import '../services/marine_service.dart';
 import '../services/weather_service.dart';
 import '../theme/app_colors.dart';
 import 'eco_widgets.dart';
+import '../theme/app_text_styles.dart';
 
 const _log = AppLog('HEADER');
 
@@ -215,12 +216,7 @@ class WeatherHeader extends StatelessWidget {
           children: [
             Text(
               'ESTADO DEL TIEMPO',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.8,
-                color: eco.primary,
-              ),
+              style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
             ),
             const SizedBox(height: 4),
             Text(
@@ -241,7 +237,9 @@ class WeatherHeader extends StatelessWidget {
                 Flexible(
                   child: Text(
                     subtitle,
-                    style: TextStyle(fontSize: 14, color: eco.onSurfaceVariant),
+                    style: AppTextStyles.body.copyWith(
+                      color: eco.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -491,7 +489,7 @@ class AgendaWeatherCard extends StatelessWidget {
           Expanded(
             child: Text(
               'No hay pronostico disponible para esta fecha.',
-              style: TextStyle(fontSize: 13, color: eco.onSurfaceVariant),
+              style: AppTextStyles.bodySm.copyWith(color: eco.onSurfaceVariant),
             ),
           ),
         ],
@@ -512,9 +510,7 @@ class AgendaWeatherCard extends StatelessWidget {
                     child: Text(
                       loc.title,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.bodyStrong.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -540,8 +536,7 @@ class AgendaWeatherCard extends StatelessWidget {
                     child: Text(
                       w.description,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: AppTextStyles.body.copyWith(
                         color: eco.onSurfaceVariant,
                       ),
                     ),
@@ -624,10 +619,8 @@ class AgendaWeatherCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           _weatherDateLabel(selectedDate),
-                          style: TextStyle(
+                          style: AppTextStyles.titleMd.copyWith(
                             color: sheetEco.onSurface,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
@@ -713,10 +706,8 @@ class AgendaWeatherCard extends StatelessWidget {
                   children: [
                     Text(
                       '${weather.temperature.round()}°C',
-                      style: TextStyle(
+                      style: AppTextStyles.titleLg.copyWith(
                         color: eco.onSurface,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(width: 8),

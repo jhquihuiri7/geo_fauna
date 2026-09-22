@@ -13,6 +13,7 @@ import '../services/marine_service.dart';
 import '../services/tracking_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
+import '../theme/app_text_styles.dart';
 
 /// Pantalla de grabación de un recorrido de campo: mapa en vivo con la ruta
 /// dibujada, métricas en tiempo real y controles de pausa/fin.
@@ -241,8 +242,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
             bottom: 250,
             child: FloatingActionButton.small(
               heroTag: 'compass',
-              backgroundColor:
-                  _showCompass ? eco.primary : eco.surfaceContainerLowest,
+              backgroundColor: _showCompass
+                  ? eco.primary
+                  : eco.surfaceContainerLowest,
               foregroundColor: _showCompass ? eco.onPrimary : eco.primary,
               onPressed: _toggleCompass,
               child: Icon(_showCompass ? Icons.explore : Icons.explore_rounded),
@@ -391,9 +393,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     const SizedBox(width: 6),
                     Text(
                       recording ? 'Grabando' : 'En pausa',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.label.copyWith(
                         color: eco.onSurfaceVariant,
                       ),
                     ),
@@ -592,11 +592,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
             const SizedBox(width: 8),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurface,
-              ),
+              style: AppTextStyles.button.copyWith(color: eco.onSurface),
             ),
           ],
         ),
@@ -744,9 +740,7 @@ class _SummarySheetState extends State<_SummarySheet> {
                     children: [
                       Text(
                         '¡Recorrido finalizado!',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
+                        style: AppTextStyles.titleMd.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
@@ -755,8 +749,7 @@ class _SummarySheetState extends State<_SummarySheet> {
                         s.saved
                             ? (s.tourName ?? 'Recorrido libre')
                             : 'Se subirá automáticamente al recuperar señal.',
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: AppTextStyles.bodySm.copyWith(
                           color: eco.onSurfaceVariant,
                         ),
                       ),
@@ -838,11 +831,7 @@ class _SummarySheetState extends State<_SummarySheet> {
             fit: BoxFit.scaleDown,
             child: Text(
               value,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: eco.primary,
-              ),
+              style: AppTextStyles.titleLg.copyWith(color: eco.primary),
             ),
           ),
           const SizedBox(height: 4),
@@ -987,8 +976,8 @@ class _CompassOverlay extends StatelessWidget {
                 !available
                     ? 'Brújula no disponible'
                     : h == null
-                        ? 'Orientando…'
-                        : '${h.round()}°  ${_cardinalLabel(h)}',
+                    ? 'Orientando…'
+                    : '${h.round()}°  ${_cardinalLabel(h)}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,

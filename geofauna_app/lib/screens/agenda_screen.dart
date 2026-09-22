@@ -12,6 +12,7 @@ import '../widgets/eco_widgets.dart';
 import '../widgets/route_map.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/weather_header.dart';
+import '../theme/app_text_styles.dart';
 
 /// Agenda — daily field logistics: weather, day strip, timeline (screens-main.jsx).
 class AgendaScreen extends StatefulWidget {
@@ -76,13 +77,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
               children: [
                 Text(
                   'Tu Agenda',
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                    letterSpacing: -1.5,
-                    color: eco.onSurface,
-                  ),
+                  style: AppTextStyles.display.copyWith(color: eco.onSurface),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -145,9 +140,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
               decoration: BoxDecoration(
                 color: eco.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: eco.primary.withValues(alpha: 0.4),
-                ),
+                border: Border.all(color: eco.primary.withValues(alpha: 0.4)),
               ),
               child: Row(
                 children: [
@@ -355,11 +348,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
           Expanded(
             child: Text(
               'No se pudieron cargar las actividades: $error',
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                color: eco.onSurfaceVariant,
-              ),
+              style: AppTextStyles.bodySm.copyWith(color: eco.onSurfaceVariant),
             ),
           ),
         ],
@@ -388,17 +377,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
             _sameDay(selectedDate, _today)
                 ? 'Sin actividades para hoy'
                 : 'Sin actividades para este día',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: eco.onSurface,
-            ),
+            style: AppTextStyles.titleSm.copyWith(color: eco.onSurface),
           ),
           const SizedBox(height: 4),
           Text(
             'Programa una expedición o evento desde la pestaña "Nuevo".',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: eco.onSurfaceVariant),
+            style: AppTextStyles.bodySm.copyWith(color: eco.onSurfaceVariant),
           ),
         ],
       ),
@@ -469,11 +454,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   const SizedBox(height: 6),
                   Text(
                     item.timeLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: eco.primary,
-                    ),
+                    style: AppTextStyles.label.copyWith(color: eco.primary),
                   ),
                   if (item.locationLabel != null) ...[
                     const SizedBox(height: 6),
@@ -504,9 +485,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       item.body!,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.35,
+                      style: AppTextStyles.bodySm.copyWith(
                         color: eco.onSurfaceVariant,
                       ),
                     ),
@@ -789,10 +768,7 @@ class _AgendaDetailSheet extends StatelessWidget {
                     children: [
                       Text(
                         item.title,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
+                        style: AppTextStyles.titleLg.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
@@ -857,33 +833,19 @@ class _AgendaDetailSheet extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 item.kind == _AgendaItemKind.event ? 'OBJETIVOS' : 'NOTAS',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: eco.onSurfaceVariant,
-                ),
+                style: AppTextStyles.chip.copyWith(color: eco.onSurfaceVariant),
               ),
               const SizedBox(height: 8),
               Text(
                 item.body!,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.4,
-                  color: eco.onSurface,
-                ),
+                style: AppTextStyles.body.copyWith(color: eco.onSurface),
               ),
             ],
             if (item.kind == _AgendaItemKind.tour) ...[
               const SizedBox(height: 18),
               Text(
                 'RECORRIDO',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: eco.onSurfaceVariant,
-                ),
+                style: AppTextStyles.chip.copyWith(color: eco.onSurfaceVariant),
               ),
               const SizedBox(height: 8),
               _TourRouteSection(tourId: item.id),
@@ -948,9 +910,7 @@ class _AgendaDetailSheet extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                  style: AppTextStyles.bodyStrong.copyWith(
                     color: eco.onSurface,
                   ),
                 ),
@@ -981,8 +941,10 @@ class _TourRouteSection extends StatelessWidget {
     // en cliente (normalmente solo hay uno, porque sobrescribir reutiliza el id).
     final docs = snap.docs.toList()
       ..sort((a, b) {
-        final aAt = _toDate(a.data()['endedAt']) ?? _toDate(a.data()['createdAt']);
-        final bAt = _toDate(b.data()['endedAt']) ?? _toDate(b.data()['createdAt']);
+        final aAt =
+            _toDate(a.data()['endedAt']) ?? _toDate(a.data()['createdAt']);
+        final bAt =
+            _toDate(b.data()['endedAt']) ?? _toDate(b.data()['createdAt']);
         return (bAt ?? DateTime(1900)).compareTo(aAt ?? DateTime(1900));
       });
     return _pointsFromTrack(docs.first.data());
@@ -1000,7 +962,10 @@ class _TourRouteSection extends StatelessWidget {
             child: SizedBox(
               width: 26,
               height: 26,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: eco.primary),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: eco.primary,
+              ),
             ),
           );
         }
@@ -1024,7 +989,12 @@ class _TourRouteSection extends StatelessWidget {
     );
   }
 
-  Widget _frame(AppColors eco, {IconData? icon, String? message, Widget? child}) {
+  Widget _frame(
+    AppColors eco, {
+    IconData? icon,
+    String? message,
+    Widget? child,
+  }) {
     return Container(
       height: 160,
       alignment: Alignment.center,
@@ -1220,9 +1190,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                   Expanded(
                     child: Text(
                       _isEvent ? 'Editar evento' : 'Editar agenda',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
+                      style: AppTextStyles.titleLg.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -1303,12 +1271,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
       children: [
         Text(
           label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-            color: eco.onSurfaceVariant,
-          ),
+          style: AppTextStyles.chip.copyWith(color: eco.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
         child,
@@ -1332,12 +1295,12 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
         controller: controller,
         enabled: !_saving,
         maxLines: maxLines,
-        style: TextStyle(fontSize: 14, color: eco.onSurface),
+        style: AppTextStyles.body.copyWith(color: eco.onSurface),
         decoration: InputDecoration(
           isCollapsed: true,
           border: InputBorder.none,
           hintText: hint,
-          hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+          hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
         ),
       ),
     );
@@ -1446,9 +1409,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                    style: AppTextStyles.cap.copyWith(
                       color: eco.onSurfaceVariant,
                     ),
                   ),
@@ -1484,11 +1445,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
           Expanded(
             child: Text(
               'Visibilidad publica',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurface,
-              ),
+              style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
             ),
           ),
           EcoSwitch(
@@ -1523,9 +1480,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                   children: [
                     Text(
                       'Cupo máximo',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.bodyStrong.copyWith(
                         color: eco.onSurface,
                       ),
                     ),

@@ -13,6 +13,7 @@ import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import '../widgets/live_map.dart';
 import '../widgets/user_avatar.dart';
+import '../theme/app_text_styles.dart';
 
 /// Nuevo — capture hub with three segmented sub-screens: Monitoreo (field
 /// record), Agenda (tour), Evento (create event) — port of screens-forms.jsx.
@@ -127,12 +128,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                 children: [
                   Text(
                     'MÓDULO DE CAMPO',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.8,
-                      color: eco.primary,
-                    ),
+                    style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -148,9 +144,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                   const SizedBox(height: 12),
                   Text(
                     'Documenta tus hallazgos científicos o reporta incidentes en tiempo real.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.4,
+                    style: AppTextStyles.body.copyWith(
                       color: eco.onSurfaceVariant,
                     ),
                   ),
@@ -244,9 +238,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                       const SizedBox(width: 8),
                       Text(
                         c[0],
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                        style: AppTextStyles.bodyStrong.copyWith(
                           color: _cat == c[0] ? eco.onPrimary : eco.onSurface,
                         ),
                       ),
@@ -295,9 +287,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                         _evidence.isEmpty
                             ? 'Capturar Evidencia'
                             : '${_evidence.length} evidencia(s) lista(s)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                        style: AppTextStyles.bodyStrong.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
@@ -363,12 +353,12 @@ class _FieldRecordState extends State<_FieldRecord> {
                 child: TextField(
                   controller: _speciesController,
                   enabled: !_saving,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
                     hintText: 'Ej: Chelonoidis nigra…',
-                    hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                    hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
                   ),
                 ),
               ),
@@ -388,7 +378,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                   controller: _quantityController,
                   enabled: !_saving,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: const InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
@@ -411,13 +401,13 @@ class _FieldRecordState extends State<_FieldRecord> {
             controller: _notesController,
             enabled: !_saving,
             maxLines: 3,
-            style: TextStyle(fontSize: 14, color: eco.onSurface),
+            style: AppTextStyles.body.copyWith(color: eco.onSurface),
             decoration: InputDecoration(
               isCollapsed: true,
               border: InputBorder.none,
               hintText:
                   'Describe el estado del espécimen o los detalles del incidente observado…',
-              hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+              hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
             ),
           ),
         ),
@@ -436,9 +426,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                   children: [
                     Text(
                       'Publicar en Muro',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.bodyStrong.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -630,23 +618,12 @@ class _TourRecordState extends State<_TourRecord> {
       children: [
         Text(
           'REGISTRO DE EXPEDICIÓN',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.8,
-            color: eco.primary,
-          ),
+          style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
         ),
         const SizedBox(height: 4),
         Text(
           'Nuevo Registro',
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.w900,
-            height: 1,
-            letterSpacing: -1.5,
-            color: eco.onSurface,
-          ),
+          style: AppTextStyles.display.copyWith(color: eco.onSurface),
         ),
         const SizedBox(height: 24),
         _barTitle(eco, 'Información Básica'),
@@ -660,12 +637,12 @@ class _TourRecordState extends State<_TourRecord> {
                 child: TextField(
                   controller: _nameController,
                   enabled: !_saving,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
                     hintText: 'e.g. Tour León Dormido AM',
-                    hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                    hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
                   ),
                 ),
               ),
@@ -789,9 +766,7 @@ class _TourRecordState extends State<_TourRecord> {
                       Text(
                         t[0] as String,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                        style: AppTextStyles.label.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
@@ -813,12 +788,12 @@ class _TourRecordState extends State<_TourRecord> {
                 child: TextField(
                   controller: _meetingPointController,
                   enabled: !_saving,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
                     hintText: 'Muelle, sendero o zona de salida',
-                    hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                    hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
                   ),
                 ),
               ),
@@ -838,12 +813,12 @@ class _TourRecordState extends State<_TourRecord> {
             controller: _notesController,
             enabled: !_saving,
             maxLines: 3,
-            style: TextStyle(fontSize: 14, color: eco.onSurface),
+            style: AppTextStyles.body.copyWith(color: eco.onSurface),
             decoration: InputDecoration(
               isCollapsed: true,
               border: InputBorder.none,
               hintText: 'Detalle logistica, pasajeros u observaciones...',
-              hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+              hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
             ),
           ),
         ),
@@ -852,20 +827,16 @@ class _TourRecordState extends State<_TourRecord> {
           radius: 28,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
-            children: const [
-              Icon(Icons.eco, color: Colors.white, size: 24),
-              SizedBox(width: 16),
+            children: [
+              const Icon(Icons.eco, color: Colors.white, size: 24),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Impacto Ambiental',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+                      style: AppTextStyles.button.copyWith(color: Colors.white),
                     ),
                     SizedBox(height: 2),
                     Text(
@@ -999,18 +970,12 @@ class _EventCreateState extends State<_EventCreate> {
       children: [
         Text(
           'Crear Evento',
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.w900,
-            height: 1,
-            letterSpacing: -1.5,
-            color: eco.onSurface,
-          ),
+          style: AppTextStyles.display.copyWith(color: eco.onSurface),
         ),
         const SizedBox(height: 8),
         Text(
           'Registre una nueva actividad para el equipo de campo.',
-          style: TextStyle(fontSize: 14, color: eco.onSurfaceVariant),
+          style: AppTextStyles.body.copyWith(color: eco.onSurfaceVariant),
         ),
         const SizedBox(height: 24),
         EcoCard(
@@ -1129,12 +1094,12 @@ class _EventCreateState extends State<_EventCreate> {
               controller: _objectivesController,
               enabled: !_saving,
               maxLines: 4,
-              style: TextStyle(fontSize: 14, color: eco.onSurface),
+              style: AppTextStyles.body.copyWith(color: eco.onSurface),
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
                 hintText: 'Describa el propósito y metas de la actividad…',
-                hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
               ),
             ),
           ),
@@ -1157,12 +1122,14 @@ class _EventCreateState extends State<_EventCreate> {
                   child: TextField(
                     controller: _meetingPointController,
                     enabled: !_saving,
-                    style: TextStyle(fontSize: 14, color: eco.onSurface),
+                    style: AppTextStyles.body.copyWith(color: eco.onSurface),
                     decoration: InputDecoration(
                       isCollapsed: true,
                       border: InputBorder.none,
                       hintText: 'Lugar de encuentro',
-                      hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                      hintStyle: AppTextStyles.body.copyWith(
+                        color: eco.outline,
+                      ),
                     ),
                   ),
                 ),
@@ -1527,8 +1494,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                           const SizedBox(height: 4),
                           Text(
                             'Haz tap en el mapa para seleccionar ubicación',
-                            style: TextStyle(
-                              fontSize: 13,
+                            style: AppTextStyles.bodySm.copyWith(
                               color: eco.onSurfaceVariant,
                             ),
                           ),
@@ -1658,22 +1624,12 @@ Widget _evidenceOption(
 
 Widget _sectionLabel(AppColors eco, String t) => Text(
   t.toUpperCase(),
-  style: TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.w800,
-    letterSpacing: 1.8,
-    color: eco.onSurfaceVariant,
-  ),
+  style: AppTextStyles.eyebrow.copyWith(color: eco.onSurfaceVariant),
 );
 
 Widget _cardLabel(AppColors eco, String t) => Text(
   t.toUpperCase(),
-  style: TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.w800,
-    letterSpacing: 1.8,
-    color: eco.onSurfaceVariant,
-  ),
+  style: AppTextStyles.eyebrow.copyWith(color: eco.onSurfaceVariant),
 );
 
 Widget _barTitle(AppColors eco, String t) => Container(
@@ -1681,14 +1637,7 @@ Widget _barTitle(AppColors eco, String t) => Container(
   decoration: BoxDecoration(
     border: Border(left: BorderSide(color: eco.primary, width: 3)),
   ),
-  child: Text(
-    t,
-    style: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w800,
-      color: eco.onSurface,
-    ),
-  ),
+  child: Text(t, style: AppTextStyles.titleSm.copyWith(color: eco.onSurface)),
 );
 
 Widget _pillField(
@@ -1906,12 +1855,12 @@ Widget _roundedInput(
     child: TextField(
       controller: controller,
       enabled: enabled,
-      style: TextStyle(fontSize: 14, color: eco.onSurface),
+      style: AppTextStyles.body.copyWith(color: eco.onSurface),
       decoration: InputDecoration(
         isCollapsed: true,
         border: InputBorder.none,
         hintText: hint,
-        hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+        hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
       ),
     ),
   );

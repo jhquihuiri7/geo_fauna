@@ -131,6 +131,23 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
+  # Inter — la familia del sistema "Organic Archive" (SIL OFL 1.1, ver
+  # assets/fonts/OFL.txt). Sin estos archivos `fontFamily: 'Inter'` caía al
+  # sans de la plataforma (Roboto / SF Pro Text).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Inter-Black.ttf
+          weight: 900
+
 # Ícono de aplicación — logotipo oficial Tortuga-Topo.
 # Solo iOS: en Android conservamos el ícono adaptativo (mipmap-anydpi-v26 +
 # drawable/ic_launcher_background.xml) que ya trae el repositorio.

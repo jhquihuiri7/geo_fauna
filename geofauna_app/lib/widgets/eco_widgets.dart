@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'animations.dart';
 import 'painters.dart';
+import '../theme/app_text_styles.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Avatar — monogram or emoji "specimen badge"
@@ -100,7 +101,9 @@ class Avatar extends StatelessWidget {
                       : const Color(0xFF3B82F6),
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: eco.surfaceContainerLowest, width: 2),
+                    color: eco.surfaceContainerLowest,
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -133,7 +136,11 @@ class PhotoPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    final base = tone == 2 ? eco.photo2 : tone == 3 ? eco.photo3 : eco.photo1;
+    final base = tone == 2
+        ? eco.photo2
+        : tone == 3
+        ? eco.photo3
+        : eco.photo1;
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: AspectRatio(
@@ -183,7 +190,12 @@ class PhotoPlaceholder extends StatelessWidget {
 enum ChipTone { primary, tertiary, emerald, slate, error, warning }
 
 class EcoChip extends StatelessWidget {
-  const EcoChip(this.label, {super.key, this.tone = ChipTone.primary, this.small = false});
+  const EcoChip(
+    this.label, {
+    super.key,
+    this.tone = ChipTone.primary,
+    this.small = false,
+  });
 
   final String label;
   final ChipTone tone;
@@ -222,15 +234,17 @@ class EcoChip extends StatelessWidget {
     }
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: small ? 8 : 10, vertical: small ? 3 : 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+        horizontal: small ? 8 : 10,
+        vertical: small ? 3 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Text(
         label.toUpperCase(),
-        style: TextStyle(
+        style: (small ? AppTextStyles.chipSmall : AppTextStyles.chip).copyWith(
           color: fg,
-          fontSize: small ? 9 : 10,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1.2,
         ),
       ),
     );
@@ -255,10 +269,7 @@ class Kicker extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.3,
+            style: AppTextStyles.kicker.copyWith(
               color: context.eco.onSurfaceVariant,
             ),
           ),
@@ -284,12 +295,7 @@ class Cap extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.5,
-              color: context.eco.outline,
-            ),
+            style: AppTextStyles.cap.copyWith(color: context.eco.outline),
           ),
           if (action != null) action!,
         ],
@@ -482,7 +488,10 @@ class SegTabs extends StatelessWidget {
                 onTap: () => onChange(t),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: active == t
                         ? eco.surfaceContainerLowest
@@ -494,7 +503,7 @@ class SegTabs extends StatelessWidget {
                               color: eco.primary.withValues(alpha: 0.08),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
-                            )
+                            ),
                           ]
                         : null,
                   ),
@@ -549,7 +558,11 @@ class EcoSwitch extends StatelessWidget {
               color: value ? Colors.white : eco.surfaceContainerLowest,
               shape: BoxShape.circle,
               boxShadow: const [
-                BoxShadow(color: Color(0x26000000), blurRadius: 3, offset: Offset(0, 1)),
+                BoxShadow(
+                  color: Color(0x26000000),
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
           ),
@@ -791,25 +804,26 @@ class GradientPanel extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: DecoratedBox(
-        decoration: BoxDecoration(gradient: eco.organicGradient),
-        child: Stack(
-          children: [
-            if (dots)
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.4,
-                  child: CustomPaint(
-                    painter: DotPatternPainter(
-                        Colors.white.withValues(alpha: 0.18)),
+        borderRadius: BorderRadius.circular(radius),
+        child: DecoratedBox(
+          decoration: BoxDecoration(gradient: eco.organicGradient),
+          child: Stack(
+            children: [
+              if (dots)
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.4,
+                    child: CustomPaint(
+                      painter: DotPatternPainter(
+                        Colors.white.withValues(alpha: 0.18),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            Padding(padding: padding, child: child),
-          ],
+              Padding(padding: padding, child: child),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -865,7 +879,9 @@ class GradientButton extends StatelessWidget {
                   width: 22,
                   height: 22,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: Colors.white),
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
                 )
               : Row(
                   mainAxisSize: MainAxisSize.min,
@@ -876,11 +892,7 @@ class GradientButton extends StatelessWidget {
                     ],
                     Text(
                       label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: AppTextStyles.button.copyWith(color: Colors.white),
                     ),
                     if (trailingIcon != null) ...[
                       const SizedBox(width: 8),

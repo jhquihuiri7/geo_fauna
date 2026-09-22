@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
+import '../theme/app_text_styles.dart';
 import 'dashboard_screen.dart' show SpeciesRow;
 
 class ReporteScreen extends StatefulWidget {
@@ -25,8 +26,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    final thirtyDaysAgo =
-        DateTime.now().subtract(const Duration(days: 30));
+    final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
 
     return Scaffold(
       backgroundColor: eco.surface,
@@ -36,15 +36,20 @@ class _ReporteScreenState extends State<ReporteScreen> {
             SubHeader(
               title: 'Reporte Detallado de Impacto',
               onBack: () => Navigator.pop(context),
-              trailing: const EcoChip('Últimos 30 días',
-                  tone: ChipTone.slate, small: true),
+              trailing: const EcoChip(
+                'Últimos 30 días',
+                tone: ChipTone.slate,
+                small: true,
+              ),
             ),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: _firestore
                     .collection('fieldRecords')
-                    .where('createdAt',
-                        isGreaterThanOrEqualTo: Timestamp.fromDate(thirtyDaysAgo))
+                    .where(
+                      'createdAt',
+                      isGreaterThanOrEqualTo: Timestamp.fromDate(thirtyDaysAgo),
+                    )
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -53,14 +58,18 @@ class _ReporteScreenState extends State<ReporteScreen> {
 
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return Center(
-                      child: Text('Sin datos disponibles',
-                          style: TextStyle(color: eco.onSurface)),
+                      child: Text(
+                        'Sin datos disponibles',
+                        style: TextStyle(color: eco.onSurface),
+                      ),
                     );
                   }
 
                   final records = snapshot.data!.docs;
                   final totalSightings = records.fold<int>(
-                      0, (acc, doc) => acc + (doc['quantity'] as int? ?? 1));
+                    0,
+                    (acc, doc) => acc + (doc['quantity'] as int? ?? 1),
+                  );
                   final uniqueSpecies = records
                       .map((doc) => doc['speciesName'] as String?)
                       .where((s) => s != null && s.isNotEmpty)
@@ -141,25 +150,29 @@ class _ReporteScreenState extends State<ReporteScreen> {
             child: const Text('🌱', style: TextStyle(fontSize: 22)),
           ),
           const SizedBox(height: 12),
-          const Text('Logro de Conservación del Mes',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  color: Colors.white)),
+          const Text(
+            'Logro de Conservación del Mes',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 8),
           Text.rich(
             TextSpan(
-              style: const TextStyle(
-                  fontSize: 14, height: 1.4, color: Colors.white),
+              style: AppTextStyles.body.copyWith(color: Colors.white),
               children: const [
                 TextSpan(text: 'Reducción del '),
                 TextSpan(
-                    text: '12% en incidentes de basura',
-                    style: TextStyle(fontWeight: FontWeight.w900)),
+                  text: '12% en incidentes de basura',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
                 TextSpan(
-                    text:
-                        ' en zonas críticas gracias a las nuevas patrullas comunitarias en Bahía Academia.'),
+                  text:
+                      ' en zonas críticas gracias a las nuevas patrullas comunitarias en Bahía Academia.',
+                ),
               ],
             ),
           ),
@@ -168,8 +181,11 @@ class _ReporteScreenState extends State<ReporteScreen> {
     );
   }
 
-  Widget _buildTrendPanel(BuildContext context, AppColors eco,
-      List<QueryDocumentSnapshot> records) {
+  Widget _buildTrendPanel(
+    BuildContext context,
+    AppColors eco,
+    List<QueryDocumentSnapshot> records,
+  ) {
     return EcoCard(
       radius: 28,
       padding: const EdgeInsets.all(20),
@@ -180,11 +196,12 @@ class _ReporteScreenState extends State<ReporteScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text('Tendencia de Avistamientos',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: eco.onSurface)),
+                child: Text(
+                  'Tendencia de Avistamientos',
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: eco.onSurface,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               Icon(Icons.more_horiz, color: eco.outline),
@@ -209,41 +226,48 @@ class _ReporteScreenState extends State<ReporteScreen> {
     );
   }
 
-  Widget _buildDistributionPanel(BuildContext context, AppColors eco,
-      List<QueryDocumentSnapshot> records) {
+  Widget _buildDistributionPanel(
+    BuildContext context,
+    AppColors eco,
+    List<QueryDocumentSnapshot> records,
+  ) {
     final distribution = _calculateDistribution(records);
     return EcoCard(
       radius: 28,
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          Text('Distribución de Hallazgos',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: eco.onSurface)),
+          Text(
+            'Distribución de Hallazgos',
+            style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
+          ),
           const SizedBox(height: 16),
           SizedBox(
             width: 170,
             height: 170,
-            child: CustomPaint(
-              painter: _DonutChartPainter(eco, distribution),
-            ),
+            child: CustomPaint(painter: _DonutChartPainter(eco, distribution)),
           ),
           const SizedBox(height: 16),
           _legend(eco, eco.primary, 'Fauna', '${distribution['fauna']}%'),
           const SizedBox(height: 10),
           _legend(eco, eco.tertiary, 'Flora', '${distribution['flora']}%'),
           const SizedBox(height: 10),
-          _legend(eco, const Color(0xFFDC2626), 'Incidentes',
-              '${distribution['incidents']}%'),
+          _legend(
+            eco,
+            const Color(0xFFDC2626),
+            'Incidentes',
+            '${distribution['incidents']}%',
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTopSpeciesPanel(BuildContext context, AppColors eco,
-      List<QueryDocumentSnapshot> records) {
+  Widget _buildTopSpeciesPanel(
+    BuildContext context,
+    AppColors eco,
+    List<QueryDocumentSnapshot> records,
+  ) {
     final topSpecies = _getTopSpecies(records);
     return EcoCard(
       radius: 28,
@@ -251,80 +275,76 @@ class _ReporteScreenState extends State<ReporteScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Especies con Mayor Impacto',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: eco.onSurface)),
-          const SizedBox(height: 16),
-          ...List.generate(
-            topSpecies.length,
-            (i) {
-              final species = topSpecies[i];
-              final colors = [
-                eco.primary,
-                const Color(0xFF10B981),
-                eco.tertiary,
-                const Color(0xFFF59E0B),
-              ];
-              return Column(
-                children: [
-                  SpeciesRow(
-                    name: species['name'] as String,
-                    emoji: species['emoji'] as String,
-                    pts: species['count'].toString(),
-                    pct: species['percentage'] as int,
-                    color: colors[i % colors.length],
-                  ),
-                  if (i < topSpecies.length - 1) const SizedBox(height: 16),
-                ],
-              );
-            },
+          Text(
+            'Especies con Mayor Impacto',
+            style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
           ),
+          const SizedBox(height: 16),
+          ...List.generate(topSpecies.length, (i) {
+            final species = topSpecies[i];
+            final colors = [
+              eco.primary,
+              const Color(0xFF10B981),
+              eco.tertiary,
+              const Color(0xFFF59E0B),
+            ];
+            return Column(
+              children: [
+                SpeciesRow(
+                  name: species['name'] as String,
+                  emoji: species['emoji'] as String,
+                  pts: species['count'].toString(),
+                  pct: species['percentage'] as int,
+                  color: colors[i % colors.length],
+                ),
+                if (i < topSpecies.length - 1) const SizedBox(height: 16),
+              ],
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildZoneActivityPanel(BuildContext context, AppColors eco,
-      List<QueryDocumentSnapshot> records) {
+  Widget _buildZoneActivityPanel(
+    BuildContext context,
+    AppColors eco,
+    List<QueryDocumentSnapshot> records,
+  ) {
     final zoneActivity = _getZoneActivity(records);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text('Actividad por Zonas',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: eco.onSurface)),
+          child: Text(
+            'Actividad por Zonas',
+            style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
+          ),
         ),
         const SizedBox(height: 12),
-        ...List.generate(
-          zoneActivity.length,
-          (i) {
-            final zone = zoneActivity[i];
-            final statusMap = {
-              'Alta': ('Alta', ChipTone.warning),
-              'Media': ('Media', ChipTone.tertiary),
-              'Baja': ('Estable', ChipTone.emerald),
-            };
-            final status = statusMap[zone['status']] ?? ('Desconocido', ChipTone.slate);
-            return Column(
-              children: [
-                _ZoneRow(
-                  name: zone['name'] as String,
-                  visits: '${zone['count']}',
-                  incidents: '${zone['incidents']}',
-                  status: status.$1,
-                  tone: status.$2,
-                ),
-                if (i < zoneActivity.length - 1) const SizedBox(height: 12),
-              ],
-            );
-          },
-        ),
+        ...List.generate(zoneActivity.length, (i) {
+          final zone = zoneActivity[i];
+          final statusMap = {
+            'Alta': ('Alta', ChipTone.warning),
+            'Media': ('Media', ChipTone.tertiary),
+            'Baja': ('Estable', ChipTone.emerald),
+          };
+          final status =
+              statusMap[zone['status']] ?? ('Desconocido', ChipTone.slate);
+          return Column(
+            children: [
+              _ZoneRow(
+                name: zone['name'] as String,
+                visits: '${zone['count']}',
+                incidents: '${zone['incidents']}',
+                status: status.$1,
+                tone: status.$2,
+              ),
+              if (i < zoneActivity.length - 1) const SizedBox(height: 12),
+            ],
+          );
+        }),
       ],
     );
   }
@@ -404,13 +424,15 @@ class _ReporteScreenState extends State<ReporteScreen> {
   }
 
   List<Map<String, dynamic>> _getTopSpecies(
-      List<QueryDocumentSnapshot> records) {
+    List<QueryDocumentSnapshot> records,
+  ) {
     final speciesMap = <String, int>{};
 
     for (final doc in records) {
       final species = doc['speciesName'] as String?;
       if (species != null && species.isNotEmpty) {
-        speciesMap[species] = (speciesMap[species] ?? 0) + (doc['quantity'] as int? ?? 1);
+        speciesMap[species] =
+            (speciesMap[species] ?? 0) + (doc['quantity'] as int? ?? 1);
       }
     }
 
@@ -439,7 +461,8 @@ class _ReporteScreenState extends State<ReporteScreen> {
   }
 
   List<Map<String, dynamic>> _getZoneActivity(
-      List<QueryDocumentSnapshot> records) {
+    List<QueryDocumentSnapshot> records,
+  ) {
     final zoneMap = <String, Map<String, int>>{};
 
     for (final doc in records) {
@@ -452,7 +475,8 @@ class _ReporteScreenState extends State<ReporteScreen> {
 
       final category = doc['category'] as String?;
       if (category == 'incident' || category == 'trash') {
-        zoneMap[placeLabel]!['incidents'] = zoneMap[placeLabel]!['incidents']! + 1;
+        zoneMap[placeLabel]!['incidents'] =
+            zoneMap[placeLabel]!['incidents']! + 1;
       }
     }
 
@@ -461,7 +485,11 @@ class _ReporteScreenState extends State<ReporteScreen> {
 
     return sorted.take(3).map((entry) {
       final count = entry.value['count'] ?? 0;
-      final status = count > 50 ? 'Alta' : count > 20 ? 'Media' : 'Baja';
+      final status = count > 50
+          ? 'Alta'
+          : count > 20
+          ? 'Media'
+          : 'Baja';
       return {
         'name': entry.key,
         'count': count,
@@ -471,8 +499,13 @@ class _ReporteScreenState extends State<ReporteScreen> {
     }).toList();
   }
 
-  Widget _bar(AppColors eco, double h, String label,
-      {bool highlight = false, String? peak}) {
+  Widget _bar(
+    AppColors eco,
+    double h,
+    String label, {
+    bool highlight = false,
+    String? peak,
+  }) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -482,17 +515,15 @@ class _ReporteScreenState extends State<ReporteScreen> {
             if (peak != null)
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: eco.primary,
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(peak,
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: eco.onPrimary)),
+                child: Text(
+                  peak,
+                  style: AppTextStyles.chip.copyWith(color: eco.onPrimary),
+                ),
               ),
             Container(
               height: h,
@@ -500,17 +531,21 @@ class _ReporteScreenState extends State<ReporteScreen> {
                 color: highlight
                     ? eco.primary
                     : eco.primary.withValues(alpha: 0.25),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                    color: eco.outline)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+                color: eco.outline,
+              ),
+            ),
           ],
         ),
       ),
@@ -525,25 +560,26 @@ class _ReporteScreenState extends State<ReporteScreen> {
           child: Row(
             children: [
               Container(
-                  width: 10,
-                  height: 10,
-                  decoration:
-                      BoxDecoration(color: color, shape: BoxShape.circle)),
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
               const SizedBox(width: 8),
               Flexible(
-                child: Text(label,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, color: eco.onSurface)),
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(width: 8),
-        Text(value,
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurface)),
+        Text(
+          value,
+          style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
+        ),
       ],
     );
   }
@@ -571,28 +607,35 @@ class _Kpi extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label.toUpperCase(),
-              style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
-                  color: eco.onSurfaceVariant)),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+              color: eco.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1,
-                  color: eco.onSurface)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1,
+              color: eco.onSurface,
+            ),
+          ),
           if (delta != null) ...[
             const SizedBox(height: 4),
-            Text(delta!,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: deltaTone == ChipTone.tertiary
-                        ? eco.tertiary
-                        : eco.primary)),
+            Text(
+              delta!,
+              style: AppTextStyles.kicker.copyWith(
+                color: deltaTone == ChipTone.tertiary
+                    ? eco.tertiary
+                    : eco.primary,
+              ),
+            ),
           ],
         ],
       ),
@@ -628,27 +671,39 @@ class _ZoneRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: eco.onSurface)),
+                Text(
+                  name,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: eco.onSurface,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.visibility,
-                        size: 13, color: eco.onSurfaceVariant),
+                    Icon(
+                      Icons.visibility,
+                      size: 13,
+                      color: eco.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 4),
-                    Text(visits,
-                        style: TextStyle(
-                            fontSize: 11, color: eco.onSurfaceVariant)),
+                    Text(
+                      visits,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: eco.onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Icon(Icons.warning, size: 13, color: eco.onSurfaceVariant),
                     const SizedBox(width: 4),
-                    Text(incidents,
-                        style: TextStyle(
-                            fontSize: 11, color: eco.onSurfaceVariant)),
+                    Text(
+                      incidents,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: eco.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -693,31 +748,35 @@ class _DonutChartPainter extends CustomPainter {
         ..color = s[1] as Color
         ..style = PaintingStyle.stroke
         ..strokeWidth = 18;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start,
-          sweep, false, paint);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep,
+        false,
+        paint,
+      );
       start += sweep;
     }
 
     final total = TextPainter(
       text: TextSpan(
-          text: 'TOTAL',
-          style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: eco.onSurface)),
+        text: 'TOTAL',
+        style: AppTextStyles.titleMd.copyWith(color: eco.onSurface),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
-    total.paint(
-        canvas, center - Offset(total.width / 2, total.height / 2 + 6));
+    total.paint(canvas, center - Offset(total.width / 2, total.height / 2 + 6));
 
     final lbl = TextPainter(
       text: TextSpan(
-          text: 'REGISTROS',
-          style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-              color: eco.onSurfaceVariant)),
+        text: 'REGISTROS',
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 2,
+          color: eco.onSurfaceVariant,
+        ),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
     lbl.paint(canvas, center - Offset(lbl.width / 2, lbl.height / 2 - 12));

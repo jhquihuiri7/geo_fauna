@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../services/location_service.dart';
 import '../services/map_tile_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
 
 /// Un avistamiento a dibujar sobre el mapa (categoría normalizada + ubicación).
 class MapSighting {
@@ -774,11 +775,7 @@ class _TitlePill extends StatelessWidget {
       ),
       child: Text(
         title,
-        style: TextStyle(
-          color: eco.onSurface,
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-        ),
+        style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
       ),
     );
   }

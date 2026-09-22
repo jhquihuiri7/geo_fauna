@@ -21,6 +21,7 @@ import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import '../widgets/route_map.dart';
 import '../widgets/user_avatar.dart';
+import '../theme/app_text_styles.dart';
 
 final _wallOptimism = _WallOptimism();
 
@@ -80,10 +81,7 @@ class _MuroScreenState extends State<MuroScreen> {
                       child: Text(
                         'MURO DE AVISTAMIENTOS',
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.3,
+                        style: AppTextStyles.kicker.copyWith(
                           color: eco.onSurfaceVariant,
                         ),
                       ),
@@ -370,11 +368,7 @@ class _MuroScreenState extends State<MuroScreen> {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                color: eco.onSurfaceVariant,
-              ),
+              style: AppTextStyles.bodySm.copyWith(color: eco.onSurfaceVariant),
             ),
           ),
         ],
@@ -490,11 +484,7 @@ class _EventCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   _participantsLabel(event),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: eco.primary,
-                  ),
+                  style: AppTextStyles.kicker.copyWith(color: eco.primary),
                 ),
               ],
             ],
@@ -609,19 +599,14 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                       const SizedBox(height: 14),
                       Text(
                         'OBJETIVOS',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
+                        style: AppTextStyles.chip.copyWith(
                           color: eco.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         event.body!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.4,
+                        style: AppTextStyles.body.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
@@ -648,12 +633,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
             children: [
               Text(
                 event.title,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  height: 1.1,
-                  color: eco.onSurface,
-                ),
+                style: AppTextStyles.titleLg.copyWith(color: eco.onSurface),
               ),
               const SizedBox(height: 8),
               EcoChip(event.type, tone: event.chipTone),
@@ -693,11 +673,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
             const SizedBox(width: 8),
             Text(
               'Eres el organizador',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: eco.primary,
-              ),
+              style: AppTextStyles.bodyStrong.copyWith(color: eco.primary),
             ),
           ],
         ),
@@ -853,9 +829,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                  style: AppTextStyles.bodyStrong.copyWith(
                     color: eco.onSurface,
                   ),
                 ),
@@ -933,9 +907,7 @@ class _SightingCard extends StatelessWidget {
                       Text(
                         item.authorName,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
+                        style: AppTextStyles.button.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
@@ -1078,9 +1050,7 @@ class _SightingCard extends StatelessWidget {
                     child: Text(
                       item.placeLabel!,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.kicker.copyWith(
                         color: item.hasMapLocation
                             ? eco.primary
                             : eco.onSurfaceVariant,
@@ -1387,9 +1357,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
                   Expanded(
                     child: Text(
                       'Editar monitoreo',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
+                      style: AppTextStyles.titleLg.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -1467,12 +1435,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
       children: [
         Text(
           label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-            color: eco.onSurfaceVariant,
-          ),
+          style: AppTextStyles.chip.copyWith(color: eco.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
         child,
@@ -1498,12 +1461,12 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
         enabled: !_saving,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: TextStyle(fontSize: 14, color: eco.onSurface),
+        style: AppTextStyles.body.copyWith(color: eco.onSurface),
         decoration: InputDecoration(
           isCollapsed: true,
           border: InputBorder.none,
           hintText: hint,
-          hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+          hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
         ),
       ),
     );
@@ -1595,9 +1558,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                    style: AppTextStyles.cap.copyWith(
                       color: eco.onSurfaceVariant,
                     ),
                   ),
@@ -1633,11 +1594,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
           Expanded(
             child: Text(
               'Publicar en muro',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurface,
-              ),
+              style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
             ),
           ),
           EcoSwitch(
@@ -1668,9 +1625,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
               Expanded(
                 child: Text(
                   _evidenceLabel(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                  style: AppTextStyles.bodyStrong.copyWith(
                     color: eco.onSurface,
                   ),
                 ),
@@ -2611,16 +2566,12 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.videocam_off, color: Colors.white70, size: 46),
-            SizedBox(height: 12),
+          children: [
+            const Icon(Icons.videocam_off, color: Colors.white70, size: 46),
+            const SizedBox(height: 12),
             Text(
               'No se pudo reproducir el video',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
+              style: AppTextStyles.button.copyWith(color: Colors.white),
             ),
           ],
         ),
@@ -2768,10 +2719,8 @@ class _VideoControlDock extends StatelessWidget {
               Text(
                 '${_formatVideoTime(value.position)} / '
                 '${_formatVideoTime(value.duration)}',
-                style: TextStyle(
+                style: AppTextStyles.kicker.copyWith(
                   color: Colors.white.withValues(alpha: 0.76),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(width: 8),
@@ -3162,9 +3111,7 @@ class _ReactorsSheet extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 'Me gusta · $total',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
+                                style: AppTextStyles.titleMd.copyWith(
                                   color: eco.onSurface,
                                 ),
                               ),
@@ -3332,9 +3279,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   Expanded(
                     child: Text(
                       'Comentarios',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                      style: AppTextStyles.titleMd.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -3408,16 +3353,17 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                         focusNode: _focus,
                         minLines: 1,
                         maxLines: 3,
-                        style: TextStyle(color: eco.onSurface, fontSize: 14),
+                        style: AppTextStyles.body.copyWith(
+                          color: eco.onSurface,
+                        ),
                         decoration: InputDecoration(
                           isCollapsed: true,
                           border: InputBorder.none,
                           hintText: _replyingTo == null
                               ? 'Escribe un comentario...'
                               : 'Respondiendo a ${_replyingTo!.authorName}...',
-                          hintStyle: TextStyle(
+                          hintStyle: AppTextStyles.body.copyWith(
                             color: eco.outline,
-                            fontSize: 14,
                           ),
                         ),
                       ),
@@ -3458,11 +3404,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
             child: Text(
               'Respondiendo a ${_replyingTo!.authorName}',
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurfaceVariant,
-              ),
+              style: AppTextStyles.label.copyWith(color: eco.onSurfaceVariant),
             ),
           ),
           InkWell(
@@ -3683,10 +3625,8 @@ class _CommentRow extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         comment.body,
-                        style: TextStyle(
+                        style: AppTextStyles.bodySm.copyWith(
                           color: eco.onSurface,
-                          fontSize: 13,
-                          height: 1.35,
                         ),
                       ),
                     ],
