@@ -52,12 +52,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDmdoKtvV0-wJQns8UBP8S1vWaDpqUhj70',
-    appId: '1:272453477913:android:69b17445a50eec93c7ac88',
+    appId: '1:272453477913:android:4d8a0ad9541c9359c7ac88',
     messagingSenderId: '272453477913',
     projectId: 'geofaunagps',
     storageBucket: 'geofaunagps.firebasestorage.app',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyAI-GfoYJ37CO5qerGLcUh2sU0VXBX3xtE',
     appId: '1:272453477913:ios:7745b6d7e9d9c769c7ac88',
@@ -76,7 +75,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'geofaunagps.firebasestorage.app',
     measurementId: 'G-1EY9F8DLMX',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAI-GfoYJ37CO5qerGLcUh2sU0VXBX3xtE',
     appId: '1:272453477913:ios:4bb594b7a29f11c2c7ac88',
