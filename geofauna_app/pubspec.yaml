@@ -75,6 +75,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Genera el AppIcon de iOS desde assets/brand/tortuga-topo-ios-1024.png.
+  # Android queda fuera: su icono adaptativo se mantiene a mano.
+  flutter_launcher_icons: ^0.14.4
+
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
@@ -123,3 +127,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Ícono de aplicación — logotipo oficial Tortuga-Topo.
+# Solo iOS: en Android conservamos el ícono adaptativo (mipmap-anydpi-v26 +
+# drawable/ic_launcher_background.xml) que ya trae el repositorio.
+flutter_launcher_icons:
+  android: false
+  ios: true
+  image_path_ios: "assets/brand/tortuga-topo-ios-1024.png"
+  remove_alpha_ios: true

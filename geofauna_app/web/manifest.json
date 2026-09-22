@@ -1,6 +1,6 @@
 {
-    "name": "geofauna",
-    "short_name": "geofauna",
+    "name": "EcoGuía Galápagos",
+    "short_name": "EcoGuía",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F7F9FB",

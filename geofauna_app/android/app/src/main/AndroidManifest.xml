@@ -22,7 +22,7 @@
     <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
 
     <application
-        android:label="geofauna"
+        android:label="EcoGuía"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
