@@ -48,6 +48,9 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.photo2,
     required this.photo3,
     required this.photoStripe,
+    required this.shadowSoft,
+    required this.shadowCard,
+    required this.shadowFab,
   });
 
   final Color bg;
@@ -89,6 +92,15 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color photo2;
   final Color photo3;
   final Color photoStripe;
+
+  /// Large panels and modal sheets: the wide, diffuse emerald-tinted shadow.
+  final List<BoxShadow> shadowSoft;
+
+  /// EcoCard and content cards: no borders, the shadow lifts them off the bg.
+  final List<BoxShadow> shadowCard;
+
+  /// The centre "Nuevo" button and gradient CTAs.
+  final List<BoxShadow> shadowFab;
 
   /// 135° emerald gradient used on CTAs and hero banners (`.organic-gradient`).
   LinearGradient get organicGradient => LinearGradient(
@@ -137,6 +149,27 @@ class AppColors extends ThemeExtension<AppColors> {
     photo2: Color(0xFFA3BDCB),
     photo3: Color(0xFFC9D3C2),
     photoStripe: Color(0x0A000000), // rgba(0,0,0,0.04)
+    shadowSoft: [
+      BoxShadow(
+        color: Color.fromRGBO(0, 105, 72, 0.05),
+        blurRadius: 45,
+        offset: Offset(0, 12),
+      ),
+    ],
+    shadowCard: [
+      BoxShadow(
+        color: Color.fromRGBO(0, 105, 72, 0.04),
+        blurRadius: 24,
+        offset: Offset(0, 4),
+      ),
+    ],
+    shadowFab: [
+      BoxShadow(
+        color: Color.fromRGBO(0, 105, 72, 0.25),
+        blurRadius: 25,
+        offset: Offset(0, 8),
+      ),
+    ],
   );
 
   static const AppColors dark = AppColors(
@@ -179,6 +212,27 @@ class AppColors extends ThemeExtension<AppColors> {
     photo2: Color(0xFF2A3A44),
     photo3: Color(0xFF2E372C),
     photoStripe: Color(0x0AFFFFFF), // rgba(255,255,255,0.04)
+    shadowSoft: [
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, 0.5),
+        blurRadius: 45,
+        offset: Offset(0, 12),
+      ),
+    ],
+    shadowCard: [
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, 0.45),
+        blurRadius: 24,
+        offset: Offset(0, 4),
+      ),
+    ],
+    shadowFab: [
+      BoxShadow(
+        color: Color.fromRGBO(104, 219, 169, 0.25),
+        blurRadius: 25,
+        offset: Offset(0, 8),
+      ),
+    ],
   );
 
   @override
@@ -222,6 +276,9 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? photo2,
     Color? photo3,
     Color? photoStripe,
+    List<BoxShadow>? shadowSoft,
+    List<BoxShadow>? shadowCard,
+    List<BoxShadow>? shadowFab,
   }) {
     return AppColors(
       bg: bg ?? this.bg,
@@ -265,6 +322,9 @@ class AppColors extends ThemeExtension<AppColors> {
       photo2: photo2 ?? this.photo2,
       photo3: photo3 ?? this.photo3,
       photoStripe: photoStripe ?? this.photoStripe,
+      shadowSoft: shadowSoft ?? this.shadowSoft,
+      shadowCard: shadowCard ?? this.shadowCard,
+      shadowFab: shadowFab ?? this.shadowFab,
     );
   }
 
@@ -318,6 +378,11 @@ class AppColors extends ThemeExtension<AppColors> {
       photo2: c(photo2, other.photo2),
       photo3: c(photo3, other.photo3),
       photoStripe: c(photoStripe, other.photoStripe),
+      shadowSoft:
+          BoxShadow.lerpList(shadowSoft, other.shadowSoft, t) ?? shadowSoft,
+      shadowCard:
+          BoxShadow.lerpList(shadowCard, other.shadowCard, t) ?? shadowCard,
+      shadowFab: BoxShadow.lerpList(shadowFab, other.shadowFab, t) ?? shadowFab,
     );
   }
 }

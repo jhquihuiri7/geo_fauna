@@ -758,39 +758,14 @@ class EcoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: padding,
       decoration: BoxDecoration(
         color: color ?? eco.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(radius),
-        // Layered shadow: a wide soft ambient glow + a tight contact shadow,
-        // for a more dimensional, "floating" feel.
-        boxShadow: dark
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: soft ? 0.55 : 0.5),
-                  blurRadius: soft ? 48 : 28,
-                  offset: Offset(0, soft ? 16 : 8),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : [
-                BoxShadow(
-                  color: eco.primary.withValues(alpha: soft ? 0.08 : 0.06),
-                  blurRadius: soft ? 48 : 28,
-                  offset: Offset(0, soft ? 18 : 10),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        // Sin bordes: la sombra teñida separa la tarjeta del fondo.
+        // `soft` es el panel grande (shadow-soft); el resto, shadow-card.
+        boxShadow: soft ? eco.shadowSoft : eco.shadowCard,
       ),
       child: child,
     );
@@ -883,20 +858,7 @@ class GradientButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: eco.organicGradient,
           borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-          boxShadow: [
-            // Coloured glow that bleeds beyond the pill for a luminous CTA.
-            BoxShadow(
-              color: eco.primary.withValues(alpha: 0.38),
-              blurRadius: 28,
-              spreadRadius: -2,
-              offset: const Offset(0, 12),
-            ),
-            BoxShadow(
-              color: eco.primaryContainer.withValues(alpha: 0.22),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          boxShadow: eco.shadowFab,
         ),
         child: Center(
           child: loading
