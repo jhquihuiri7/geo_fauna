@@ -22,6 +22,58 @@
           }
         },
         {
+          "client_id": "272453477913-fg9802a6um0cb36diqogoqjf94oc7c0i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.geofauna.app",
+            "certificate_hash": "48216aed6b642f2c2195bd7772405b72b8a1611b"
+          }
+        },
+        {
+          "client_id": "272453477913-0nvpqad82srjgudhg17e2cqrelji11ht.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmdoKtvV0-wJQns8UBP8S1vWaDpqUhj70"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "272453477913-0nvpqad82srjgudhg17e2cqrelji11ht.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "272453477913-0kmu263jlce4tfdetp2fnnp42ohbpors.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.geofauna"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:272453477913:android:4d8a0ad9541c9359c7ac88",
+        "android_client_info": {
+          "package_name": "com.logicielapplab.geofauna"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "272453477913-5f1ohgpr666vrmglhr47qpm972nue6kh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.logicielapplab.geofauna",
+            "certificate_hash": "48216aed6b642f2c2195bd7772405b72b8a1611b"
+          }
+        },
+        {
           "client_id": "272453477913-0nvpqad82srjgudhg17e2cqrelji11ht.apps.googleusercontent.com",
           "client_type": 3
         }

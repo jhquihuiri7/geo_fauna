@@ -1,0 +1,8 @@
+# Volcados de memoria de la JVM: el daemon de Gradle los escribe al quedarse sin
+# heap y pesan cientos de MB o más.
+*.hprof
+
+# Logs de herramientas ejecutadas desde la raíz del repo (el .gitignore de
+# geofauna_app ya cubre los de dentro).
+firebase-debug.log
+*-debug.log

@@ -1,6 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
+import 'app_log.dart';
+
+const _log = AppLog('WEATHER');
 
 class CurrentWeather {
   const CurrentWeather({
@@ -167,16 +170,32 @@ class WeatherService {
       },
     );
 
-    debugPrint('🌤️ Weather request: ${uri.toString()}');
-    final res = await http.get(uri);
-    debugPrint('🌤️ Weather response: ${res.statusCode}');
-    if (res.statusCode != 200) {
-      throw Exception('Open-Meteo respondio ${res.statusCode} - ${res.body}');
-    }
+    final trace = _log.trace('fetchForecast');
+    trace.note('lat=$latitude lon=$longitude');
+    try {
+      final res = await trace.step(
+        'GET $uri',
+        () => http.get(uri),
+        describe: (r) => 'HTTP ${r.statusCode}, ${r.bodyBytes.length} bytes',
+      );
+      if (res.statusCode != 200) {
+        throw Exception('Open-Meteo respondio ${res.statusCode} - ${res.body}');
+      }
 
-    return WeatherForecast.fromJson(
-      jsonDecode(res.body) as Map<String, dynamic>,
-    );
+      final forecast = trace.stepSync(
+        'parsear respuesta',
+        () => WeatherForecast.fromJson(
+          jsonDecode(res.body) as Map<String, dynamic>,
+        ),
+        describe: (f) => '${f.hourly.length} horas, '
+            'actual ${f.current.temperature}°C ${f.current.description}',
+      );
+      trace.done();
+      return forecast;
+    } catch (error) {
+      trace.failed(error);
+      rethrow;
+    }
   }
 }
 
