@@ -164,14 +164,12 @@ class IntegridadScreen extends StatelessWidget {
                         height: 44,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: const Color(
-                            0xFFF59E0B,
-                          ).withValues(alpha: 0.16),
+                          color: eco.warning.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(
                             AppSpacing.radiusSm,
                           ),
                         ),
-                        child: const Icon(Icons.key, color: Color(0xFFF59E0B)),
+                        child: Icon(Icons.key, color: eco.warning),
                       ),
                       const SizedBox(width: AppSpacing.space3),
                       Text(

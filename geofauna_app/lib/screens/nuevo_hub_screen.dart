@@ -15,6 +15,7 @@ import '../widgets/live_map.dart';
 import '../widgets/user_avatar.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_spacing.dart';
+import '../widgets/brand_logo.dart';
 
 /// Nuevo — capture hub with three segmented sub-screens: Monitoreo (field
 /// record), Agenda (tour), Evento (create event) — port of screens-forms.jsx.
@@ -852,7 +853,9 @@ class _TourRecordState extends State<_TourRecord> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.eco, color: Colors.white, size: 24),
+              // La marca sobre el degradado. 32px es el minimo del sistema:
+              // por debajo las tres curvas del caparazon se empastan.
+              const TortugaTopoMark.onFill(size: 32),
               const SizedBox(width: AppSpacing.space4),
               Expanded(
                 child: Column(

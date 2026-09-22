@@ -300,7 +300,7 @@ class DashboardScreen extends StatelessWidget {
                     Center(
                       child: _Podium(
                         icon: Icons.emoji_events,
-                        iconColor: const Color(0xFFF59E0B),
+                        iconColor: eco.warning,
                         name: data.contributors[0].name,
                         pts: _formatInt(data.contributors[0].count),
                         tone: _toneForIndex(0),
@@ -1102,7 +1102,7 @@ Color _colorForIndex(AppColors eco, int index) {
     0 => eco.primary,
     1 => const Color(0xFF10B981),
     2 => eco.tertiary,
-    _ => const Color(0xFFF59E0B),
+    _ => eco.warning,
   };
 }
 

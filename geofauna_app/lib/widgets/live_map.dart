@@ -37,11 +37,11 @@ IconData mapCategoryIcon(String key) {
   };
 }
 
-Color mapCategoryColor(String key) {
+Color mapCategoryColor(AppColors eco, String key) {
   return switch (key) {
     'fauna' => const Color(0xFF16A34A),
     'flora' => const Color(0xFF0D9488),
-    'incident' => const Color(0xFFF59E0B),
+    'incident' => eco.warning,
     'trash' => const Color(0xFF6366F1),
     _ => const Color(0xFF64748B),
   };
@@ -473,7 +473,7 @@ class _CategoryPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = mapCategoryColor(categoryKey);
+    final color = mapCategoryColor(context.eco, categoryKey);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -572,7 +572,7 @@ class _SightingPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    final color = mapCategoryColor(sighting.categoryKey);
+    final color = mapCategoryColor(eco, sighting.categoryKey);
     final label = mapCategoryLabel(sighting.categoryKey);
     final species = sighting.species;
     return Container(

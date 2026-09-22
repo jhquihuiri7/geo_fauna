@@ -292,7 +292,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
               eco.primary,
               const Color(0xFF10B981),
               eco.tertiary,
-              const Color(0xFFF59E0B),
+              eco.warning,
             ];
             return Column(
               children: [
