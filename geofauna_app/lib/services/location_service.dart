@@ -68,8 +68,7 @@ class LocationService {
         throw Exception('Permiso de ubicación denegado.');
       }
       if (permission == LocationPermission.deniedForever) {
-        throw Exception(
-            'Permiso de ubicación bloqueado. Actívalo en Ajustes.');
+        throw Exception('Permiso de ubicación bloqueado. Actívalo en Ajustes.');
       }
 
       final pos = await trace.step(
@@ -79,7 +78,8 @@ class LocationService {
             accuracy: LocationAccuracy.medium,
           ),
         ),
-        describe: (p) => '${p.latitude}, ${p.longitude} '
+        describe: (p) =>
+            '${p.latitude}, ${p.longitude} '
             '(±${p.accuracy.round()}m, fuente: ${p.isMocked ? 'simulada' : 'real'})',
       );
 
@@ -118,8 +118,8 @@ class LocationService {
         locality = (p.locality?.isNotEmpty ?? false)
             ? p.locality
             : (p.subAdministrativeArea?.isNotEmpty ?? false)
-                ? p.subAdministrativeArea
-                : null;
+            ? p.subAdministrativeArea
+            : null;
         area = (p.administrativeArea?.isNotEmpty ?? false)
             ? p.administrativeArea
             : p.country;
@@ -198,7 +198,10 @@ class LocationService {
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'Recorrido en curso',
           notificationText: 'GeoFauna está registrando tu ruta de campo.',
-          notificationIcon: AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
+          notificationIcon: AndroidResource(
+            name: 'ic_launcher',
+            defType: 'mipmap',
+          ),
           enableWakeLock: true,
           setOngoing: true,
         ),

@@ -75,8 +75,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 onTap: _pickPhoto,
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage:
-                      _photoFile != null ? FileImage(_photoFile!) : null,
+                  backgroundImage: _photoFile != null
+                      ? FileImage(_photoFile!)
+                      : null,
                   child: _photoFile == null
                       ? const Icon(Icons.add_a_photo, size: 40)
                       : null,
@@ -93,7 +94,9 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Correo electrónico'),
+                decoration: const InputDecoration(
+                  labelText: 'Correo electrónico',
+                ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) => v!.isEmpty ? 'Ingresa tu correo' : null,
               ),
@@ -102,17 +105,18 @@ class _RegisterPageState extends State<RegisterPage> {
                 controller: _passwordCtrl,
                 decoration: const InputDecoration(labelText: 'Contraseña'),
                 obscureText: true,
-                validator: (v) =>
-                    v!.length < 6 ? 'Mínimo 6 caracteres' : null,
+                validator: (v) => v!.length < 6 ? 'Mínimo 6 caracteres' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _confirmCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Confirmar contraseña'),
+                decoration: const InputDecoration(
+                  labelText: 'Confirmar contraseña',
+                ),
                 obscureText: true,
-                validator: (v) =>
-                    v != _passwordCtrl.text ? 'Las contraseñas no coinciden' : null,
+                validator: (v) => v != _passwordCtrl.text
+                    ? 'Las contraseñas no coinciden'
+                    : null,
               ),
               const SizedBox(height: 24),
               if (_loading)

@@ -92,10 +92,10 @@ class AppColors extends ThemeExtension<AppColors> {
 
   /// 135° emerald gradient used on CTAs and hero banners (`.organic-gradient`).
   LinearGradient get organicGradient => LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [primary, primaryContainer],
-      );
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primary, primaryContainer],
+  );
 
   static const AppColors light = AppColors(
     bg: Color(0xFFF0F4F2),
@@ -277,13 +277,17 @@ class AppColors extends ThemeExtension<AppColors> {
       surface: c(surface, other.surface),
       surfaceBright: c(surfaceBright, other.surfaceBright),
       surfaceDim: c(surfaceDim, other.surfaceDim),
-      surfaceContainerLowest:
-          c(surfaceContainerLowest, other.surfaceContainerLowest),
+      surfaceContainerLowest: c(
+        surfaceContainerLowest,
+        other.surfaceContainerLowest,
+      ),
       surfaceContainerLow: c(surfaceContainerLow, other.surfaceContainerLow),
       surfaceContainer: c(surfaceContainer, other.surfaceContainer),
       surfaceContainerHigh: c(surfaceContainerHigh, other.surfaceContainerHigh),
-      surfaceContainerHighest:
-          c(surfaceContainerHighest, other.surfaceContainerHighest),
+      surfaceContainerHighest: c(
+        surfaceContainerHighest,
+        other.surfaceContainerHighest,
+      ),
       onSurface: c(onSurface, other.onSurface),
       onSurfaceVariant: c(onSurfaceVariant, other.onSurfaceVariant),
       outline: c(outline, other.outline),

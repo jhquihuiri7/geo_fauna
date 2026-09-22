@@ -154,21 +154,19 @@ class WeatherService {
     required double latitude,
     required double longitude,
   }) async {
-    final uri = Uri.https(
-      'api.open-meteo.com',
-      '/v1/forecast',
-      {
-        'latitude': latitude.toString(),
-        'longitude': longitude.toString(),
-        'current': 'temperature_2m,relative_humidity_2m,is_day,rain,weather_code,cloud_cover,wind_speed_10m',
-        'hourly': 'temperature_2m,relative_humidity_2m,rain,weather_code,cloud_cover,wind_speed_10m',
-        'temperature_unit': 'celsius',
-        'wind_speed_unit': 'kmh',
-        'precipitation_unit': 'mm',
-        'timezone': 'auto',
-        'forecast_days': '15',
-      },
-    );
+    final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+      'latitude': latitude.toString(),
+      'longitude': longitude.toString(),
+      'current':
+          'temperature_2m,relative_humidity_2m,is_day,rain,weather_code,cloud_cover,wind_speed_10m',
+      'hourly':
+          'temperature_2m,relative_humidity_2m,rain,weather_code,cloud_cover,wind_speed_10m',
+      'temperature_unit': 'celsius',
+      'wind_speed_unit': 'kmh',
+      'precipitation_unit': 'mm',
+      'timezone': 'auto',
+      'forecast_days': '15',
+    });
 
     final trace = _log.trace('fetchForecast');
     trace.note('lat=$latitude lon=$longitude');
@@ -187,7 +185,8 @@ class WeatherService {
         () => WeatherForecast.fromJson(
           jsonDecode(res.body) as Map<String, dynamic>,
         ),
-        describe: (f) => '${f.hourly.length} horas, '
+        describe: (f) =>
+            '${f.hourly.length} horas, '
             'actual ${f.current.temperature}°C ${f.current.description}',
       );
       trace.done();

@@ -17,7 +17,7 @@ class TortugaTopoMark extends StatelessWidget {
   /// Variant for use on the emerald organic gradient (white shell, mint limbs,
   /// emerald contour lines) — e.g. the login badge and app icon.
   const TortugaTopoMark.onFill({Key? key, double size = 48})
-      : this(key: key, size: size, onFill: true);
+    : this(key: key, size: size, onFill: true);
 
   final double size;
   final Color? limb;
@@ -36,13 +36,20 @@ class TortugaTopoMark extends StatelessWidget {
     return Semantics(
       label: 'EcoGuía',
       image: true,
-      child: SizedBox.square(dimension: size, child: CustomPaint(painter: painter)),
+      child: SizedBox.square(
+        dimension: size,
+        child: CustomPaint(painter: painter),
+      ),
     );
   }
 }
 
 class _TortugaTopoPainter extends CustomPainter {
-  _TortugaTopoPainter({required this.limb, required this.shell, required this.ring});
+  _TortugaTopoPainter({
+    required this.limb,
+    required this.shell,
+    required this.ring,
+  });
   final Color limb;
   final Color shell;
   final Color ring;
@@ -53,19 +60,33 @@ class _TortugaTopoPainter extends CustomPainter {
     canvas.save();
     canvas.scale(s);
 
-    final limbP = Paint()..color = limb..isAntiAlias = true;
-    final shellP = Paint()..color = shell..isAntiAlias = true;
+    final limbP = Paint()
+      ..color = limb
+      ..isAntiAlias = true;
+    final shellP = Paint()
+      ..color = shell
+      ..isAntiAlias = true;
     final ringP = Paint()
       ..color = ring
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..isAntiAlias = true;
 
-    void oval(double cx, double cy, double rx, double ry, Paint p, [double deg = 0]) {
+    void oval(
+      double cx,
+      double cy,
+      double rx,
+      double ry,
+      Paint p, [
+      double deg = 0,
+    ]) {
       canvas.save();
       canvas.translate(cx, cy);
       if (deg != 0) canvas.rotate(deg * 3.141592653589793 / 180);
-      canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: rx * 2, height: ry * 2), p);
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset.zero, width: rx * 2, height: ry * 2),
+        p,
+      );
       canvas.restore();
     }
 

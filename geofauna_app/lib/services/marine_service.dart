@@ -14,17 +14,17 @@ class TideInfo {
   final double seaLevelHeight;
 
   String get label => switch (state) {
-    TideState.rising   => 'SUBIENDO',
-    TideState.falling  => 'BAJANDO',
+    TideState.rising => 'SUBIENDO',
+    TideState.falling => 'BAJANDO',
     TideState.highTide => 'PLEAMAR',
-    TideState.lowTide  => 'BAJAMAR',
+    TideState.lowTide => 'BAJAMAR',
   };
 
   String get arrow => switch (state) {
-    TideState.rising   => '↑',
-    TideState.falling  => '↓',
+    TideState.rising => '↑',
+    TideState.falling => '↓',
     TideState.highTide => '▲',
-    TideState.lowTide  => '▼',
+    TideState.lowTide => '▼',
   };
 
   String get heightLabel {
@@ -65,7 +65,11 @@ class WaveHour {
       wavePeriod: _doubleAt(hourly, 'wave_period', index),
       swellWaveHeight: _doubleAt(hourly, 'swell_wave_height', index),
       windWaveHeight: _doubleAt(hourly, 'wind_wave_height', index),
-      seaSurfaceTemperature: _nullableDoubleAt(hourly, 'sea_surface_temperature', index),
+      seaSurfaceTemperature: _nullableDoubleAt(
+        hourly,
+        'sea_surface_temperature',
+        index,
+      ),
       seaLevelHeight: _nullableDoubleAt(hourly, 'sea_level_height_msl', index),
     );
   }
@@ -155,18 +159,15 @@ class MarineService {
     required double latitude,
     required double longitude,
   }) async {
-    final uri = Uri.https(
-      'marine-api.open-meteo.com',
-      '/v1/marine',
-      {
-        'latitude': latitude.toString(),
-        'longitude': longitude.toString(),
-        'hourly': 'wave_height,wave_direction,wave_period,swell_wave_height,'
-            'wind_wave_height,sea_surface_temperature,sea_level_height_msl',
-        'timezone': 'auto',
-        'forecast_days': '8',
-      },
-    );
+    final uri = Uri.https('marine-api.open-meteo.com', '/v1/marine', {
+      'latitude': latitude.toString(),
+      'longitude': longitude.toString(),
+      'hourly':
+          'wave_height,wave_direction,wave_period,swell_wave_height,'
+          'wind_wave_height,sea_surface_temperature,sea_level_height_msl',
+      'timezone': 'auto',
+      'forecast_days': '8',
+    });
 
     final trace = _log.trace('fetchForecast');
     trace.note('lat=$latitude lon=$longitude');
@@ -177,7 +178,9 @@ class MarineService {
         describe: (r) => 'HTTP ${r.statusCode}, ${r.bodyBytes.length} bytes',
       );
       if (res.statusCode != 200) {
-        throw Exception('Open-Meteo Marine respondio ${res.statusCode} - ${res.body}');
+        throw Exception(
+          'Open-Meteo Marine respondio ${res.statusCode} - ${res.body}',
+        );
       }
 
       final forecast = trace.stepSync(

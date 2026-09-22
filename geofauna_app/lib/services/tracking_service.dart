@@ -33,22 +33,22 @@ class TrackPoint {
   LatLng get latLng => LatLng(lat, lng);
 
   Map<String, dynamic> toJson() => {
-        'lat': lat,
-        'lng': lng,
-        't': tMs,
-        if (accuracy != null) 'acc': accuracy,
-        if (speed != null) 'spd': speed,
-        if (altitude != null) 'alt': altitude,
-      };
+    'lat': lat,
+    'lng': lng,
+    't': tMs,
+    if (accuracy != null) 'acc': accuracy,
+    if (speed != null) 'spd': speed,
+    if (altitude != null) 'alt': altitude,
+  };
 
   static TrackPoint fromJson(Map<String, dynamic> json) => TrackPoint(
-        lat: (json['lat'] as num).toDouble(),
-        lng: (json['lng'] as num).toDouble(),
-        tMs: (json['t'] as num).round(),
-        accuracy: (json['acc'] as num?)?.toDouble(),
-        speed: (json['spd'] as num?)?.toDouble(),
-        altitude: (json['alt'] as num?)?.toDouble(),
-      );
+    lat: (json['lat'] as num).toDouble(),
+    lng: (json['lng'] as num).toDouble(),
+    tMs: (json['t'] as num).round(),
+    accuracy: (json['acc'] as num?)?.toDouble(),
+    speed: (json['spd'] as num?)?.toDouble(),
+    altitude: (json['alt'] as num?)?.toDouble(),
+  );
 }
 
 enum TrackStatus { recording, paused }
@@ -128,8 +128,9 @@ class TrackingSession {
       distanceMeters: distanceMeters ?? this.distanceMeters,
       maxSpeedMps: maxSpeedMps ?? this.maxSpeedMps,
       accumulatedMovingMs: accumulatedMovingMs ?? this.accumulatedMovingMs,
-      segmentStartMs:
-          clearSegmentStart ? null : segmentStartMs ?? this.segmentStartMs,
+      segmentStartMs: clearSegmentStart
+          ? null
+          : segmentStartMs ?? this.segmentStartMs,
       tourId: tourId,
       tourName: tourName,
       tourType: tourType,
@@ -137,18 +138,18 @@ class TrackingSession {
   }
 
   Map<String, dynamic> toJson() => {
-        'trackId': trackId,
-        'status': status.name,
-        'startedAtMs': startedAtMs,
-        'distanceMeters': distanceMeters,
-        'maxSpeedMps': maxSpeedMps,
-        'accumulatedMovingMs': accumulatedMovingMs,
-        'segmentStartMs': segmentStartMs,
-        if (tourId != null) 'tourId': tourId,
-        if (tourName != null) 'tourName': tourName,
-        if (tourType != null) 'tourType': tourType,
-        'points': [for (final p in points) p.toJson()],
-      };
+    'trackId': trackId,
+    'status': status.name,
+    'startedAtMs': startedAtMs,
+    'distanceMeters': distanceMeters,
+    'maxSpeedMps': maxSpeedMps,
+    'accumulatedMovingMs': accumulatedMovingMs,
+    'segmentStartMs': segmentStartMs,
+    if (tourId != null) 'tourId': tourId,
+    if (tourName != null) 'tourName': tourName,
+    if (tourType != null) 'tourType': tourType,
+    'points': [for (final p in points) p.toJson()],
+  };
 
   static TrackingSession fromJson(Map<String, dynamic> json) {
     return TrackingSession(
@@ -159,8 +160,7 @@ class TrackingSession {
       ),
       points: [
         for (final item in (json['points'] as List? ?? const []))
-          if (item is Map)
-            TrackPoint.fromJson(Map<String, dynamic>.from(item)),
+          if (item is Map) TrackPoint.fromJson(Map<String, dynamic>.from(item)),
       ],
       startedAtMs: (json['startedAtMs'] as num).round(),
       distanceMeters: (json['distanceMeters'] as num?)?.toDouble() ?? 0,
@@ -228,8 +228,9 @@ class TrackingService {
   Future<void> initialize() async {
     if (_initialized) return;
     final dir = await getApplicationDocumentsDirectory();
-    _sessionFile =
-        File('${dir.path}${Platform.pathSeparator}active_track.json');
+    _sessionFile = File(
+      '${dir.path}${Platform.pathSeparator}active_track.json',
+    );
     if (await _sessionFile!.exists()) {
       try {
         final raw = await _sessionFile!.readAsString();
@@ -321,8 +322,9 @@ class TrackingService {
     }
     // Cierra el tramo de movimiento en curso.
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final live =
-        current.segmentStartMs != null ? nowMs - current.segmentStartMs! : 0;
+    final live = current.segmentStartMs != null
+        ? nowMs - current.segmentStartMs!
+        : 0;
     final movingMs = current.accumulatedMovingMs + live;
 
     await _teardown();
@@ -379,9 +381,10 @@ class TrackingService {
 
   void _subscribe() {
     _positionSub?.cancel();
-    _positionSub = _locationService
-        .trackPositionStream()
-        .listen(_onPosition, onError: (_) {});
+    _positionSub = _locationService.trackPositionStream().listen(
+      _onPosition,
+      onError: (_) {},
+    );
   }
 
   void _onPosition(Position pos) {
@@ -470,8 +473,10 @@ String buildGpx(
 }) {
   final buffer = StringBuffer()
     ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
-    ..writeln('<gpx version="1.1" creator="GeoFauna" '
-        'xmlns="http://www.topografix.com/GPX/1/1">')
+    ..writeln(
+      '<gpx version="1.1" creator="GeoFauna" '
+      'xmlns="http://www.topografix.com/GPX/1/1">',
+    )
     ..writeln('  <metadata>')
     ..writeln('    <name>${_xmlEscape(name)}</name>')
     ..writeln('    <time>${startedAt.toUtc().toIso8601String()}</time>')
@@ -480,8 +485,9 @@ String buildGpx(
     ..writeln('    <name>${_xmlEscape(name)}</name>')
     ..writeln('    <trkseg>');
   for (final p in points) {
-    final time =
-        DateTime.fromMillisecondsSinceEpoch(p.tMs).toUtc().toIso8601String();
+    final time = DateTime.fromMillisecondsSinceEpoch(
+      p.tMs,
+    ).toUtc().toIso8601String();
     buffer.writeln('      <trkpt lat="${p.lat}" lon="${p.lng}">');
     if (p.altitude != null) buffer.writeln('        <ele>${p.altitude}</ele>');
     buffer.writeln('        <time>$time</time>');

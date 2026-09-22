@@ -71,7 +71,9 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               TextFormField(
                 controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Correo electrónico'),
+                decoration: const InputDecoration(
+                  labelText: 'Correo electrónico',
+                ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) => v!.isEmpty ? 'Ingresa tu correo' : null,
               ),
@@ -87,7 +89,9 @@ class _LoginPageState extends State<LoginPage> {
                 child: TextButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const ForgotPasswordPage(),
+                    ),
                   ),
                   child: const Text('¿Olvidaste tu contraseña?'),
                 ),
