@@ -9,6 +9,7 @@ import '../services/location_service.dart';
 import '../services/map_tile_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 /// Un avistamiento a dibujar sobre el mapa (categoría normalizada + ubicación).
 class MapSighting {
@@ -206,7 +207,7 @@ class _LiveMapState extends State<LiveMap> {
     return Container(
       color: eco.surfaceContainerLow,
       alignment: Alignment.center,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.space5),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -214,7 +215,7 @@ class _LiveMapState extends State<LiveMap> {
             child
           else if (icon != null)
             Icon(icon, size: 32, color: eco.outline),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.space3),
           Text(
             message,
             textAlign: TextAlign.center,
@@ -343,7 +344,7 @@ class _SightingMapViewState extends State<SightingMapView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.location_off, size: 32, color: eco.outline),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.space3),
             Text(
               'Ubicación inválida',
               textAlign: TextAlign.center,
@@ -576,10 +577,13 @@ class _SightingPopup extends StatelessWidget {
     final species = sighting.species;
     return Container(
       constraints: const BoxConstraints(maxWidth: 210),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3,
+        vertical: 9,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.2),
@@ -678,8 +682,8 @@ class _ExpandButton extends StatelessWidget {
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: SizedBox(
-          width: 40,
-          height: 40,
+          width: AppSpacing.space10,
+          height: AppSpacing.space10,
           child: Icon(Icons.fullscreen_rounded, size: 22, color: eco.onSurface),
         ),
       ),
@@ -717,7 +721,7 @@ class _FullscreenSightingMap extends StatelessWidget {
             right: 0,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.space4),
                 child: Row(
                   children: [
                     Material(
@@ -738,7 +742,7 @@ class _FullscreenSightingMap extends StatelessWidget {
                       ),
                     ),
                     if (title != null) ...[
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.space3),
                       _TitlePill(title: title!),
                     ],
                   ],
@@ -761,10 +765,13 @@ class _TitlePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3_5,
+        vertical: 9,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.12),

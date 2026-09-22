@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/eco_widgets.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 class _AccountProfile {
   _AccountProfile(Map<String, dynamic>? data, User? user)
@@ -91,7 +92,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space6,
+                  0,
+                  AppSpacing.space6,
+                  32,
+                ),
                 children: [
                   StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                     stream: user != null ? auth.userDoc(user.uid) : null,
@@ -100,7 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       return _accountCard(eco, profile);
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.space6),
                   _group(eco, 'Perfil Personal', [
                     EcoListRow(
                       icon: Icons.manage_accounts,
@@ -109,7 +115,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () => _openEditProfile(context, user),
                     ),
                   ]),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.space6),
                   _group(eco, 'Seguridad', [
                     EcoListRow(
                       icon: Icons.lock_reset,
@@ -120,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () => _openChangePassword(context, user),
                     ),
                   ]),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.space6),
                   _group(eco, 'Notificaciones', [
                     EcoListRow(
                       icon: Icons.notifications_active,
@@ -146,7 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ]),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.space6),
                   _group(eco, 'Preferencias', [
                     EcoListRow(
                       icon: Icons.dark_mode,
@@ -175,13 +181,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: eco.onSurfaceVariant,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.space2),
                           Icon(Icons.chevron_right, color: eco.outline),
                         ],
                       ),
                     ),
                   ]),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.space6),
                   Center(
                     child: Text(
                       'ECOGUÍA GALÁPAGOS · V2.4.0',
@@ -264,14 +270,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.person,
                     controller: nameCtrl,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.space3_5),
                   _sheetTextField(
                     eco,
                     label: 'ID Guardaparque',
                     icon: Icons.badge,
                     controller: rangerCtrl,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.space3_5),
                   _sheetDropdown(
                     eco,
                     label: 'Tipo de usuario',
@@ -280,7 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     options: _userTypes,
                     onChanged: (value) => setSheetState(() => userType = value),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.space3_5),
                   _sheetDropdown(
                     eco,
                     label: 'Especialidad',
@@ -381,7 +387,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     controller: currentCtrl,
                     obscure: true,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.space3_5),
                   _sheetTextField(
                     eco,
                     label: 'Nueva contraseña',
@@ -389,7 +395,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     controller: newCtrl,
                     obscure: true,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.space3_5),
                   _sheetTextField(
                     eco,
                     label: 'Confirmar nueva contraseña',
@@ -433,9 +439,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: eco.surfaceContainerLowest,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppSpacing.radiusCard),
+          ),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space6,
+          AppSpacing.space5,
+          AppSpacing.space6,
+          AppSpacing.space7,
+        ),
         child: SafeArea(
           top: false,
           child: SingleChildScrollView(
@@ -449,11 +462,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     height: 4,
                     decoration: BoxDecoration(
                       color: eco.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusFull,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: AppSpacing.space4_5),
                 Text(
                   title,
                   style: TextStyle(
@@ -463,7 +478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: eco.onSurface,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: AppSpacing.space4_5),
                 ...children,
               ],
             ),
@@ -484,18 +499,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Cap(label),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         Container(
           height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4_5),
           decoration: BoxDecoration(
             color: eco.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           ),
           child: Row(
             children: [
               Icon(icon, color: eco.outline, size: 18),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(
                 child: TextField(
                   controller: controller,
@@ -528,18 +543,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Cap(label),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         Container(
           height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4_5),
           decoration: BoxDecoration(
             color: eco.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           ),
           child: Row(
             children: [
               Icon(icon, color: eco.outline, size: 18),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -596,11 +611,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _accountCard(AppColors eco, _AccountProfile profile) {
     return EcoCard(
       radius: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space6,
+        vertical: 30,
+      ),
       child: Column(
         children: [
           _accountAvatar(eco, profile),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.space4),
           Text(
             profile.name,
             textAlign: TextAlign.center,
@@ -611,14 +629,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               color: eco.onSurface,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.space1),
           Text(
             profile.email,
             textAlign: TextAlign.center,
             style: AppTextStyles.body.copyWith(color: eco.onSurfaceVariant),
           ),
           if (profile.badges.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.space3),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,
@@ -677,7 +695,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          padding: const EdgeInsets.only(
+            left: AppSpacing.space1,
+            bottom: AppSpacing.space2,
+          ),
           child: Text(
             title.toUpperCase(),
             style: AppTextStyles.eyebrow.copyWith(color: eco.onSurfaceVariant),
@@ -685,7 +706,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         EcoCard(
           radius: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space3_5,
+            vertical: AppSpacing.space1,
+          ),
           child: Column(children: children),
         ),
       ],

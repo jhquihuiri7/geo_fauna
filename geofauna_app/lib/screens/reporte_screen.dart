@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 import 'dashboard_screen.dart' show SpeciesRow;
 
 class ReporteScreen extends StatefulWidget {
@@ -78,7 +79,12 @@ class _ReporteScreenState extends State<ReporteScreen> {
                   final areaCovered = _calculateAreaCovered(records);
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.space5,
+                      0,
+                      AppSpacing.space5,
+                      32,
+                    ),
                     children: [
                       Row(
                         children: [
@@ -89,7 +95,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
                               delta: '+4.2%',
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: AppSpacing.space3),
                           Expanded(
                             child: _Kpi(
                               label: 'Especies Registradas',
@@ -100,7 +106,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.space3),
                       Row(
                         children: [
                           Expanded(
@@ -111,15 +117,15 @@ class _ReporteScreenState extends State<ReporteScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.space4),
                       _buildConservationPanel(context, eco),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.space4),
                       _buildTrendPanel(context, eco, records),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.space4),
                       _buildDistributionPanel(context, eco, records),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.space4),
                       _buildTopSpeciesPanel(context, eco, records),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.space4),
                       _buildZoneActivityPanel(context, eco, records),
                     ],
                   );
@@ -149,7 +155,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
             ),
             child: const Text('🌱', style: TextStyle(fontSize: 22)),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.space3),
           const Text(
             'Logro de Conservación del Mes',
             style: TextStyle(
@@ -159,7 +165,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.space2),
           Text.rich(
             TextSpan(
               style: AppTextStyles.body.copyWith(color: Colors.white),
@@ -188,7 +194,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
   ) {
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.space5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -203,11 +209,11 @@ class _ReporteScreenState extends State<ReporteScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.space2),
               Icon(Icons.more_horiz, color: eco.outline),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.space4),
           SizedBox(
             height: 150,
             child: Row(
@@ -234,20 +240,20 @@ class _ReporteScreenState extends State<ReporteScreen> {
     final distribution = _calculateDistribution(records);
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.space5),
       child: Column(
         children: [
           Text(
             'Distribución de Hallazgos',
             style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.space4),
           SizedBox(
             width: 170,
             height: 170,
             child: CustomPaint(painter: _DonutChartPainter(eco, distribution)),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.space4),
           _legend(eco, eco.primary, 'Fauna', '${distribution['fauna']}%'),
           const SizedBox(height: 10),
           _legend(eco, eco.tertiary, 'Flora', '${distribution['flora']}%'),
@@ -271,7 +277,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
     final topSpecies = _getTopSpecies(records);
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.space5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -279,7 +285,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
             'Especies con Mayor Impacto',
             style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.space4),
           ...List.generate(topSpecies.length, (i) {
             final species = topSpecies[i];
             final colors = [
@@ -297,7 +303,8 @@ class _ReporteScreenState extends State<ReporteScreen> {
                   pct: species['percentage'] as int,
                   color: colors[i % colors.length],
                 ),
-                if (i < topSpecies.length - 1) const SizedBox(height: 16),
+                if (i < topSpecies.length - 1)
+                  const SizedBox(height: AppSpacing.space4),
               ],
             );
           }),
@@ -316,13 +323,13 @@ class _ReporteScreenState extends State<ReporteScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space1),
           child: Text(
             'Actividad por Zonas',
             style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         ...List.generate(zoneActivity.length, (i) {
           final zone = zoneActivity[i];
           final statusMap = {
@@ -341,7 +348,8 @@ class _ReporteScreenState extends State<ReporteScreen> {
                 status: status.$1,
                 tone: status.$2,
               ),
-              if (i < zoneActivity.length - 1) const SizedBox(height: 12),
+              if (i < zoneActivity.length - 1)
+                const SizedBox(height: AppSpacing.space3),
             ],
           );
         }),
@@ -514,11 +522,14 @@ class _ReporteScreenState extends State<ReporteScreen> {
           children: [
             if (peak != null)
               Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                margin: const EdgeInsets.only(bottom: AppSpacing.space2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space2,
+                  vertical: 2,
+                ),
                 decoration: BoxDecoration(
                   color: eco.primary,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
                 child: Text(
                   peak,
@@ -536,7 +547,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.space2),
             Text(
               label,
               style: TextStyle(
@@ -564,7 +575,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
                 height: 10,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.space2),
               Flexible(
                 child: Text(
                   label,
@@ -575,7 +586,7 @@ class _ReporteScreenState extends State<ReporteScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.space2),
         Text(
           value,
           style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
@@ -603,7 +614,10 @@ class _Kpi extends StatelessWidget {
     final eco = context.eco;
     return EcoCard(
       radius: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4_5,
+        vertical: AppSpacing.space4,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -616,7 +630,7 @@ class _Kpi extends StatelessWidget {
               color: eco.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.space2),
           Text(
             value,
             style: TextStyle(
@@ -627,7 +641,7 @@ class _Kpi extends StatelessWidget {
             ),
           ),
           if (delta != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.space1),
             Text(
               delta!,
               style: AppTextStyles.kicker.copyWith(
@@ -663,7 +677,10 @@ class _ZoneRow extends StatelessWidget {
     final eco = context.eco;
     return EcoCard(
       radius: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4_5,
+        vertical: AppSpacing.space3_5,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -678,7 +695,7 @@ class _ZoneRow extends StatelessWidget {
                     color: eco.onSurface,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.space1),
                 Row(
                   children: [
                     Icon(
@@ -686,7 +703,7 @@ class _ZoneRow extends StatelessWidget {
                       size: 13,
                       color: eco.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.space1),
                     Text(
                       visits,
                       style: TextStyle(
@@ -694,9 +711,9 @@ class _ZoneRow extends StatelessWidget {
                         color: eco.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.space3),
                     Icon(Icons.warning, size: 13, color: eco.onSurfaceVariant),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.space1),
                     Text(
                       incidents,
                       style: TextStyle(
@@ -709,7 +726,7 @@ class _ZoneRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.space2),
           EcoChip(status, tone: tone),
         ],
       ),

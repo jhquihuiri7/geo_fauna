@@ -14,6 +14,7 @@ import '../services/tracking_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 /// Pantalla de grabación de un recorrido de campo: mapa en vivo con la ruta
 /// dibujada, métricas en tiempo real y controles de pausa/fin.
@@ -263,7 +264,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           CircularProgressIndicator(color: eco.primary),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.space3_5),
           Text(
             'Obteniendo señal GPS…',
             style: TextStyle(
@@ -361,11 +362,16 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Widget _topBar(AppColors eco, TrackingSession? session) {
     final recording = session?.isRecording ?? false;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space3,
+        AppSpacing.space2,
+        AppSpacing.space3,
+        0,
+      ),
       child: Row(
         children: [
           CircleIconButton(icon: Icons.arrow_back_rounded, onTap: _onBack),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,10 +422,18 @@ class _TrackingScreenState extends State<TrackingScreen> {
     final tide = _marineForecast?.tideAt(now);
     final wave = _marineForecast?.atHour(now);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space4,
+        AppSpacing.space3_5,
+        AppSpacing.space4,
+        0,
+      ),
       child: EcoCard(
         radius: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space4_5,
+          vertical: AppSpacing.space4_5,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -437,7 +451,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
             if (tide != null) ...[
               const SizedBox(height: 10),
               Divider(height: 1, color: eco.outlineVariant),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.space2),
               Text(
                 [
                   'MAREA ${tide.arrow} ${tide.label}  ·  ${tide.heightLabel}',
@@ -474,7 +488,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.space1),
           Text(
             label,
             style: TextStyle(
@@ -493,21 +507,29 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return Container(
       width: 1,
       height: 34,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.space2),
       color: eco.outlineVariant,
     );
   }
 
   Widget _errorCard(AppColors eco) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space4,
+        0,
+        AppSpacing.space4,
+        AppSpacing.space3,
+      ),
       child: EcoCard(
         radius: 22,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space4,
+          vertical: AppSpacing.space3_5,
+        ),
         child: Row(
           children: [
             Icon(Icons.location_off_rounded, color: eco.error),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.space3),
             Expanded(
               child: Text(
                 _error!,
@@ -529,7 +551,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
     final recording = session?.isRecording ?? false;
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.space4,
+        0,
+        AppSpacing.space4,
+        16 + bottomInset,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -554,7 +581,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     },
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: GradientButton(
               label: 'Finalizar',
@@ -575,21 +602,21 @@ class _TrackingScreenState extends State<TrackingScreen> {
     required VoidCallback? onTap,
   }) {
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
       onTap: onTap,
       child: Container(
         height: 56,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: eco.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           border: Border.all(color: eco.outlineVariant),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: eco.primary, size: 20),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.space2),
             Text(
               label,
               style: AppTextStyles.button.copyWith(color: eco.onSurface),
@@ -699,7 +726,12 @@ class _SummarySheetState extends State<_SummarySheet> {
     final s = widget.summary;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 16, 22, 24),
+        padding: const EdgeInsets.fromLTRB(
+          22,
+          AppSpacing.space4,
+          22,
+          AppSpacing.space6,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -710,11 +742,11 @@ class _SummarySheetState extends State<_SummarySheet> {
                 height: 4,
                 decoration: BoxDecoration(
                   color: eco.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.space5),
             Row(
               children: [
                 Container(
@@ -733,7 +765,7 @@ class _SummarySheetState extends State<_SummarySheet> {
                     size: 28,
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: AppSpacing.space3_5),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -770,7 +802,7 @@ class _SummarySheetState extends State<_SummarySheet> {
                 _summaryStat(eco, 'Vel. máx.', _formatSpeed(s.maxSpeedMps)),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.space2),
             Text(
               '${s.points.length} puntos GPS registrados',
               style: TextStyle(fontSize: 12, color: eco.onSurfaceVariant),
@@ -779,11 +811,13 @@ class _SummarySheetState extends State<_SummarySheet> {
             if (_published)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.space3_5,
+                ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: eco.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                 ),
                 child: Text(
                   'Publicado en el muro',
@@ -803,7 +837,7 @@ class _SummarySheetState extends State<_SummarySheet> {
                     : _publishToWall,
               ),
             if (!s.saved && !_published) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.space2),
               Text(
                 'Podrás publicarlo en el muro cuando el recorrido se suba.',
                 style: TextStyle(fontSize: 12, color: eco.onSurfaceVariant),
@@ -834,7 +868,7 @@ class _SummarySheetState extends State<_SummarySheet> {
               style: AppTextStyles.titleLg.copyWith(color: eco.primary),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.space1),
           Text(
             label.toUpperCase(),
             style: TextStyle(
@@ -964,9 +998,12 @@ class _CompassOverlay extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpacing.space3_5),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space4,
+                vertical: 7,
+              ),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(22),

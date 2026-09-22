@@ -10,6 +10,7 @@ import '../widgets/user_avatar.dart';
 import '../widgets/weather_header.dart';
 import 'reporte_screen.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 /// Dashboard (Inicio) — weather, live map, leaderboards, community monitor.
 class DashboardScreen extends StatelessWidget {
@@ -34,7 +35,12 @@ class DashboardScreen extends StatelessWidget {
             trailing: const [UserAvatar(size: 40, status: AvatarStatus.on)],
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              AppSpacing.space5,
+              AppSpacing.space5,
+              0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -109,18 +115,21 @@ class DashboardScreen extends StatelessWidget {
           top: 16,
           left: 16,
           child: Glass(
-            borderRadius: BorderRadius.circular(999),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space3_5,
+              vertical: AppSpacing.space2,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.my_location, size: 16, color: eco.primary),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.space2),
                 Text(
                   'Tu ubicación',
                   style: AppTextStyles.label.copyWith(color: eco.onSurface),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.space3),
                 Container(
                   width: 6,
                   height: 6,
@@ -129,7 +138,7 @@ class DashboardScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.space1),
                 Text(
                   'EN VIVO',
                   style: TextStyle(
@@ -180,18 +189,21 @@ class DashboardScreen extends StatelessWidget {
   Widget _loadingData(AppColors eco) {
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4_5,
+        vertical: AppSpacing.space4,
+      ),
       child: Row(
         children: [
           SizedBox(
-            width: 24,
-            height: 24,
+            width: AppSpacing.space6,
+            height: AppSpacing.space6,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
               color: eco.primary,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.space3_5),
           Text(
             'Cargando datos reales...',
             style: TextStyle(
@@ -208,11 +220,11 @@ class DashboardScreen extends StatelessWidget {
   Widget _dataError(AppColors eco, Object error) {
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.space4_5),
       child: Row(
         children: [
           Icon(Icons.cloud_off, color: eco.error),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Text(
               'No se pudieron cargar los registros reales: $error',
@@ -241,7 +253,7 @@ class DashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _label(eco, 'Prestigio e Impacto'),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.space1),
                   Text(
                     'Centro de Reconocimiento',
                     style: AppTextStyles.titleLg.copyWith(color: eco.onSurface),
@@ -249,7 +261,7 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.space3),
             EcoChip(
               '${data.totalRecords} registros',
               tone: ChipTone.emerald,
@@ -257,10 +269,13 @@ class DashboardScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         EcoCard(
           radius: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space4,
+            vertical: AppSpacing.space5,
+          ),
           child: Column(
             children: [
               Text(
@@ -269,7 +284,7 @@ class DashboardScreen extends StatelessWidget {
                   color: eco.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               if (data.contributors.isEmpty)
                 _emptyState(
                   eco,
@@ -293,7 +308,7 @@ class DashboardScreen extends StatelessWidget {
                         highlight: true,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.space6),
                     // 2do y 3er lugar: abajo en fila
                     if (data.contributors.length > 1)
                       Row(
@@ -341,7 +356,7 @@ class DashboardScreen extends StatelessWidget {
   Widget _leaders(AppColors eco, _DashboardData data) {
     return EcoCard(
       radius: 32,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.space4_5),
       child: Column(
         children: [
           Row(
@@ -355,14 +370,14 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.space2),
               EcoChip(
                 '${data.categoryLeaders.length} categorías',
                 tone: ChipTone.emerald,
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.space4),
           if (data.categoryLeaders.isEmpty)
             _emptyState(
               eco,
@@ -413,7 +428,7 @@ class DashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _label(eco, 'Monitor de Comunidad'),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.space1),
                   Text(
                     'Análisis de Datos',
                     style: AppTextStyles.titleLg.copyWith(color: eco.onSurface),
@@ -421,7 +436,7 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.space2),
             GestureDetector(
               onTap: () => Navigator.push(
                 context,
@@ -433,17 +448,17 @@ class DashboardScreen extends StatelessWidget {
                     'Ver reporte',
                     style: AppTextStyles.label.copyWith(color: eco.primary),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.space1),
                   Icon(Icons.arrow_forward, size: 14, color: eco.primary),
                 ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         EcoCard(
           radius: 28,
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(AppSpacing.space4_5),
           child: Column(
             children: [
               Row(
@@ -462,7 +477,7 @@ class DashboardScreen extends StatelessWidget {
                           color: eco.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.space1),
                       Text(
                         _formatInt(data.totalRecords),
                         style: TextStyle(
@@ -482,7 +497,7 @@ class DashboardScreen extends StatelessWidget {
                         tone: data.deltaTone,
                         small: true,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.space1),
                       Text(
                         'Vs. mes anterior',
                         style: TextStyle(
@@ -494,15 +509,15 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.space3),
               _weeklyBars(eco, data),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         EcoCard(
           radius: 28,
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(AppSpacing.space4_5),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -517,7 +532,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.space2),
                   Text(
                     'TOP REPORTADAS',
                     style: TextStyle(
@@ -529,7 +544,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               if (data.species.isEmpty)
                 _emptyState(
                   eco,
@@ -620,7 +635,7 @@ class DashboardScreen extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, color: eco.outline, size: compact ? 20 : 26),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1135,9 +1150,9 @@ class _Podium extends StatelessWidget {
     return Column(
       children: [
         Icon(icon, color: iconColor, size: 28),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         _profileAvatar(name: name, tone: tone, size: 56, photoUrl: photoUrl),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         Text(
           name,
           textAlign: TextAlign.center,
@@ -1188,10 +1203,10 @@ class _LeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.space3_5),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1204,7 +1219,7 @@ class _LeaderCard extends StatelessWidget {
                 size: 40,
                 photoUrl: photoUrl,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1216,7 +1231,7 @@ class _LeaderCard extends StatelessWidget {
                         color: eco.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.space1),
                     EcoChip(
                       '${_formatInt(count)} reg.',
                       tone: chip,
@@ -1227,7 +1242,7 @@ class _LeaderCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.space3),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -1244,7 +1259,7 @@ class _LeaderCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.space2),
               Text(
                 '${_formatInt(count)} reg.',
                 style: TextStyle(
@@ -1290,7 +1305,7 @@ class SpeciesRow extends StatelessWidget {
               child: Row(
                 children: [
                   Text(emoji, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.space2),
                   Expanded(
                     child: Text(
                       name.toUpperCase(),
@@ -1306,7 +1321,7 @@ class SpeciesRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.space2),
             Text(
               '$pts registros',
               style: AppTextStyles.kicker.copyWith(color: eco.onSurfaceVariant),

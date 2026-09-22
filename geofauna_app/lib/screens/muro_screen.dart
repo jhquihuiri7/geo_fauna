@@ -22,6 +22,7 @@ import '../widgets/eco_widgets.dart';
 import '../widgets/route_map.dart';
 import '../widgets/user_avatar.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 final _wallOptimism = _WallOptimism();
 
@@ -59,18 +60,28 @@ class _MuroScreenState extends State<MuroScreen> {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              AppSpacing.space6,
+              AppSpacing.space5,
+              0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Kicker('Eventos Próximos'),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.space3),
               ],
             ),
           ),
           _eventsSection(eco),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              AppSpacing.space6,
+              AppSpacing.space5,
+              0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -86,12 +97,14 @@ class _MuroScreenState extends State<MuroScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.space2),
                     Row(
                       children: [
                         for (final f in ['Recientes', 'Populares'])
                           Padding(
-                            padding: const EdgeInsets.only(left: 20),
+                            padding: const EdgeInsets.only(
+                              left: AppSpacing.space5,
+                            ),
                             child: GestureDetector(
                               onTap: () => setState(() => _filter = f),
                               child: Column(
@@ -106,7 +119,7 @@ class _MuroScreenState extends State<MuroScreen> {
                                           : eco.outline,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: AppSpacing.space1),
                                   if (_filter == f)
                                     Container(
                                       width: 18,
@@ -121,7 +134,7 @@ class _MuroScreenState extends State<MuroScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.space5),
                 _feedSection(eco),
               ],
             ),
@@ -158,7 +171,7 @@ class _MuroScreenState extends State<MuroScreen> {
               size: 12,
               color: Color(0xFFF97316),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.space1),
             Text(parts.join(' · ')),
           ],
         );
@@ -172,13 +185,13 @@ class _MuroScreenState extends State<MuroScreen> {
       builder: (context, snap) {
         if (_isLoading(snap)) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
             child: _loadingCard(eco, 'Cargando eventos...'),
           );
         }
         if (snap.hasError) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
             child: _errorCard(
               eco,
               'No se pudieron cargar los eventos: ${snap.error}',
@@ -203,7 +216,7 @@ class _MuroScreenState extends State<MuroScreen> {
 
         if (events.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
             child: _emptyCard(
               eco,
               icon: Icons.event_busy,
@@ -217,9 +230,10 @@ class _MuroScreenState extends State<MuroScreen> {
           height: 210,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
             itemCount: events.take(10).length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            separatorBuilder: (_, __) =>
+                const SizedBox(width: AppSpacing.space4),
             itemBuilder: (context, index) => _EventCard(event: events[index]),
           ),
         );
@@ -332,18 +346,21 @@ class _MuroScreenState extends State<MuroScreen> {
   Widget _loadingCard(AppColors eco, String message) {
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4_5,
+        vertical: AppSpacing.space4_5,
+      ),
       child: Row(
         children: [
           SizedBox(
-            width: 24,
-            height: 24,
+            width: AppSpacing.space6,
+            height: AppSpacing.space6,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
               color: eco.primary,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.space3_5),
           Text(
             message,
             style: TextStyle(
@@ -360,11 +377,11 @@ class _MuroScreenState extends State<MuroScreen> {
   Widget _errorCard(AppColors eco, String message) {
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.space4_5),
       child: Row(
         children: [
           Icon(Icons.cloud_off, color: eco.error),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Text(
               message,
@@ -384,7 +401,10 @@ class _MuroScreenState extends State<MuroScreen> {
   }) {
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space5,
+        vertical: AppSpacing.space6,
+      ),
       child: Row(
         children: [
           Container(
@@ -397,7 +417,7 @@ class _MuroScreenState extends State<MuroScreen> {
             ),
             child: Icon(icon, color: eco.primary),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.space3_5),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,7 +430,7 @@ class _MuroScreenState extends State<MuroScreen> {
                     color: eco.onSurface,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.space1),
                 Text(
                   message,
                   style: TextStyle(
@@ -454,7 +474,7 @@ class _EventCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               EcoChip(chipText, tone: event.chipTone),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               Text(
                 event.title,
                 maxLines: 2,
@@ -467,7 +487,7 @@ class _EventCard extends StatelessWidget {
                   color: eco.onSurface,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.space2),
               Expanded(
                 child: Text(
                   event.body ?? event.locationLabel ?? 'Sin descripción',
@@ -481,7 +501,7 @@ class _EventCard extends StatelessWidget {
                 ),
               ),
               if (event.participantCount != null || event.capacity != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.space3),
                 Text(
                   _participantsLabel(event),
                   style: AppTextStyles.kicker.copyWith(color: eco.primary),
@@ -558,7 +578,12 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                 partSnap.data?.data()?['calendarEventId'],
               );
               return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+                padding: const EdgeInsets.fromLTRB(
+                  22,
+                  AppSpacing.space3_5,
+                  22,
+                  AppSpacing.space6,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,13 +594,15 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                         height: 4,
                         decoration: BoxDecoration(
                           color: eco.outlineVariant,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusFull,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: AppSpacing.space4_5),
                     _header(eco, event),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: AppSpacing.space4_5),
                     _detailRow(
                       eco,
                       icon: Icons.event_rounded,
@@ -596,14 +623,14 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                       value: _participantsLabel(event),
                     ),
                     if (event.body != null) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: AppSpacing.space3_5),
                       Text(
                         'OBJETIVOS',
                         style: AppTextStyles.chip.copyWith(
                           color: eco.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.space2),
                       Text(
                         event.body!,
                         style: AppTextStyles.body.copyWith(
@@ -635,7 +662,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                 event.title,
                 style: AppTextStyles.titleLg.copyWith(color: eco.onSurface),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.space2),
               EcoChip(event.type, tone: event.chipTone),
             ],
           ),
@@ -661,16 +688,19 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
     if (isOwner) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space4,
+          vertical: AppSpacing.space3_5,
+        ),
         decoration: BoxDecoration(
           color: eco.primary.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.verified_rounded, size: 18, color: eco.primary),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.space2),
             Text(
               'Eres el organizador',
               style: AppTextStyles.bodyStrong.copyWith(color: eco.primary),
@@ -687,8 +717,8 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
           onPressed: _working ? null : () => _leave(calendarEventId),
           icon: _working
               ? const SizedBox(
-                  width: 18,
-                  height: 18,
+                  width: AppSpacing.space4_5,
+                  height: AppSpacing.space4_5,
                   child: CircularProgressIndicator(strokeWidth: 2.4),
                 )
               : const Icon(Icons.event_busy_rounded),
@@ -807,7 +837,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
     required String value,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(top: AppSpacing.space3),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -895,11 +925,11 @@ class _SightingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.space5),
             child: Row(
               children: [
                 _authorAvatar(item),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.space3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -911,7 +941,7 @@ class _SightingCard extends StatelessWidget {
                           color: eco.onSurface,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.space1),
                       _headerMeta(context, item),
                     ],
                   ),
@@ -951,7 +981,12 @@ class _SightingCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              0,
+              AppSpacing.space5,
+              AppSpacing.space4,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -964,7 +999,7 @@ class _SightingCard extends StatelessWidget {
                   ),
                 ),
                 if (item.isRoute) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   GestureDetector(
                     onTap: () => _openLocationMap(context, item),
                     child: RouteMapPreview(
@@ -974,14 +1009,19 @@ class _SightingCard extends StatelessWidget {
                   ),
                 ] else if (item.mediaUrl != null ||
                     item.photoLabel != null) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   _media(context, item),
                 ],
               ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              0,
+              AppSpacing.space5,
+              AppSpacing.space4,
+            ),
             child: _InteractionBar(item: item, target: target),
           ),
         ],
@@ -1072,7 +1112,7 @@ class _SightingCard extends StatelessWidget {
       return _GeoMediaFrame(
         item: item,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
           child: GestureDetector(
             onTap: () => _openMediaViewer(context, item),
             child: AspectRatio(
@@ -1143,17 +1183,22 @@ class _GeoChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _openLocationMap(context, item),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               constraints: BoxConstraints(maxWidth: compact ? 280 : 250),
-              padding: EdgeInsets.fromLTRB(10, 8, compact ? 14 : 12, 8),
+              padding: EdgeInsets.fromLTRB(
+                10,
+                AppSpacing.space2,
+                compact ? 14 : 12,
+                AppSpacing.space2,
+              ),
               decoration: BoxDecoration(
                 color: eco.glass,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.16),
@@ -1166,8 +1211,8 @@ class _GeoChip extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 28,
-                    height: 28,
+                    width: AppSpacing.space7,
+                    height: AppSpacing.space7,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
@@ -1190,7 +1235,7 @@ class _GeoChip extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.space2),
                   Flexible(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1336,7 +1381,12 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
         curve: Curves.easeOut,
         padding: EdgeInsets.only(bottom: bottomInset),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+          padding: const EdgeInsets.fromLTRB(
+            22,
+            AppSpacing.space3_5,
+            22,
+            AppSpacing.space6,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1347,11 +1397,11 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: eco.outlineVariant,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpacing.space4_5),
               Row(
                 children: [
                   Expanded(
@@ -1369,17 +1419,17 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               _editorField(eco, 'Categoria', _categoryPicker(eco)),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               Row(
                 children: [
                   Expanded(child: _datePicker(eco)),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.space3),
                   Expanded(child: _timePicker(eco)),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _editorField(
                 eco,
                 'Especie',
@@ -1389,7 +1439,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
                   hint: 'Nombre de especie',
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _editorField(
                 eco,
                 'Cantidad',
@@ -1400,7 +1450,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
                   keyboardType: TextInputType.number,
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _editorField(
                 eco,
                 'Notas',
@@ -1411,9 +1461,9 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
                   maxLines: 3,
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _publishSwitch(eco),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _evidenceEditor(eco),
               const SizedBox(height: 22),
               GradientButton(
@@ -1437,7 +1487,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
           label.toUpperCase(),
           style: AppTextStyles.chip.copyWith(color: eco.onSurfaceVariant),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         child,
       ],
     );
@@ -1451,7 +1501,10 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
     int maxLines = 1,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: 13,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(maxLines > 1 ? 22 : 999),
@@ -1543,7 +1596,10 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
       borderRadius: BorderRadius.circular(22),
       onTap: _saving ? null : onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space3_5,
+          vertical: AppSpacing.space3,
+        ),
         decoration: BoxDecoration(
           color: eco.surfaceContainerLow,
           borderRadius: BorderRadius.circular(22),
@@ -1582,7 +1638,10 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
 
   Widget _publishSwitch(AppColors eco) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space3,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
@@ -1610,10 +1669,10 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
 
   Widget _evidenceEditor(AppColors eco) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.space4),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1633,7 +1692,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
             ],
           ),
           if (_newEvidence.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.space3),
             SizedBox(
               height: 64,
               child: ListView.separated(
@@ -1660,7 +1719,7 @@ class _FieldRecordEditSheetState extends State<_FieldRecordEditSheet> {
               ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.space3),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1782,7 +1841,9 @@ Future<_WallEvidenceChoice?> _wallEvidenceChoice(BuildContext context) {
     context: context,
     backgroundColor: eco.surfaceContainerLowest,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(AppSpacing.radiusXl),
+      ),
     ),
     builder: (context) {
       Widget option({
@@ -1802,7 +1863,12 @@ Future<_WallEvidenceChoice?> _wallEvidenceChoice(BuildContext context) {
 
       return SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space5,
+            AppSpacing.space3,
+            AppSpacing.space5,
+            AppSpacing.space5,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1811,10 +1877,10 @@ Future<_WallEvidenceChoice?> _wallEvidenceChoice(BuildContext context) {
                 height: 4,
                 decoration: BoxDecoration(
                   color: eco.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               option(
                 icon: Icons.photo_camera_rounded,
                 title: 'Tomar foto',
@@ -1892,13 +1958,13 @@ class _VideoPostPreview extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         child: AspectRatio(
           aspectRatio: 4 / 5,
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF101412),
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
             ),
             child: Stack(
               fit: StackFit.expand,
@@ -2113,7 +2179,12 @@ class _LocationMapSheet extends StatelessWidget {
     final point = item.locationPoint;
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space5,
+          AppSpacing.space3,
+          AppSpacing.space5,
+          AppSpacing.space6,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2124,11 +2195,11 @@ class _LocationMapSheet extends StatelessWidget {
                 height: 4,
                 decoration: BoxDecoration(
                   color: eco.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.space4),
             Row(
               children: [
                 Container(
@@ -2141,7 +2212,7 @@ class _LocationMapSheet extends StatelessWidget {
                   ),
                   child: Icon(Icons.location_on_rounded, color: eco.primary),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.space3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2176,9 +2247,9 @@ class _LocationMapSheet extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.space4),
             _sheetMap(context),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.space4),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -2230,7 +2301,7 @@ class _LocationMapSheet extends StatelessWidget {
     }
     final eco = context.eco;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(26),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusLogo),
       child: SizedBox(
         height: 300,
         child: FlutterMap(
@@ -2335,7 +2406,7 @@ class _MapMetaTile extends StatelessWidget {
     final eco = context.eco;
     return Container(
       width: 150,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.space3_5),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
@@ -2568,7 +2639,7 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.videocam_off, color: Colors.white70, size: 46),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.space3),
             Text(
               'No se pudo reproducir el video',
               style: AppTextStyles.button.copyWith(color: Colors.white),
@@ -2684,10 +2755,15 @@ class _VideoControlDock extends StatelessWidget {
   Widget build(BuildContext context) {
     final value = controller.value;
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space3_5,
+        AppSpacing.space3,
+        AppSpacing.space3_5,
+        AppSpacing.space3,
+      ),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.52),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Column(
@@ -2723,7 +2799,7 @@ class _VideoControlDock extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.76),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.space2),
               _ViewerIconButton(
                 icon: muted
                     ? Icons.volume_off_rounded
@@ -2733,7 +2809,7 @@ class _VideoControlDock extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.space2),
           VideoProgressIndicator(
             controller,
             allowScrubbing: true,
@@ -2846,7 +2922,7 @@ class _InteractionBarState extends State<_InteractionBar> {
                   ],
                 ),
                 if (likeCount > 0) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.space3),
                   _ReactionSummary(
                     target: widget.target,
                     count: likeCount,
@@ -2895,15 +2971,18 @@ class _ActionPill extends StatelessWidget {
     final fg = active ? color : eco.onSurfaceVariant;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space4,
+              vertical: 10,
+            ),
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
               border: active
                   ? Border.all(color: color.withValues(alpha: 0.22))
                   : null,
@@ -2912,7 +2991,7 @@ class _ActionPill extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(icon, size: 16, color: fg),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.space2),
                 Text(
                   label,
                   style: TextStyle(
@@ -2953,7 +3032,7 @@ class _ReactionSummary extends StatelessWidget {
         final leading = reactions.isEmpty ? null : reactions.first;
         return InkWell(
           onTap: onOpen,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             child: Row(
@@ -3083,7 +3162,12 @@ class _ReactorsSheet extends StatelessWidget {
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.72,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space5,
+            AppSpacing.space3,
+            AppSpacing.space5,
+            AppSpacing.space4_5,
+          ),
           child: Column(
             children: [
               Container(
@@ -3091,10 +3175,10 @@ class _ReactorsSheet extends StatelessWidget {
                 height: 4,
                 decoration: BoxDecoration(
                   color: eco.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               StreamBuilder<List<WallReaction>>(
                 stream: WallInteractionService.instance.reactionsStream(target),
                 builder: (context, snap) {
@@ -3123,7 +3207,7 @@ class _ReactorsSheet extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.space3_5),
                         Expanded(
                           child: _ReactorsList(
                             reactions: reactions,
@@ -3173,7 +3257,7 @@ class _ReactorsList extends StatelessWidget {
 
     return ListView.separated(
       itemCount: reactions.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.space2),
       itemBuilder: (context, index) {
         final reaction = reactions[index];
         return Row(
@@ -3189,7 +3273,7 @@ class _ReactorsList extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.space3_5),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3260,7 +3344,12 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + bottomInset),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.space5,
+          AppSpacing.space3,
+          AppSpacing.space5,
+          16 + bottomInset,
+        ),
         child: SizedBox(
           height: MediaQuery.of(context).size.height * 0.72,
           child: Column(
@@ -3270,10 +3359,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 height: 4,
                 decoration: BoxDecoration(
                   color: eco.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               Row(
                 children: [
                   Expanded(
@@ -3287,7 +3376,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   EcoChip('$_visibleCommentCount', tone: ChipTone.slate),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.space3),
               Expanded(
                 child: StreamBuilder<List<WallComment>>(
                   stream: WallInteractionService.instance.commentsStream(
@@ -3324,7 +3413,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                     }
                     return ListView.separated(
                       itemCount: visibleComments.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.space3),
                       itemBuilder: (context, index) => _CommentRow(
                         comment: visibleComments[index],
                         target: widget.target,
@@ -3334,16 +3424,16 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   },
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.space3),
               if (_replyingTo != null) _replyBanner(eco),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
+                  horizontal: AppSpacing.space3_5,
+                  vertical: AppSpacing.space2,
                 ),
                 decoration: BoxDecoration(
                   color: eco.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                 ),
                 child: Row(
                   children: [
@@ -3368,7 +3458,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.space2),
                     CircleIconButton(
                       icon: Icons.send,
                       onTap: _send,
@@ -3395,7 +3485,11 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 
   Widget _replyBanner(AppColors eco) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 6, right: 6),
+      padding: const EdgeInsets.only(
+        bottom: AppSpacing.space2,
+        left: 6,
+        right: 6,
+      ),
       child: Row(
         children: [
           Icon(Icons.reply_rounded, size: 16, color: eco.primary),
@@ -3409,9 +3503,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
           ),
           InkWell(
             onTap: () => setState(() => _replyingTo = null),
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
             child: Padding(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(AppSpacing.space1),
               child: Icon(Icons.close_rounded, size: 16, color: eco.outline),
             ),
           ),
@@ -3536,7 +3630,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
   }) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.space5),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -3551,7 +3645,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.space1),
             Text(
               message,
               textAlign: TextAlign.center,
@@ -3590,7 +3684,7 @@ class _CommentRow extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(AppSpacing.space3_5),
                   decoration: BoxDecoration(
                     color: eco.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(20),
@@ -3640,12 +3734,15 @@ class _CommentRow extends StatelessWidget {
         // respuestas no, para que la conversacion no pase de dos niveles.
         if (!comment.isPending)
           Padding(
-            padding: const EdgeInsets.only(left: 44, top: 4),
+            padding: const EdgeInsets.only(left: 44, top: AppSpacing.space1),
             child: InkWell(
               onTap: () => onReply(comment),
               borderRadius: BorderRadius.circular(8),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space1,
+                  vertical: 2,
+                ),
                 child: Text(
                   'Responder',
                   style: TextStyle(
@@ -3723,12 +3820,12 @@ class _RepliesList extends StatelessWidget {
 
             if (replies.isEmpty) return const SizedBox.shrink();
             return Padding(
-              padding: const EdgeInsets.only(left: 44, top: 8),
+              padding: const EdgeInsets.only(left: 44, top: AppSpacing.space2),
               child: Column(
                 children: [
                   for (final reply in replies)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.space2),
                       child: _ReplyRow(reply: reply),
                     ),
                 ],
@@ -3755,10 +3852,10 @@ class _ReplyRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _replyAvatar(),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.space2),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.space3),
               decoration: BoxDecoration(
                 color: eco.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(16),

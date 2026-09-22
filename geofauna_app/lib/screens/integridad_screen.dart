@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 /// Integridad — data integrity protocol (screens-extra.jsx).
 class IntegridadScreen extends StatelessWidget {
@@ -28,12 +29,17 @@ class IntegridadScreen extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space6,
+                  0,
+                  AppSpacing.space6,
+                  32,
+                ),
                 children: [
                   GradientPanel(
                     radius: 32,
                     dots: true,
-                    padding: const EdgeInsets.all(28),
+                    padding: const EdgeInsets.all(AppSpacing.space7),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -47,7 +53,7 @@ class IntegridadScreen extends StatelessWidget {
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.space3),
                         Text(
                           'Estableciendo el estándar para la recolección de datos ambientales precisos en el archipiélago.',
                           style: AppTextStyles.body.copyWith(
@@ -57,7 +63,7 @@ class IntegridadScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.space6),
                   Row(
                     children: [
                       Container(
@@ -66,11 +72,13 @@ class IntegridadScreen extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: eco.tertiary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         child: Icon(Icons.shield, color: eco.tertiary),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.space3),
                       Text(
                         'Integridad de datos',
                         style: TextStyle(
@@ -81,7 +89,7 @@ class IntegridadScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   Text(
                     'En esta app, cada registro contribuye al monitoreo y conservación del entorno. Para asegurar la calidad de la información:',
                     style: TextStyle(
@@ -90,39 +98,39 @@ class IntegridadScreen extends StatelessWidget {
                       color: eco.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   _protocolItem(
                     eco,
                     Icons.location_on,
                     'Tus registros incluyen ubicación GPS automática',
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.space3),
                   _protocolItem(
                     eco,
                     Icons.photo_camera,
                     'Puedes añadir fotos como evidencia',
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.space3),
                   _protocolItem(
                     eco,
                     Icons.rule,
                     'Los datos se validan comparando registros de otros usuarios',
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.space3),
                   _protocolItem(
                     eco,
                     Icons.trending_up,
                     'Se analiza la coherencia de la información en el tiempo',
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                      horizontal: AppSpacing.space5,
+                      vertical: AppSpacing.space4,
                     ),
                     decoration: BoxDecoration(
                       color: eco.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                     ),
                     child: Text.rich(
                       TextSpan(
@@ -148,7 +156,7 @@ class IntegridadScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.space6),
                   Row(
                     children: [
                       Container(
@@ -159,11 +167,13 @@ class IntegridadScreen extends StatelessWidget {
                           color: const Color(
                             0xFFF59E0B,
                           ).withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         child: const Icon(Icons.key, color: Color(0xFFF59E0B)),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.space3),
                       Text(
                         'Uso responsable',
                         style: TextStyle(
@@ -174,33 +184,35 @@ class IntegridadScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   _bullet(
                     eco,
                     Icons.check_circle,
                     'Registra información real y verificable',
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.space3),
                   _bullet(
                     eco,
                     Icons.visibility_off,
                     'Evita compartir ubicaciones sensibles de especies vulnerables',
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.space3),
                   _bullet(
                     eco,
                     Icons.eco,
                     'Usa la app con fines ambientales y profesionales',
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.space6),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 22,
-                      vertical: 20,
+                      vertical: AppSpacing.space5,
                     ),
                     decoration: BoxDecoration(
                       color: eco.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusCard,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +232,7 @@ class IntegridadScreen extends StatelessWidget {
                                 style: TextStyle(fontSize: 20),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: AppSpacing.space3),
                             Text(
                               'Compromiso',
                               style: AppTextStyles.titleSm.copyWith(
@@ -229,7 +241,7 @@ class IntegridadScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.space2),
                         Text(
                           'Al usar la app, contribuyes a una red de monitoreo basada en ciencia ciudadana, ayudando a proteger la biodiversidad.',
                           style: TextStyle(
@@ -252,10 +264,13 @@ class IntegridadScreen extends StatelessWidget {
 
   Widget _protocolItem(AppColors eco, IconData icon, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space3_5,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       ),
       child: Row(
         children: [
@@ -269,7 +284,7 @@ class IntegridadScreen extends StatelessWidget {
             ),
             child: Icon(icon, color: eco.primary, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Text(
               text,
@@ -286,7 +301,7 @@ class IntegridadScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 18, color: eco.tertiary),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.space3),
         Expanded(
           child: Text(
             text,

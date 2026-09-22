@@ -7,6 +7,7 @@ import '../services/weather_service.dart';
 import '../theme/app_colors.dart';
 import 'eco_widgets.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 const _log = AppLog('HEADER');
 
@@ -129,16 +130,19 @@ Widget _weatherMetrics(
 
 Widget _metric(AppColors eco, IconData icon, String label) {
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.space2,
+      vertical: 5,
+    ),
     decoration: BoxDecoration(
       color: eco.primary.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 12, color: eco.primary),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpacing.space1),
         Text(
           label,
           style: TextStyle(
@@ -218,7 +222,7 @@ class WeatherHeader extends StatelessWidget {
               'ESTADO DEL TIEMPO',
               style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.space1),
             Text(
               title,
               style: TextStyle(
@@ -244,7 +248,7 @@ class WeatherHeader extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.space4),
             _card(context, eco, snap, retry),
           ],
         );
@@ -261,11 +265,14 @@ class WeatherHeader extends StatelessWidget {
     if (snap.connectionState == ConnectionState.done && snap.hasError) {
       return EcoCard(
         radius: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space4_5,
+          vertical: AppSpacing.space4,
+        ),
         child: Row(
           children: [
             const Text('📍', style: TextStyle(fontSize: 28)),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.space3_5),
             Expanded(
               child: Text(
                 weatherErrorMessage(snap.error!),
@@ -285,18 +292,21 @@ class WeatherHeader extends StatelessWidget {
     if (!snap.hasData) {
       return EcoCard(
         radius: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space4_5,
+          vertical: AppSpacing.space3_5,
+        ),
         child: Row(
           children: [
             SizedBox(
-              width: 28,
-              height: 28,
+              width: AppSpacing.space7,
+              height: AppSpacing.space7,
               child: CircularProgressIndicator(
                 strokeWidth: 2.5,
                 color: eco.primary,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.space4),
             Text(
               'Consultando el clima…',
               style: TextStyle(
@@ -316,11 +326,14 @@ class WeatherHeader extends StatelessWidget {
     final tide = snap.data!.marineForecast?.tideAt(now);
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4_5,
+        vertical: AppSpacing.space3_5,
+      ),
       child: Row(
         children: [
           Text(w.emoji, style: const TextStyle(fontSize: 32)),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.space4),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,7 +365,7 @@ class WeatherHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.space1),
                 Text(
                   'HUMEDAD ${w.humidity}% · '
                   'VIENTO ${w.windSpeed.round()} KM/H',
@@ -363,7 +376,7 @@ class WeatherHeader extends StatelessWidget {
                     color: eco.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.space2),
                 _weatherMetrics(eco, w),
                 if (wave != null) ...[
                   const SizedBox(height: 6),
@@ -421,7 +434,10 @@ class AgendaWeatherCard extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           child: EcoCard(
             radius: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 22,
+              vertical: AppSpacing.space5,
+            ),
             child: _content(eco, snap, retry),
           ),
         );
@@ -438,7 +454,7 @@ class AgendaWeatherCard extends StatelessWidget {
       return Row(
         children: [
           const Text('📍', style: TextStyle(fontSize: 28)),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.space3_5),
           Expanded(
             child: Text(
               weatherErrorMessage(snap.error!),
@@ -458,14 +474,14 @@ class AgendaWeatherCard extends StatelessWidget {
       return Row(
         children: [
           SizedBox(
-            width: 28,
-            height: 28,
+            width: AppSpacing.space7,
+            height: AppSpacing.space7,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
               color: eco.primary,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.space4),
           Text(
             'Consultando el clima…',
             style: TextStyle(
@@ -485,7 +501,7 @@ class AgendaWeatherCard extends StatelessWidget {
       return Row(
         children: [
           Icon(Icons.cloud_off, color: eco.outline),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Text(
               'No hay pronostico disponible para esta fecha.',
@@ -531,7 +547,7 @@ class AgendaWeatherCard extends StatelessWidget {
                       color: eco.onSurface,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.space2),
                   Flexible(
                     child: Text(
                       w.description,
@@ -543,21 +559,21 @@ class AgendaWeatherCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.space3),
               Row(
                 children: [
                   _stat(eco, Icons.water_drop, '${w.humidity}% HUM.'),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.space4),
                   _stat(eco, Icons.air, '${w.windSpeed.round()} KM/H'),
                 ],
               ),
               const SizedBox(height: 10),
               _weatherMetrics(eco, w),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.space2),
               Row(
                 children: [
                   Icon(Icons.touch_app, size: 13, color: eco.outline),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.space1),
                   Text(
                     'Toca para ver todas las horas',
                     style: TextStyle(
@@ -571,7 +587,7 @@ class AgendaWeatherCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.space3),
         Container(
           width: 72,
           height: 72,
@@ -602,7 +618,12 @@ class AgendaWeatherCard extends StatelessWidget {
           child: SizedBox(
             height: MediaQuery.of(context).size.height * 0.78,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space5,
+                AppSpacing.space3,
+                AppSpacing.space5,
+                AppSpacing.space5,
+              ),
               child: Column(
                 children: [
                   Container(
@@ -610,10 +631,12 @@ class AgendaWeatherCard extends StatelessWidget {
                     height: 4,
                     decoration: BoxDecoration(
                       color: sheetEco.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusFull,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   Row(
                     children: [
                       Expanded(
@@ -627,7 +650,7 @@ class AgendaWeatherCard extends StatelessWidget {
                       EcoChip('${hours.length} horas', tone: ChipTone.slate),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.space1),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -639,7 +662,7 @@ class AgendaWeatherCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.space3_5),
                   Expanded(
                     child: hours.isEmpty
                         ? Center(
@@ -670,7 +693,7 @@ class AgendaWeatherCard extends StatelessWidget {
 
   Widget _hourRow(AppColors eco, CurrentWeather weather) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.space3_5),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
@@ -695,7 +718,7 @@ class AgendaWeatherCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -710,7 +733,7 @@ class AgendaWeatherCard extends StatelessWidget {
                         color: eco.onSurface,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.space2),
                     Expanded(
                       child: Text(
                         weather.description,
@@ -724,7 +747,7 @@ class AgendaWeatherCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.space2),
                 _weatherMetrics(eco, weather),
               ],
             ),
@@ -738,7 +761,7 @@ class AgendaWeatherCard extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 14, color: eco.primary),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpacing.space1),
         Text(
           label,
           style: TextStyle(

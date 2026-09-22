@@ -7,6 +7,7 @@ import '../../widgets/eco_widgets.dart';
 import '../../widgets/animations.dart';
 import '../../widgets/painters.dart';
 import '../../theme/app_text_styles.dart';
+import '../../theme/app_spacing.dart';
 
 /// Pantalla unificada de "completar perfil". Se muestra tras la autenticación
 /// (Google o email) cuando el usuario aún no ha llenado los datos obligatorios.
@@ -108,13 +109,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space6,
+                AppSpacing.space6,
+                AppSpacing.space6,
+                AppSpacing.space10,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   FadeInUp(
                     child: Container(
-                      padding: const EdgeInsets.only(left: 16),
+                      padding: const EdgeInsets.only(left: AppSpacing.space4),
                       decoration: BoxDecoration(
                         border: Border(
                           left: BorderSide(color: eco.primary, width: 4),
@@ -129,7 +135,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                               color: eco.onSurface,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.space2),
                           Text(
                             'Necesitamos algunos datos antes de acceder al archivo de monitoreo biológico.',
                             style: AppTextStyles.body.copyWith(
@@ -145,7 +151,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     delay: const Duration(milliseconds: 140),
                     child: EcoCard(
                       radius: 32,
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(AppSpacing.space6),
                       soft: true,
                       child: Column(
                         children: [
@@ -159,14 +165,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                               'Ej. Dr. Julián Castro',
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpacing.space5),
                           _field(
                             eco,
                             cap: 'ID Guardaparque',
                             icon: Icons.badge,
                             child: _input(eco, _idCtrl, 'GNPS-2024-00X'),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpacing.space5),
                           _field(
                             eco,
                             cap: 'Tipo de Usuario',
@@ -178,7 +184,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                               (v) => setState(() => _userType = v),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpacing.space5),
                           _field(
                             eco,
                             cap: 'Especialidad',
@@ -190,7 +196,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                               (v) => setState(() => _specialty = v),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSpacing.space6),
                           GradientButton(
                             label: 'Guardar y Continuar',
                             trailingIcon: Icons.chevron_right,
@@ -201,7 +207,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   Center(
                     child: TextButton.icon(
                       onPressed: () => AuthService().signOut(),
@@ -231,18 +237,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Cap(cap),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         Container(
           height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4_5),
           decoration: BoxDecoration(
             color: eco.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           ),
           child: Row(
             children: [
               Icon(icon, size: 18, color: eco.outline),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(child: child),
             ],
           ),

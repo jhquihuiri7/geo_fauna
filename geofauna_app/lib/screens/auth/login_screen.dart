@@ -10,6 +10,7 @@ import '../../widgets/painters.dart';
 import '../../pages/auth/forgot_password_page.dart';
 import 'signup_screen.dart';
 import '../../theme/app_text_styles.dart';
+import '../../theme/app_spacing.dart';
 
 /// Login — port of `LoginScreen` in screens-auth.jsx, wired to Firebase.
 class LoginScreen extends StatefulWidget {
@@ -91,7 +92,12 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space6,
+                32,
+                AppSpacing.space6,
+                32,
+              ),
               child: Column(
                 children: [
                   // Brand
@@ -102,7 +108,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         gradient: eco.organicGradient,
-                        borderRadius: BorderRadius.circular(26),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusLogo,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: eco.primary.withValues(alpha: 0.35),
@@ -115,12 +123,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const TortugaTopoMark.onFill(size: 52),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.space5),
                   Text(
                     'EcoGuía',
                     style: AppTextStyles.display.copyWith(color: eco.onSurface),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.space3),
                   Text(
                     'CONSERVATION ARCHIVE & FIELD REPORT',
                     style: TextStyle(
@@ -130,13 +138,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: eco.onSurfaceVariant.withValues(alpha: 0.7),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: AppSpacing.space10),
                   // Card
                   FadeInUp(
                     delay: const Duration(milliseconds: 140),
                     child: EcoCard(
                       radius: 36,
-                      padding: const EdgeInsets.all(28),
+                      padding: const EdgeInsets.all(AppSpacing.space7),
                       soft: true,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,23 +158,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: eco.onSurface,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.space1),
                           Text(
                             'Ingrese sus credenciales para acceder al archivo de monitoreo biológico.',
                             style: AppTextStyles.body.copyWith(
                               color: eco.onSurfaceVariant,
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSpacing.space6),
                           const Cap('Email de usuario'),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.space2),
                           EcoTextField(
                             icon: Icons.alternate_email,
                             hint: 'investigador@ecoguia.org',
                             controller: _emailCtrl,
                             keyboardType: TextInputType.emailAddress,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpacing.space5),
                           Cap(
                             'Clave de acceso',
                             action: GestureDetector(
@@ -184,28 +192,30 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.space2),
                           EcoTextField(
                             icon: Icons.lock,
                             hint: '••••••••',
                             controller: _passCtrl,
                             obscure: true,
                           ),
-                          const SizedBox(height: 28),
+                          const SizedBox(height: AppSpacing.space7),
                           GradientButton(
                             label: 'Iniciar Sesión',
                             trailingIcon: Icons.arrow_forward,
                             loading: _loading,
                             onPressed: _signIn,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.space4),
                           OutlinedButton.icon(
                             onPressed: _loading ? null : _google,
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(52),
                               side: BorderSide(color: eco.outlineVariant),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
+                                borderRadius: BorderRadius.circular(
+                                  AppSpacing.radiusFull,
+                                ),
                               ),
                               foregroundColor: eco.onSurface,
                             ),
@@ -215,12 +225,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSpacing.space6),
                           Container(
                             height: 1,
                             color: eco.outlineVariant.withValues(alpha: 0.4),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpacing.space5),
                           Center(
                             child: Column(
                               children: [
@@ -231,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     color: eco.onSurfaceVariant,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.space3),
                                 GestureDetector(
                                   onTap: () => Navigator.push(
                                     context,
@@ -241,12 +251,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 12,
+                                      horizontal: AppSpacing.space6,
+                                      vertical: AppSpacing.space3,
                                     ),
                                     decoration: BoxDecoration(
                                       color: eco.secondaryContainer,
-                                      borderRadius: BorderRadius.circular(999),
+                                      borderRadius: BorderRadius.circular(
+                                        AppSpacing.radiusFull,
+                                      ),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -256,7 +268,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                           size: 18,
                                           color: eco.onSecondaryContainer,
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(
+                                          width: AppSpacing.space2,
+                                        ),
                                         Text(
                                           'Solicitar Registro',
                                           style: AppTextStyles.bodyStrong

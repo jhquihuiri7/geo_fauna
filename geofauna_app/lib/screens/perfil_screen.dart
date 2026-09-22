@@ -11,6 +11,7 @@ import '../widgets/eco_widgets.dart';
 import 'settings_screen.dart';
 import 'integridad_screen.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 /// Datos del perfil resueltos a partir de Firestore + Firebase Auth.
 class _Profile {
@@ -91,7 +92,12 @@ class PerfilScreen extends StatelessWidget {
                 trailing: [Icon(Icons.cloud_done, color: eco.primary)],
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space6,
+                  AppSpacing.space4,
+                  AppSpacing.space6,
+                  0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -99,25 +105,25 @@ class PerfilScreen extends StatelessWidget {
                       'PERFIL DEL AGENTE',
                       style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.space1),
                     Text(
                       p.name,
                       style: AppTextStyles.display.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.space2),
                     Text(
                       p.roleLine,
                       style: AppTextStyles.body.copyWith(
                         color: eco.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.space6),
                     _idCard(eco, p),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.space6),
                     _statsAndWall(eco, user),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.space6),
                     _actions(context, eco),
                   ],
                 ),
@@ -172,7 +178,7 @@ class PerfilScreen extends StatelessWidget {
     return GradientPanel(
       radius: 32,
       dots: true,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.space6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -189,7 +195,7 @@ class PerfilScreen extends StatelessWidget {
                     color: Colors.white70,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.space1),
                 Text(
                   p.parkName,
                   style: const TextStyle(
@@ -199,29 +205,29 @@ class PerfilScreen extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.space5),
                 Row(
                   children: [
                     Expanded(child: cell('Tipo', p.userType)),
                     Expanded(child: cell('Especialidad', p.specialty)),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.space4),
                 Row(
                   children: [
                     Expanded(child: cell('ID', p.rangerId)),
                     Expanded(child: cell('Correo', p.email)),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.space4),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
+                    horizontal: AppSpacing.space3,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -236,7 +242,7 @@ class PerfilScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.space2),
                       Text(
                         p.statusLabel,
                         style: const TextStyle(
@@ -252,14 +258,14 @@ class PerfilScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.space4),
           Container(
             width: 100,
             height: 100,
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.space2),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             ),
             child: QrImageView(
               data: p.qrData,
@@ -301,7 +307,7 @@ class PerfilScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _stats(eco, user),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.space6),
             _wall(eco, docs),
           ],
         );
@@ -408,7 +414,7 @@ class PerfilScreen extends StatelessWidget {
           'MI MURO DE AVISTAMIENTO',
           style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         if (withMedia.isEmpty)
           _wallEmpty(eco)
         else
@@ -437,7 +443,10 @@ class PerfilScreen extends StatelessWidget {
   Widget _wallEmpty(AppColors eco) {
     return EcoCard(
       radius: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space5,
+        vertical: AppSpacing.space7,
+      ),
       child: Column(
         children: [
           Container(
@@ -454,12 +463,12 @@ class PerfilScreen extends StatelessWidget {
               size: 26,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.space3),
           Text(
             'Aún no tienes avistamientos',
             style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.space1),
           Text(
             'Registra tu primer hallazgo desde la pestaña "Nuevo".',
             textAlign: TextAlign.center,
@@ -475,15 +484,18 @@ class PerfilScreen extends StatelessWidget {
       return GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 22,
+            vertical: AppSpacing.space4,
+          ),
           decoration: BoxDecoration(
             color: eco.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           ),
           child: Row(
             children: [
               Icon(icon, color: eco.onSurface, size: 22),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(
                 child: Text(
                   label,
@@ -507,27 +519,30 @@ class PerfilScreen extends StatelessWidget {
             MaterialPageRoute(builder: (_) => const SettingsScreen()),
           );
         }),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         tile(Icons.shield, 'Protocolo de Integridad de Datos', () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const IntegridadScreen()),
           );
         }),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         GestureDetector(
           onTap: () => AuthService().signOut(),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 22,
+              vertical: AppSpacing.space4,
+            ),
             decoration: BoxDecoration(
               color: eco.errorContainer,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.logout, color: eco.error),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.space2),
                 Text(
                   'CERRAR SESIÓN',
                   style: TextStyle(
@@ -564,7 +579,10 @@ class _StatCell extends StatelessWidget {
     final eco = context.eco;
     return EcoCard(
       radius: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: AppSpacing.space4,
+      ),
       child: Center(
         child: FittedBox(
           fit: BoxFit.scaleDown,
@@ -582,7 +600,7 @@ class _StatCell extends StatelessWidget {
                 ),
                 child: Icon(icon, size: 18, color: eco.primary),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.space2),
               Text(
                 value,
                 maxLines: 1,
@@ -594,7 +612,7 @@ class _StatCell extends StatelessWidget {
                   color: eco.onSurface,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.space1),
               Text(
                 label.toUpperCase(),
                 textAlign: TextAlign.center,
@@ -647,8 +665,8 @@ class _WallThumb extends StatelessWidget {
             color: eco.surfaceContainerLow,
             alignment: Alignment.center,
             child: SizedBox(
-              width: 24,
-              height: 24,
+              width: AppSpacing.space6,
+              height: AppSpacing.space6,
               child: CircularProgressIndicator(
                 strokeWidth: 2.4,
                 color: eco.primary,
