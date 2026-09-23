@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 import 'app_log.dart';
+import 'local_cache.dart';
+import 'net.dart';
 
 const _log = AppLog('MARINE');
 
@@ -155,6 +157,10 @@ class MarineForecast {
 }
 
 class MarineService {
+  /// Último oleaje bueno de esta zona, por el mismo motivo que el clima: sin
+  /// red, un dato de hace un rato vale más que ninguno.
+  static const _cache = LocalCache('marine');
+
   Future<MarineForecast> fetchForecast({
     required double latitude,
     required double longitude,
@@ -172,11 +178,7 @@ class MarineService {
     final trace = _log.trace('fetchForecast');
     trace.note('lat=$latitude lon=$longitude');
     try {
-      final res = await trace.step(
-        'GET $uri',
-        () => http.get(uri),
-        describe: (r) => 'HTTP ${r.statusCode}, ${r.bodyBytes.length} bytes',
-      );
+      final res = await getWithRetry(uri, trace: trace, label: 'GET $uri');
       if (res.statusCode != 200) {
         throw Exception(
           'Open-Meteo Marine respondio ${res.statusCode} - ${res.body}',
@@ -190,11 +192,45 @@ class MarineService {
         ),
         describe: (f) => '${f.hourly.length} horas',
       );
+
+      unawaited(
+        writeCachedBody(
+          _cache,
+          latitude: latitude,
+          longitude: longitude,
+          body: res.body,
+        ),
+      );
+
       trace.done();
       return forecast;
     } catch (error) {
       trace.failed(error);
       rethrow;
+    }
+  }
+
+  /// Último oleaje guardado en disco para esta zona, o `null` si no hay.
+  Future<MarineForecast?> cachedForecast({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final cached = await readCachedBody(
+      _cache,
+      latitude: latitude,
+      longitude: longitude,
+    );
+    if (cached == null) return null;
+
+    try {
+      final forecast = MarineForecast.fromJson(
+        jsonDecode(cached.body) as Map<String, dynamic>,
+      );
+      _log.info('marino recuperado del caché (${cached.savedAt})');
+      return forecast;
+    } catch (error) {
+      _log.failure('caché marino ilegible', error);
+      return null;
     }
   }
 }

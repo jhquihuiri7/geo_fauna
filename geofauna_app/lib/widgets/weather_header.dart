@@ -1,106 +1,112 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-import '../services/app_log.dart';
+import '../services/failures.dart';
 import '../services/location_service.dart';
-import '../services/marine_service.dart';
 import '../services/weather_service.dart';
+import '../services/weather_store.dart';
 import '../theme/app_colors.dart';
 import 'eco_widgets.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_spacing.dart';
 
-const _log = AppLog('HEADER');
-
-/// Ubicación + clima actual ya resueltos.
-class WeatherData {
-  const WeatherData(this.location, this.forecast, [this.marineForecast]);
-
-  final UserLocation location;
-  final WeatherForecast forecast;
-  final MarineForecast? marineForecast;
-
-  CurrentWeather get weather => forecast.current;
-}
-
-/// Obtiene una vez la ubicación del dispositivo + el clima actual y reconstruye
-/// mediante [builder], al que entrega el snapshot y un callback `retry`.
-/// Centraliza la lógica para que Dashboard y Agenda compartan la misma fuente.
+/// Suscribe a [WeatherStore] y reconstruye mediante [builder] cada vez que la
+/// ubicación o el clima cambian.
+///
+/// Antes cada instancia guardaba su propio `Future` en un campo `static`, lo
+/// que congelaba el primer fallo para toda la vida del proceso y hacía que
+/// "Reintentar" en el Dashboard no arreglara la Agenda. Ahora el estado vive
+/// en un solo sitio y todas las tarjetas lo ven a la vez.
 class WeatherBuilder extends StatefulWidget {
   const WeatherBuilder({super.key, required this.builder});
 
-  final Widget Function(
-    BuildContext,
-    AsyncSnapshot<WeatherData>,
-    VoidCallback retry,
-  )
-  builder;
+  final Widget Function(BuildContext context, WeatherStore store) builder;
 
   @override
   State<WeatherBuilder> createState() => _WeatherBuilderState();
 }
 
 class _WeatherBuilderState extends State<WeatherBuilder> {
-  static Future<WeatherData>? _cachedFuture;
+  final WeatherStore _store = WeatherStore.instance;
 
-  late Future<WeatherData> _future = _cachedFuture ??= _load();
-
-  Future<WeatherData> _load() async {
-    final trace = _log.trace('cargar ubicación + clima');
-    try {
-      final loc = await trace.step(
-        'ubicación',
-        LocationService().getCurrentLocation,
-        describe: (l) => '${l.title} (${l.latitude}, ${l.longitude})',
-      );
-
-      final weatherFuture = WeatherService().fetchForecast(
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-      );
-      final marineFuture = (() async {
-        try {
-          return await MarineService().fetchForecast(
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-          );
-        } catch (error) {
-          // El pronóstico marino es opcional: su fallo no tumba la tarjeta,
-          // pero deja rastro en lugar de desaparecer en silencio.
-          trace.note('marino no disponible ($error); se sigue sin oleaje');
-          return null;
-        }
-      })();
-
-      final forecast = await trace.step('clima', () => weatherFuture);
-      final marine = await trace.step(
-        'marino',
-        () => marineFuture,
-        describe: (m) => m == null ? 'omitido' : '${m.hourly.length} horas',
-      );
-
-      trace.done();
-      return WeatherData(loc, forecast, marine);
-    } catch (error) {
-      trace.failed(error);
-      rethrow;
-    }
-  }
-
-  void _retry() {
-    _log.info('el usuario pulsó "Reintentar"');
-    setState(() {
-      _cachedFuture = _load();
-      _future = _cachedFuture!;
-    });
+  @override
+  void initState() {
+    super.initState();
+    // El store deduplica: si la otra pantalla ya lo pidió, esto no dispara una
+    // segunda petición de GPS.
+    unawaited(_store.ensureLoaded());
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<WeatherData>(
-      future: _future,
-      builder: (context, snap) => widget.builder(context, snap, _retry),
+    return ListenableBuilder(
+      listenable: _store,
+      builder: (context, _) => widget.builder(context, _store),
     );
   }
+}
+
+/// Fila de error compartida por el encabezado y la tarjeta de la agenda: el
+/// mismo fallo se ve igual en las dos pantallas.
+Widget _errorRow(AppColors eco, Object error, VoidCallback retry) {
+  final hint = weatherErrorHint(error);
+  return Row(
+    children: [
+      Icon(weatherErrorIcon(error), size: 26, color: eco.onSurfaceVariant),
+      const SizedBox(width: AppSpacing.space3_5),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              weatherErrorMessage(error),
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.3,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
+            if (hint != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                hint,
+                style: TextStyle(fontSize: 11, height: 1.3, color: eco.outline),
+              ),
+            ],
+          ],
+        ),
+      ),
+      if (failureKindOf(error) == FailureKind.permissionBlocked)
+        TextButton(
+          onPressed: () => unawaited(openLocationSettings()),
+          child: const Text('Ajustes'),
+        )
+      else
+        TextButton(onPressed: retry, child: const Text('Reintentar')),
+    ],
+  );
+}
+
+/// Aviso de que lo que se ve es el último dato guardado y no el de ahora.
+/// Sin esto, un clima de hace horas se confunde con uno recién pedido.
+Widget _staleBadge(AppColors eco, String age) {
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.cloud_off_rounded, size: 11, color: eco.warning),
+      const SizedBox(width: AppSpacing.space1),
+      Text(
+        'SIN CONEXIÓN · $age',
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.4,
+          color: eco.warning,
+        ),
+      ),
+    ],
+  );
 }
 
 Widget _weatherMetrics(
@@ -185,12 +191,36 @@ String _oneDecimal(double value) {
 }
 
 /// Mensaje de error legible a partir de una excepción.
+///
+/// Los [AppFailure] traen su texto ya redactado; el resto cae al genérico.
 String weatherErrorMessage(Object error) {
   final s = error.toString();
   return s.startsWith('Exception: ')
       ? s.substring(11)
       : 'No se pudo obtener el clima.';
 }
+
+/// Qué puede hacer el usuario ante este error, en una línea.
+///
+/// El mensaje dice qué pasó; esto dice qué hacer, que es distinto en cada
+/// caso: encender el GPS, abrir Ajustes o simplemente esperar a la señal.
+String? weatherErrorHint(Object error) => switch (failureKindOf(error)) {
+  FailureKind.gpsOff => 'Actívala en los ajustes rápidos del teléfono.',
+  FailureKind.permissionBlocked =>
+    'Android ya no deja preguntarlo desde la app.',
+  FailureKind.network => 'Se reintenta solo en cuanto vuelva la señal.',
+  FailureKind.noFix => 'A cielo abierto el GPS fija la posición antes.',
+  _ => null,
+};
+
+/// Icono acorde al tipo de fallo, para distinguirlo de un vistazo.
+IconData weatherErrorIcon(Object error) => switch (failureKindOf(error)) {
+  FailureKind.network => Icons.wifi_off_rounded,
+  FailureKind.gpsOff || FailureKind.noFix => Icons.location_disabled_rounded,
+  FailureKind.permissionDenied ||
+  FailureKind.permissionBlocked => Icons.lock_outline_rounded,
+  _ => Icons.error_outline_rounded,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard — encabezado "Estado del Tiempo"
@@ -203,17 +233,24 @@ class WeatherHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return WeatherBuilder(
-      builder: (context, snap, retry) {
-        final title = switch (snap.connectionState) {
-          ConnectionState.done when snap.hasData => snap.data!.location.title,
-          ConnectionState.done => 'Sin ubicación',
-          _ => 'Localizando…',
-        };
-        final subtitle = snap.hasData
-            ? (snap.data!.location.subtitle ??
-                  '${snap.data!.location.latitude.toStringAsFixed(2)}, '
-                      '${snap.data!.location.longitude.toStringAsFixed(2)}')
-            : 'Obteniendo tu posición actual';
+      builder: (context, store) {
+        final snap = store.snapshot;
+        // La ubicación se publica antes que el clima, así que el nombre del
+        // puerto aparece aunque Open-Meteo siga sin contestar.
+        final location = snap.data?.location ?? store.location;
+
+        final String title;
+        final String subtitle;
+        if (location != null) {
+          title = location.title;
+          subtitle =
+              location.subtitle ??
+              '${location.latitude.toStringAsFixed(2)}, '
+                  '${location.longitude.toStringAsFixed(2)}';
+        } else {
+          title = snap.hasError ? 'Sin ubicación' : 'Localizando…';
+          subtitle = 'Obteniendo tu posición actual';
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,7 +286,7 @@ class WeatherHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.space4),
-            _card(context, eco, snap, retry),
+            _card(context, eco, snap, store.refresh),
           ],
         );
       },
@@ -262,30 +299,14 @@ class WeatherHeader extends StatelessWidget {
     AsyncSnapshot<WeatherData> snap,
     VoidCallback retry,
   ) {
-    if (snap.connectionState == ConnectionState.done && snap.hasError) {
+    if (snap.hasError) {
       return EcoCard(
         radius: 28,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space4_5,
           vertical: AppSpacing.space4,
         ),
-        child: Row(
-          children: [
-            const Text('📍', style: TextStyle(fontSize: 28)),
-            const SizedBox(width: AppSpacing.space3_5),
-            Expanded(
-              child: Text(
-                weatherErrorMessage(snap.error!),
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.3,
-                  color: eco.onSurfaceVariant,
-                ),
-              ),
-            ),
-            TextButton(onPressed: retry, child: const Text('Reintentar')),
-          ],
-        ),
+        child: _errorRow(eco, snap.error!, retry),
       );
     }
 
@@ -320,10 +341,12 @@ class WeatherHeader extends StatelessWidget {
       );
     }
 
-    final w = snap.data!.weather;
+    final data = snap.data!;
+    final w = data.weather;
     final now = DateTime.now();
-    final wave = snap.data!.marineForecast?.atHour(now);
-    final tide = snap.data!.marineForecast?.tideAt(now);
+    final wave = data.marineForecast?.atHour(now);
+    final tide = data.marineForecast?.tideAt(now);
+    final age = data.ageLabel;
     return EcoCard(
       radius: 28,
       padding: const EdgeInsets.symmetric(
@@ -378,6 +401,10 @@ class WeatherHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _weatherMetrics(eco, w),
+                if (age != null) ...[
+                  const SizedBox(height: 6),
+                  _staleBadge(eco, age),
+                ],
                 if (wave != null) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -426,7 +453,8 @@ class AgendaWeatherCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return WeatherBuilder(
-      builder: (context, snap, retry) {
+      builder: (context, store) {
+        final snap = store.snapshot;
         return GestureDetector(
           onTap: snap.hasData
               ? () => _openHourlySheet(context, snap.data!)
@@ -438,7 +466,7 @@ class AgendaWeatherCard extends StatelessWidget {
               horizontal: 22,
               vertical: AppSpacing.space5,
             ),
-            child: _content(eco, snap, retry),
+            child: _content(eco, snap, store.refresh),
           ),
         );
       },
@@ -450,24 +478,8 @@ class AgendaWeatherCard extends StatelessWidget {
     AsyncSnapshot<WeatherData> snap,
     VoidCallback retry,
   ) {
-    if (snap.connectionState == ConnectionState.done && snap.hasError) {
-      return Row(
-        children: [
-          const Text('📍', style: TextStyle(fontSize: 28)),
-          const SizedBox(width: AppSpacing.space3_5),
-          Expanded(
-            child: Text(
-              weatherErrorMessage(snap.error!),
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.3,
-                color: eco.onSurfaceVariant,
-              ),
-            ),
-          ),
-          TextButton(onPressed: retry, child: const Text('Reintentar')),
-        ],
-      );
+    if (snap.hasError) {
+      return _errorRow(eco, snap.error!, retry);
     }
 
     if (!snap.hasData) {
@@ -496,6 +508,7 @@ class AgendaWeatherCard extends StatelessWidget {
 
     final data = snap.data!;
     final loc = data.location;
+    final age = data.ageLabel;
     final w = data.forecast.atPhoneHour(selectedDate);
     if (w == null) {
       return Row(
@@ -569,6 +582,10 @@ class AgendaWeatherCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               _weatherMetrics(eco, w),
+              if (age != null) ...[
+                const SizedBox(height: 6),
+                _staleBadge(eco, age),
+              ],
               const SizedBox(height: AppSpacing.space2),
               Row(
                 children: [

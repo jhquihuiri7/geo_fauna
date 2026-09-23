@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -5,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../services/location_service.dart';
 import '../services/map_tile_service.dart';
+import '../services/weather_store.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_spacing.dart';
@@ -96,10 +97,18 @@ class LiveMap extends StatefulWidget {
 }
 
 class _LiveMapState extends State<LiveMap> {
-  late Future<UserLocation> _future = LocationService().getCurrentLocation();
+  final WeatherStore _store = WeatherStore.instance;
 
-  void _retry() =>
-      setState(() => _future = LocationService().getCurrentLocation());
+  @override
+  void initState() {
+    super.initState();
+    // Comparte la carga con el encabezado del clima en vez de lanzar su propio
+    // GPS: antes el Dashboard pedía la posición dos veces a la vez, con dos
+    // geocodings idénticos detrás.
+    if (widget.location == null) unawaited(_store.ensureLoaded());
+  }
+
+  void _retry() => _store.refresh();
 
   @override
   Widget build(BuildContext context) {
@@ -112,11 +121,13 @@ class _LiveMapState extends State<LiveMap> {
         // directamente centrado en ese punto.
         child: widget.location != null
             ? _map(eco, widget.location!)
-            : FutureBuilder<UserLocation>(
-                future: _future,
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.done &&
-                      snap.hasError) {
+            : ListenableBuilder(
+                listenable: _store,
+                builder: (context, _) {
+                  // Solo la ubicación: el mapa no tiene por qué quedarse en
+                  // blanco porque Open-Meteo no conteste.
+                  final snap = _store.locationSnapshot;
+                  if (snap.hasError) {
                     return _state(
                       eco,
                       icon: Icons.location_off,
