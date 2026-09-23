@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'animations.dart';
 import 'painters.dart';
+import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Avatar — monogram or emoji "specimen badge"
@@ -100,7 +102,9 @@ class Avatar extends StatelessWidget {
                       : const Color(0xFF3B82F6),
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: eco.surfaceContainerLowest, width: 2),
+                    color: eco.surfaceContainerLowest,
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -133,7 +137,11 @@ class PhotoPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    final base = tone == 2 ? eco.photo2 : tone == 3 ? eco.photo3 : eco.photo1;
+    final base = tone == 2
+        ? eco.photo2
+        : tone == 3
+        ? eco.photo3
+        : eco.photo1;
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: AspectRatio(
@@ -154,7 +162,7 @@ class PhotoPlaceholder extends StatelessWidget {
               if (label.isNotEmpty)
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(AppSpacing.space2),
                     child: Text(
                       label,
                       textAlign: TextAlign.center,
@@ -183,7 +191,12 @@ class PhotoPlaceholder extends StatelessWidget {
 enum ChipTone { primary, tertiary, emerald, slate, error, warning }
 
 class EcoChip extends StatelessWidget {
-  const EcoChip(this.label, {super.key, this.tone = ChipTone.primary, this.small = false});
+  const EcoChip(
+    this.label, {
+    super.key,
+    this.tone = ChipTone.primary,
+    this.small = false,
+  });
 
   final String label;
   final ChipTone tone;
@@ -222,15 +235,17 @@ class EcoChip extends StatelessWidget {
     }
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: small ? 8 : 10, vertical: small ? 3 : 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+        horizontal: small ? 8 : 10,
+        vertical: small ? 3 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+      ),
       child: Text(
         label.toUpperCase(),
-        style: TextStyle(
+        style: (small ? AppTextStyles.chipSmall : AppTextStyles.chip).copyWith(
           color: fg,
-          fontSize: small ? 9 : 10,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1.2,
         ),
       ),
     );
@@ -249,16 +264,13 @@ class Kicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space1),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             title.toUpperCase(),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.3,
+            style: AppTextStyles.kicker.copyWith(
               color: context.eco.onSurfaceVariant,
             ),
           ),
@@ -271,24 +283,28 @@ class Kicker extends StatelessWidget {
 
 /// Tiny uppercase caption used above form fields (`Cap`).
 class Cap extends StatelessWidget {
-  const Cap(this.label, {super.key, this.action});
+  const Cap(this.label, {super.key, this.action, this.onCard = false});
   final String label;
   final Widget? action;
+
+  /// Whether the caption sits on `surface-container-lowest` (an EcoCard or a
+  /// sheet). Only there does `outline` clear 4.5:1 in the light theme; on any
+  /// other background the caption falls back to `on-surface-variant`.
+  final bool onCard;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.5,
-              color: context.eco.outline,
+            style: AppTextStyles.cap.copyWith(
+              color: onCard
+                  ? context.eco.outline
+                  : context.eco.onSurfaceVariant,
             ),
           ),
           if (action != null) action!,
@@ -355,11 +371,21 @@ class EcoTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return Glass(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(AppSpacing.radiusXl),
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space5,
+        AppSpacing.space3,
+        AppSpacing.space5,
+        AppSpacing.space3_5,
+      ),
       child: Row(
         children: [
-          if (leading != null) ...[leading!, const SizedBox(width: 12)],
+          if (leading != null) ...[
+            leading!,
+            const SizedBox(width: AppSpacing.space3),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,7 +418,10 @@ class EcoTopBar extends StatelessWidget {
             ),
           ),
           if (trailing != null) ...[
-            for (final w in trailing!) ...[w, const SizedBox(width: 8)],
+            for (final w in trailing!) ...[
+              w,
+              const SizedBox(width: AppSpacing.space2),
+            ],
           ],
         ],
       ),
@@ -420,7 +449,12 @@ class SubHeader extends StatelessWidget {
     final eco = context.eco;
     return Container(
       color: eco.surface,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space5,
+        AppSpacing.space4,
+        AppSpacing.space5,
+        AppSpacing.space4,
+      ),
       child: Row(
         children: [
           if (onBack != null)
@@ -430,7 +464,7 @@ class SubHeader extends StatelessWidget {
               constraints: const BoxConstraints(),
               icon: Icon(leadingIcon, color: eco.primary),
             ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Text(
               title,
@@ -469,10 +503,10 @@ class SegTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpacing.space1),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
       ),
       child: Row(
         children: [
@@ -482,19 +516,22 @@ class SegTabs extends StatelessWidget {
                 onTap: () => onChange(t),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.space2,
+                    horizontal: AppSpacing.space3,
+                  ),
                   decoration: BoxDecoration(
                     color: active == t
                         ? eco.surfaceContainerLowest
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                     boxShadow: active == t
                         ? [
                             BoxShadow(
                               color: eco.primary.withValues(alpha: 0.08),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
-                            )
+                            ),
                           ]
                         : null,
                   ),
@@ -537,7 +574,7 @@ class EcoSwitch extends StatelessWidget {
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           color: value ? eco.primary : eco.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
         ),
         child: AnimatedAlign(
           duration: const Duration(milliseconds: 200),
@@ -549,7 +586,11 @@ class EcoSwitch extends StatelessWidget {
               color: value ? Colors.white : eco.surfaceContainerLowest,
               shape: BoxShape.circle,
               boxShadow: const [
-                BoxShadow(color: Color(0x26000000), blurRadius: 3, offset: Offset(0, 1)),
+                BoxShadow(
+                  color: Color(0x26000000),
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
           ),
@@ -589,7 +630,10 @@ class EcoListRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.space3,
+          horizontal: AppSpacing.space2,
+        ),
         child: Row(
           children: [
             Container(
@@ -602,7 +646,7 @@ class EcoListRow extends StatelessWidget {
               ),
               child: Icon(icon, color: iconColor ?? eco.primary, size: 22),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.space4),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -666,14 +710,17 @@ class EcoTextField extends StatelessWidget {
       height: 52,
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
       ),
-      padding: EdgeInsets.only(left: icon != null ? 18 : 20, right: 16),
+      padding: EdgeInsets.only(
+        left: icon != null ? 18 : 20,
+        right: AppSpacing.space4,
+      ),
       child: Row(
         children: [
           if (icon != null) ...[
             Icon(icon, color: eco.outline, size: 20),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.space3),
           ],
           Expanded(
             child: TextField(
@@ -705,8 +752,8 @@ class EcoCard extends StatelessWidget {
   const EcoCard({
     super.key,
     required this.child,
-    this.radius = 32,
-    this.padding = const EdgeInsets.all(20),
+    this.radius = AppSpacing.radiusCard,
+    this.padding = const EdgeInsets.all(AppSpacing.space5),
     this.color,
     this.soft = false,
   });
@@ -720,39 +767,14 @@ class EcoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: padding,
       decoration: BoxDecoration(
         color: color ?? eco.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(radius),
-        // Layered shadow: a wide soft ambient glow + a tight contact shadow,
-        // for a more dimensional, "floating" feel.
-        boxShadow: dark
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: soft ? 0.55 : 0.5),
-                  blurRadius: soft ? 48 : 28,
-                  offset: Offset(0, soft ? 16 : 8),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : [
-                BoxShadow(
-                  color: eco.primary.withValues(alpha: soft ? 0.08 : 0.06),
-                  blurRadius: soft ? 48 : 28,
-                  offset: Offset(0, soft ? 18 : 10),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        // Sin bordes: la sombra teñida separa la tarjeta del fondo.
+        // `soft` es el panel grande (shadow-soft); el resto, shadow-card.
+        boxShadow: soft ? eco.shadowSoft : eco.shadowCard,
       ),
       child: child,
     );
@@ -764,8 +786,8 @@ class GradientPanel extends StatelessWidget {
   const GradientPanel({
     super.key,
     required this.child,
-    this.radius = 32,
-    this.padding = const EdgeInsets.all(24),
+    this.radius = AppSpacing.radiusCard,
+    this.padding = const EdgeInsets.all(AppSpacing.space6),
     this.dots = false,
   });
 
@@ -791,25 +813,26 @@ class GradientPanel extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: DecoratedBox(
-        decoration: BoxDecoration(gradient: eco.organicGradient),
-        child: Stack(
-          children: [
-            if (dots)
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.4,
-                  child: CustomPaint(
-                    painter: DotPatternPainter(
-                        Colors.white.withValues(alpha: 0.18)),
+        borderRadius: BorderRadius.circular(radius),
+        child: DecoratedBox(
+          decoration: BoxDecoration(gradient: eco.organicGradient),
+          child: Stack(
+            children: [
+              if (dots)
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.4,
+                    child: CustomPaint(
+                      painter: DotPatternPainter(
+                        Colors.white.withValues(alpha: 0.18),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            Padding(padding: padding, child: child),
-          ],
+              Padding(padding: padding, child: child),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -837,54 +860,40 @@ class GradientButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
+    // El degradado arranca en `primary`, asi que el color legible encima es
+    // `on-primary`. En claro vale #FFFFFF (igual que antes); en oscuro arregla
+    // el blanco sobre #68DBA9, que no llegaba a 3:1.
+    final fg = eco.onPrimary;
     return PressableScale(
       onTap: loading ? null : onPressed,
       child: Container(
         height: height,
         decoration: BoxDecoration(
           gradient: eco.organicGradient,
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            // Coloured glow that bleeds beyond the pill for a luminous CTA.
-            BoxShadow(
-              color: eco.primary.withValues(alpha: 0.38),
-              blurRadius: 28,
-              spreadRadius: -2,
-              offset: const Offset(0, 12),
-            ),
-            BoxShadow(
-              color: eco.primaryContainer.withValues(alpha: 0.22),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+          boxShadow: eco.shadowFab,
         ),
         child: Center(
           child: loading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 22,
                   height: 22,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: Colors.white),
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: fg),
                 )
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[
-                      Icon(icon, color: Colors.white, size: 20),
-                      const SizedBox(width: 8),
+                      Icon(icon, color: fg, size: 20),
+                      const SizedBox(width: AppSpacing.space2),
                     ],
                     Text(
                       label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: AppTextStyles.button.copyWith(color: fg),
                     ),
                     if (trailingIcon != null) ...[
-                      const SizedBox(width: 8),
-                      Icon(trailingIcon, color: Colors.white, size: 20),
+                      const SizedBox(width: AppSpacing.space2),
+                      Icon(trailingIcon, color: fg, size: 20),
                     ],
                   ],
                 ),

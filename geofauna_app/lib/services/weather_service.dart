@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 import 'app_log.dart';
+import 'local_cache.dart';
+import 'net.dart';
 
 const _log = AppLog('WEATHER');
 
@@ -140,6 +142,10 @@ class WeatherForecast {
 }
 
 class WeatherService {
+  /// Último pronóstico bueno de esta zona. Es lo que salva un arranque en frío
+  /// durante un corte de red, que antes dejaba la tarjeta en un error seco.
+  static const _cache = LocalCache('weather');
+
   Future<CurrentWeather> fetchCurrent({
     required double latitude,
     required double longitude,
@@ -154,30 +160,24 @@ class WeatherService {
     required double latitude,
     required double longitude,
   }) async {
-    final uri = Uri.https(
-      'api.open-meteo.com',
-      '/v1/forecast',
-      {
-        'latitude': latitude.toString(),
-        'longitude': longitude.toString(),
-        'current': 'temperature_2m,relative_humidity_2m,is_day,rain,weather_code,cloud_cover,wind_speed_10m',
-        'hourly': 'temperature_2m,relative_humidity_2m,rain,weather_code,cloud_cover,wind_speed_10m',
-        'temperature_unit': 'celsius',
-        'wind_speed_unit': 'kmh',
-        'precipitation_unit': 'mm',
-        'timezone': 'auto',
-        'forecast_days': '15',
-      },
-    );
+    final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+      'latitude': latitude.toString(),
+      'longitude': longitude.toString(),
+      'current':
+          'temperature_2m,relative_humidity_2m,is_day,rain,weather_code,cloud_cover,wind_speed_10m',
+      'hourly':
+          'temperature_2m,relative_humidity_2m,rain,weather_code,cloud_cover,wind_speed_10m',
+      'temperature_unit': 'celsius',
+      'wind_speed_unit': 'kmh',
+      'precipitation_unit': 'mm',
+      'timezone': 'auto',
+      'forecast_days': '15',
+    });
 
     final trace = _log.trace('fetchForecast');
     trace.note('lat=$latitude lon=$longitude');
     try {
-      final res = await trace.step(
-        'GET $uri',
-        () => http.get(uri),
-        describe: (r) => 'HTTP ${r.statusCode}, ${r.bodyBytes.length} bytes',
-      );
+      final res = await getWithRetry(uri, trace: trace, label: 'GET $uri');
       if (res.statusCode != 200) {
         throw Exception('Open-Meteo respondio ${res.statusCode} - ${res.body}');
       }
@@ -187,9 +187,22 @@ class WeatherService {
         () => WeatherForecast.fromJson(
           jsonDecode(res.body) as Map<String, dynamic>,
         ),
-        describe: (f) => '${f.hourly.length} horas, '
+        describe: (f) =>
+            '${f.hourly.length} horas, '
             'actual ${f.current.temperature}°C ${f.current.description}',
       );
+
+      // Se guarda tras parsear: así nunca cacheamos un cuerpo que no sabemos
+      // leer. No se espera porque el usuario no debe esperar al disco.
+      unawaited(
+        writeCachedBody(
+          _cache,
+          latitude: latitude,
+          longitude: longitude,
+          body: res.body,
+        ),
+      );
+
       trace.done();
       return forecast;
     } catch (error) {
@@ -197,6 +210,42 @@ class WeatherService {
       rethrow;
     }
   }
+
+  /// Último pronóstico guardado en disco para esta zona, o `null` si no hay.
+  ///
+  /// No descarta por antigüedad a propósito: decide quien llama, y la UI lo
+  /// etiqueta con su hora para que nadie confunda un dato viejo con uno
+  /// fresco. Un clima de hace una hora sigue siendo más útil que un error.
+  Future<CachedWeather?> cachedForecast({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final cached = await readCachedBody(
+      _cache,
+      latitude: latitude,
+      longitude: longitude,
+    );
+    if (cached == null) return null;
+
+    try {
+      final forecast = WeatherForecast.fromJson(
+        jsonDecode(cached.body) as Map<String, dynamic>,
+      );
+      _log.info('clima recuperado del caché (${cached.savedAt})');
+      return CachedWeather(forecast, cached.savedAt);
+    } catch (error) {
+      _log.failure('caché de clima ilegible', error);
+      return null;
+    }
+  }
+}
+
+/// Un pronóstico recuperado del disco, con la hora en que se guardó.
+class CachedWeather {
+  const CachedWeather(this.forecast, this.savedAt);
+
+  final WeatherForecast forecast;
+  final DateTime savedAt;
 }
 
 WeatherDayRange? _rangeForDay(List<CurrentWeather> hourly, DateTime date) {

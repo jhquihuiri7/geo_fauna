@@ -303,20 +303,7 @@ class _BottomNav extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: eco.organicGradient,
                 shape: BoxShape.circle,
-                boxShadow: [
-                  // Luminous double glow so the FAB reads as the hero action.
-                  BoxShadow(
-                    color: eco.primary.withValues(alpha: 0.45),
-                    blurRadius: 24,
-                    spreadRadius: -2,
-                    offset: const Offset(0, 10),
-                  ),
-                  BoxShadow(
-                    color: eco.primaryFixedDim.withValues(alpha: 0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: eco.shadowFab,
               ),
               child: const Icon(Icons.add, color: Colors.white, size: 32),
             ),

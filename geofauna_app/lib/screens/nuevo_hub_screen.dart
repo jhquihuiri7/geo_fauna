@@ -13,6 +13,9 @@ import '../theme/app_colors.dart';
 import '../widgets/eco_widgets.dart';
 import '../widgets/live_map.dart';
 import '../widgets/user_avatar.dart';
+import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
+import '../widgets/brand_logo.dart';
 
 /// Nuevo — capture hub with three segmented sub-screens: Monitoreo (field
 /// record), Agenda (tour), Evento (create event) — port of screens-forms.jsx.
@@ -49,7 +52,12 @@ class _NuevoHubScreenState extends State<NuevoHubScreen> {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              AppSpacing.space4,
+              AppSpacing.space5,
+              0,
+            ),
             child: SegTabs(
               tabs: _tabs,
               active: _tab,
@@ -116,7 +124,12 @@ class _FieldRecordState extends State<_FieldRecord> {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space6,
+        AppSpacing.space6,
+        AppSpacing.space6,
+        120,
+      ),
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,14 +140,9 @@ class _FieldRecordState extends State<_FieldRecord> {
                 children: [
                   Text(
                     'MÓDULO DE CAMPO',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.8,
-                      color: eco.primary,
-                    ),
+                    style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.space1),
                   Text(
                     'Nuevo Registro\nde Campo',
                     style: TextStyle(
@@ -145,19 +153,17 @@ class _FieldRecordState extends State<_FieldRecord> {
                       color: eco.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.space3),
                   Text(
                     'Documenta tus hallazgos científicos o reporta incidentes en tiempo real.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.4,
+                    style: AppTextStyles.body.copyWith(
                       color: eco.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.space4),
             Container(
               width: 52,
               height: 52,
@@ -173,9 +179,9 @@ class _FieldRecordState extends State<_FieldRecord> {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         _sectionLabel(eco, 'Ubicación del Registro'),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         GestureDetector(
           onTap: _saving ? null : _openLocationPicker,
           child: LiveMap(
@@ -188,10 +194,10 @@ class _FieldRecordState extends State<_FieldRecord> {
                 bottom: 12,
                 left: 12,
                 child: Glass(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                    horizontal: AppSpacing.space3_5,
+                    vertical: AppSpacing.space2,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -218,9 +224,9 @@ class _FieldRecordState extends State<_FieldRecord> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         _sectionLabel(eco, 'Seleccionar Categoría'),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -235,18 +241,16 @@ class _FieldRecordState extends State<_FieldRecord> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: _cat == c[0] ? eco.primary : eco.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(c[1], style: const TextStyle(fontSize: 18)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.space2),
                       Text(
                         c[0],
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                        style: AppTextStyles.bodyStrong.copyWith(
                           color: _cat == c[0] ? eco.onPrimary : eco.onSurface,
                         ),
                       ),
@@ -256,7 +260,7 @@ class _FieldRecordState extends State<_FieldRecord> {
               ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         GestureDetector(
           onTap: _saving ? null : _pickEvidence,
           child: DottedBorderTile(
@@ -286,7 +290,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                                 ),
                         ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.space3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,9 +299,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                         _evidence.isEmpty
                             ? 'Capturar Evidencia'
                             : '${_evidence.length} evidencia(s) lista(s)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                        style: AppTextStyles.bodyStrong.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
@@ -330,7 +332,7 @@ class _FieldRecordState extends State<_FieldRecord> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         _pillField(
           eco,
           cap: 'Fecha y Hora',
@@ -351,44 +353,44 @@ class _FieldRecordState extends State<_FieldRecord> {
             helper: 'TOCA PARA CAMBIAR',
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         _pillField(
           eco,
           cap: 'Especie (Opcional)',
           child: Row(
             children: [
               Icon(Icons.science, color: eco.outline),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(
                 child: TextField(
                   controller: _speciesController,
                   enabled: !_saving,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
                     hintText: 'Ej: Chelonoidis nigra…',
-                    hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                    hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         _pillField(
           eco,
           cap: 'Cantidad de Individuos',
           child: Row(
             children: [
               Icon(Icons.groups, color: eco.outline),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(
                 child: TextField(
                   controller: _quantityController,
                   enabled: !_saving,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: const InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
@@ -398,35 +400,38 @@ class _FieldRecordState extends State<_FieldRecord> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         const Cap('Notas y Observaciones'),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         Container(
           decoration: BoxDecoration(
             color: eco.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.space4),
           child: TextField(
             controller: _notesController,
             enabled: !_saving,
             maxLines: 3,
-            style: TextStyle(fontSize: 14, color: eco.onSurface),
+            style: AppTextStyles.body.copyWith(color: eco.onSurface),
             decoration: InputDecoration(
               isCollapsed: true,
               border: InputBorder.none,
               hintText:
                   'Describe el estado del espécimen o los detalles del incidente observado…',
-              hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+              hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space4_5,
+            vertical: AppSpacing.space3_5,
+          ),
           decoration: BoxDecoration(
             color: eco.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           ),
           child: Row(
             children: [
@@ -436,9 +441,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                   children: [
                     Text(
                       'Publicar en Muro',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.bodyStrong.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -453,7 +456,7 @@ class _FieldRecordState extends State<_FieldRecord> {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               EcoSwitch(
                 value: _publish,
                 onChanged: (v) => setState(() => _publish = v),
@@ -461,7 +464,7 @@ class _FieldRecordState extends State<_FieldRecord> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         GradientButton(
           label: _saving ? 'Guardando...' : 'Subir Reporte',
           icon: Icons.upload,
@@ -484,7 +487,9 @@ class _FieldRecordState extends State<_FieldRecord> {
       isScrollControlled: true,
       backgroundColor: context.eco.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSpacing.radiusXl),
+        ),
       ),
       builder: (context) => _LocationPickerSheet(
         initialLocation: selectedLoc,
@@ -626,31 +631,25 @@ class _TourRecordState extends State<_TourRecord> {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space6,
+        AppSpacing.space6,
+        AppSpacing.space6,
+        120,
+      ),
       children: [
         Text(
           'REGISTRO DE EXPEDICIÓN',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.8,
-            color: eco.primary,
-          ),
+          style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.space1),
         Text(
           'Nuevo Registro',
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.w900,
-            height: 1,
-            letterSpacing: -1.5,
-            color: eco.onSurface,
-          ),
+          style: AppTextStyles.display.copyWith(color: eco.onSurface),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         _barTitle(eco, 'Información Básica'),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         _pillField(
           eco,
           cap: 'Nombre del Tour',
@@ -660,12 +659,12 @@ class _TourRecordState extends State<_TourRecord> {
                 child: TextField(
                   controller: _nameController,
                   enabled: !_saving,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
                     hintText: 'e.g. Tour León Dormido AM',
-                    hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                    hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
                   ),
                 ),
               ),
@@ -673,7 +672,7 @@ class _TourRecordState extends State<_TourRecord> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         _pillField(
           eco,
           cap: 'Fecha',
@@ -693,7 +692,7 @@ class _TourRecordState extends State<_TourRecord> {
             empty: _tourDate == null,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -716,7 +715,7 @@ class _TourRecordState extends State<_TourRecord> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.space3),
             Expanded(
               child: _pillField(
                 eco,
@@ -738,16 +737,16 @@ class _TourRecordState extends State<_TourRecord> {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(child: _barTitle(eco, 'Tipo de Tour')),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.space2),
             const EcoChip('Selección Única', tone: ChipTone.emerald),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         GridView.count(
           crossAxisCount: 3,
           shrinkWrap: true,
@@ -762,8 +761,8 @@ class _TourRecordState extends State<_TourRecord> {
                 child: EcoCard(
                   radius: 24,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 16,
+                    horizontal: AppSpacing.space2,
+                    vertical: AppSpacing.space4,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -785,13 +784,11 @@ class _TourRecordState extends State<_TourRecord> {
                               : eco.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.space2),
                       Text(
                         t[0] as String,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                        style: AppTextStyles.label.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
@@ -801,71 +798,72 @@ class _TourRecordState extends State<_TourRecord> {
               ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         _pillField(
           eco,
           cap: 'Punto de Encuentro',
           child: Row(
             children: [
               Icon(Icons.location_on, color: eco.outline),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(
                 child: TextField(
                   controller: _meetingPointController,
                   enabled: !_saving,
-                  style: TextStyle(fontSize: 14, color: eco.onSurface),
+                  style: AppTextStyles.body.copyWith(color: eco.onSurface),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
                     hintText: 'Muelle, sendero o zona de salida',
-                    hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                    hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.space3),
         const Cap('Notas del Tour'),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         Container(
           decoration: BoxDecoration(
             color: eco.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.space4),
           child: TextField(
             controller: _notesController,
             enabled: !_saving,
             maxLines: 3,
-            style: TextStyle(fontSize: 14, color: eco.onSurface),
+            style: AppTextStyles.body.copyWith(color: eco.onSurface),
             decoration: InputDecoration(
               isCollapsed: true,
               border: InputBorder.none,
               hintText: 'Detalle logistica, pasajeros u observaciones...',
-              hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+              hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         GradientPanel(
           radius: 28,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space5,
+            vertical: AppSpacing.space4,
+          ),
           child: Row(
-            children: const [
-              Icon(Icons.eco, color: Colors.white, size: 24),
-              SizedBox(width: 16),
+            children: [
+              // La marca sobre el degradado. 32px es el minimo del sistema:
+              // por debajo las tres curvas del caparazon se empastan.
+              const TortugaTopoMark.onFill(size: 32),
+              const SizedBox(width: AppSpacing.space4),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Impacto Ambiental',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+                      style: AppTextStyles.button.copyWith(color: Colors.white),
                     ),
                     SizedBox(height: 2),
                     Text(
@@ -882,7 +880,7 @@ class _TourRecordState extends State<_TourRecord> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         GradientButton(
           label: _saving ? 'Guardando...' : 'Confirmar Tour',
           icon: Icons.rocket_launch,
@@ -995,24 +993,23 @@ class _EventCreateState extends State<_EventCreate> {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space6,
+        AppSpacing.space6,
+        AppSpacing.space6,
+        120,
+      ),
       children: [
         Text(
           'Crear Evento',
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.w900,
-            height: 1,
-            letterSpacing: -1.5,
-            color: eco.onSurface,
-          ),
+          style: AppTextStyles.display.copyWith(color: eco.onSurface),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         Text(
           'Registre una nueva actividad para el equipo de campo.',
-          style: TextStyle(fontSize: 14, color: eco.onSurfaceVariant),
+          style: AppTextStyles.body.copyWith(color: eco.onSurfaceVariant),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         EcoCard(
           radius: 32,
           padding: const EdgeInsets.all(22),
@@ -1020,27 +1017,27 @@ class _EventCreateState extends State<_EventCreate> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _cardLabel(eco, 'Información Básica'),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               _roundedInput(
                 eco,
                 'Título del evento',
                 controller: _titleController,
                 enabled: !_saving,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.space3),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
+                  horizontal: AppSpacing.space4_5,
+                  vertical: AppSpacing.space3,
                 ),
                 decoration: BoxDecoration(
                   color: eco.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.visibility, color: eco.primary),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.space2),
                     Expanded(
                       child: Text(
                         'Visibilidad Pública',
@@ -1058,25 +1055,29 @@ class _EventCreateState extends State<_EventCreate> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               Row(
                 children: [
                   for (final t in _types)
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space1,
+                        ),
                         child: GestureDetector(
                           onTap: () => setState(() => _type = t[0] as String),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
-                              vertical: 14,
+                              vertical: AppSpacing.space3_5,
                             ),
                             decoration: BoxDecoration(
                               color: _type == t[0]
                                   ? eco.primary.withValues(alpha: 0.10)
                                   : eco.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusLg,
+                              ),
                               border: Border.all(
                                 color: _type == t[0]
                                     ? eco.primary
@@ -1092,7 +1093,7 @@ class _EventCreateState extends State<_EventCreate> {
                                       ? eco.primary
                                       : eco.onSurfaceVariant,
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: AppSpacing.space2),
                                 Text(
                                   (t[0] as String).toUpperCase(),
                                   style: TextStyle(
@@ -1115,54 +1116,59 @@ class _EventCreateState extends State<_EventCreate> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         _sectionCard(
           eco,
           'Objetivos Técnicos',
           child: Container(
             decoration: BoxDecoration(
               color: eco.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             ),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.space4),
             child: TextField(
               controller: _objectivesController,
               enabled: !_saving,
               maxLines: 4,
-              style: TextStyle(fontSize: 14, color: eco.onSurface),
+              style: AppTextStyles.body.copyWith(color: eco.onSurface),
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
                 hintText: 'Describa el propósito y metas de la actividad…',
-                hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         _sectionCard(
           eco,
           'Ubicación del Encuentro',
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space4_5,
+              vertical: AppSpacing.space3_5,
+            ),
             decoration: BoxDecoration(
               color: eco.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
             ),
             child: Row(
               children: [
                 Icon(Icons.location_on, color: eco.outline),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.space3),
                 Expanded(
                   child: TextField(
                     controller: _meetingPointController,
                     enabled: !_saving,
-                    style: TextStyle(fontSize: 14, color: eco.onSurface),
+                    style: AppTextStyles.body.copyWith(color: eco.onSurface),
                     decoration: InputDecoration(
                       isCollapsed: true,
                       border: InputBorder.none,
                       hintText: 'Lugar de encuentro',
-                      hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+                      hintStyle: AppTextStyles.body.copyWith(
+                        color: eco.outline,
+                      ),
                     ),
                   ),
                 ),
@@ -1170,7 +1176,7 @@ class _EventCreateState extends State<_EventCreate> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         _sectionCard(
           eco,
           'Fecha',
@@ -1193,7 +1199,7 @@ class _EventCreateState extends State<_EventCreate> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         _sectionCard(
           eco,
           'Horario',
@@ -1213,7 +1219,7 @@ class _EventCreateState extends State<_EventCreate> {
                   },
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(
                 child: _timeBox(
                   eco,
@@ -1231,7 +1237,7 @@ class _EventCreateState extends State<_EventCreate> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.space4),
         _sectionCard(
           eco,
           'Cupo máximo (0 = sin límite)',
@@ -1254,12 +1260,14 @@ class _EventCreateState extends State<_EventCreate> {
               ),
               Expanded(
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space3,
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: eco.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   ),
                   child: Text(
                     '$_participants',
@@ -1287,7 +1295,7 @@ class _EventCreateState extends State<_EventCreate> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space6),
         GradientButton(
           label: _saving ? 'Guardando...' : 'Confirmar Evento',
           trailingIcon: Icons.rocket_launch,
@@ -1421,12 +1429,19 @@ Future<_EvidenceChoice?> _evidenceChoice(BuildContext context) {
     context: context,
     backgroundColor: eco.surfaceContainerLowest,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(AppSpacing.radiusXl),
+      ),
     ),
     builder: (context) {
       return SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space5,
+            AppSpacing.space3,
+            AppSpacing.space5,
+            AppSpacing.space5,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1435,10 +1450,10 @@ Future<_EvidenceChoice?> _evidenceChoice(BuildContext context) {
                 height: 4,
                 decoration: BoxDecoration(
                   color: eco.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               _evidenceOption(
                 context,
                 eco,
@@ -1496,7 +1511,12 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              AppSpacing.space3,
+              AppSpacing.space5,
+              AppSpacing.space4,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1505,10 +1525,10 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: eco.outlineVariant,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.space4),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1524,11 +1544,10 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                               color: eco.onSurface,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.space1),
                           Text(
                             'Haz tap en el mapa para seleccionar ubicación',
-                            style: TextStyle(
-                              fontSize: 13,
+                            style: AppTextStyles.bodySm.copyWith(
                               color: eco.onSurfaceVariant,
                             ),
                           ),
@@ -1597,7 +1616,12 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              AppSpacing.space4,
+              AppSpacing.space5,
+              AppSpacing.space5,
+            ),
             child: Row(
               children: [
                 TextButton(
@@ -1613,7 +1637,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                   onPressed: () => Navigator.pop(context),
                   child: Text('Cancelar', style: TextStyle(color: eco.outline)),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.space2),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, _selectedPoint),
                   child: const Text('Confirmar'),
@@ -1636,7 +1660,10 @@ Widget _evidenceOption(
   required _EvidenceChoice value,
 }) {
   return ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.space1,
+      vertical: AppSpacing.space1,
+    ),
     leading: Container(
       width: 44,
       height: 44,
@@ -1658,37 +1685,20 @@ Widget _evidenceOption(
 
 Widget _sectionLabel(AppColors eco, String t) => Text(
   t.toUpperCase(),
-  style: TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.w800,
-    letterSpacing: 1.8,
-    color: eco.onSurfaceVariant,
-  ),
+  style: AppTextStyles.eyebrow.copyWith(color: eco.onSurfaceVariant),
 );
 
 Widget _cardLabel(AppColors eco, String t) => Text(
   t.toUpperCase(),
-  style: TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.w800,
-    letterSpacing: 1.8,
-    color: eco.onSurfaceVariant,
-  ),
+  style: AppTextStyles.eyebrow.copyWith(color: eco.onSurfaceVariant),
 );
 
 Widget _barTitle(AppColors eco, String t) => Container(
-  padding: const EdgeInsets.only(left: 12),
+  padding: const EdgeInsets.only(left: AppSpacing.space3),
   decoration: BoxDecoration(
     border: Border(left: BorderSide(color: eco.primary, width: 3)),
   ),
-  child: Text(
-    t,
-    style: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w800,
-      color: eco.onSurface,
-    ),
-  ),
+  child: Text(t, style: AppTextStyles.titleSm.copyWith(color: eco.onSurface)),
 );
 
 Widget _pillField(
@@ -1703,7 +1713,7 @@ Widget _pillField(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Cap(cap),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.space2),
           _pickerSurface(eco, onTap: onTap, rounded: false, child: child),
         ],
       );
@@ -1718,7 +1728,10 @@ Widget _pickerSurface(
   bool rounded = true,
 }) {
   final surface = Container(
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.space4_5,
+      vertical: AppSpacing.space3,
+    ),
     decoration: BoxDecoration(
       color: eco.surfaceContainerLow,
       borderRadius: BorderRadius.circular(rounded ? 999 : 28),
@@ -1748,7 +1761,7 @@ Widget _pickerLine(
   return Row(
     children: [
       Icon(icon, color: empty ? eco.outline : eco.primary, size: 20),
-      const SizedBox(width: 12),
+      const SizedBox(width: AppSpacing.space3),
       Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1819,7 +1832,7 @@ Future<DateTime?> _pickDate(
             headerBackgroundColor: eco.primary,
             headerForegroundColor: eco.onPrimary,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
             ),
           ),
         ),
@@ -1859,7 +1872,7 @@ Future<TimeOfDay?> _pickTime(
             dayPeriodColor: eco.primary.withValues(alpha: 0.12),
             dayPeriodTextColor: eco.primary,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
             ),
           ),
         ),
@@ -1886,7 +1899,11 @@ Widget _sectionCard(AppColors eco, String label, {required Widget child}) {
     padding: const EdgeInsets.all(22),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_cardLabel(eco, label), const SizedBox(height: 12), child],
+      children: [
+        _cardLabel(eco, label),
+        const SizedBox(height: AppSpacing.space3),
+        child,
+      ],
     ),
   );
 }
@@ -1898,20 +1915,23 @@ Widget _roundedInput(
   bool enabled = true,
 }) {
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+    padding: const EdgeInsets.symmetric(
+      horizontal: 22,
+      vertical: AppSpacing.space3_5,
+    ),
     decoration: BoxDecoration(
       color: eco.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
     ),
     child: TextField(
       controller: controller,
       enabled: enabled,
-      style: TextStyle(fontSize: 14, color: eco.onSurface),
+      style: AppTextStyles.body.copyWith(color: eco.onSurface),
       decoration: InputDecoration(
         isCollapsed: true,
         border: InputBorder.none,
         hintText: hint,
-        hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+        hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
       ),
     ),
   );
@@ -1930,9 +1950,9 @@ class DottedBorderTile extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: eco.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.space5),
         child: child,
       ),
     );
@@ -1951,7 +1971,10 @@ class _DashedTilePainter extends CustomPainter {
       ..strokeWidth = 1.2;
     final path = Path()
       ..addRRect(
-        RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(28)),
+        RRect.fromRectAndRadius(
+          Offset.zero & size,
+          const Radius.circular(AppSpacing.radiusXl),
+        ),
       );
     for (final metric in path.computeMetrics()) {
       double dist = 0;

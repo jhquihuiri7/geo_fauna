@@ -28,8 +28,7 @@ class UserAvatar extends StatelessWidget {
       stream: user != null ? auth.userDoc(user.uid) : null,
       builder: (context, snap) {
         final data = snap.data?.data();
-        final photoUrl =
-            (data?['photoUrl'] as String?) ?? user?.photoURL;
+        final photoUrl = (data?['photoUrl'] as String?) ?? user?.photoURL;
         final name = (data?['name'] as String?) ?? user?.displayName ?? '';
 
         if (photoUrl != null && photoUrl.isNotEmpty) {
@@ -70,8 +69,9 @@ class UserAvatar extends StatelessWidget {
                             : const Color(0xFF3B82F6),
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: context.eco.surfaceContainerLowest,
-                            width: 2),
+                          color: context.eco.surfaceContainerLowest,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 import 'app_log.dart';
+import 'local_cache.dart';
+import 'net.dart';
 
 const _log = AppLog('MARINE');
 
@@ -14,17 +16,17 @@ class TideInfo {
   final double seaLevelHeight;
 
   String get label => switch (state) {
-    TideState.rising   => 'SUBIENDO',
-    TideState.falling  => 'BAJANDO',
+    TideState.rising => 'SUBIENDO',
+    TideState.falling => 'BAJANDO',
     TideState.highTide => 'PLEAMAR',
-    TideState.lowTide  => 'BAJAMAR',
+    TideState.lowTide => 'BAJAMAR',
   };
 
   String get arrow => switch (state) {
-    TideState.rising   => '↑',
-    TideState.falling  => '↓',
+    TideState.rising => '↑',
+    TideState.falling => '↓',
     TideState.highTide => '▲',
-    TideState.lowTide  => '▼',
+    TideState.lowTide => '▼',
   };
 
   String get heightLabel {
@@ -65,7 +67,11 @@ class WaveHour {
       wavePeriod: _doubleAt(hourly, 'wave_period', index),
       swellWaveHeight: _doubleAt(hourly, 'swell_wave_height', index),
       windWaveHeight: _doubleAt(hourly, 'wind_wave_height', index),
-      seaSurfaceTemperature: _nullableDoubleAt(hourly, 'sea_surface_temperature', index),
+      seaSurfaceTemperature: _nullableDoubleAt(
+        hourly,
+        'sea_surface_temperature',
+        index,
+      ),
       seaLevelHeight: _nullableDoubleAt(hourly, 'sea_level_height_msl', index),
     );
   }
@@ -151,33 +157,32 @@ class MarineForecast {
 }
 
 class MarineService {
+  /// Último oleaje bueno de esta zona, por el mismo motivo que el clima: sin
+  /// red, un dato de hace un rato vale más que ninguno.
+  static const _cache = LocalCache('marine');
+
   Future<MarineForecast> fetchForecast({
     required double latitude,
     required double longitude,
   }) async {
-    final uri = Uri.https(
-      'marine-api.open-meteo.com',
-      '/v1/marine',
-      {
-        'latitude': latitude.toString(),
-        'longitude': longitude.toString(),
-        'hourly': 'wave_height,wave_direction,wave_period,swell_wave_height,'
-            'wind_wave_height,sea_surface_temperature,sea_level_height_msl',
-        'timezone': 'auto',
-        'forecast_days': '8',
-      },
-    );
+    final uri = Uri.https('marine-api.open-meteo.com', '/v1/marine', {
+      'latitude': latitude.toString(),
+      'longitude': longitude.toString(),
+      'hourly':
+          'wave_height,wave_direction,wave_period,swell_wave_height,'
+          'wind_wave_height,sea_surface_temperature,sea_level_height_msl',
+      'timezone': 'auto',
+      'forecast_days': '8',
+    });
 
     final trace = _log.trace('fetchForecast');
     trace.note('lat=$latitude lon=$longitude');
     try {
-      final res = await trace.step(
-        'GET $uri',
-        () => http.get(uri),
-        describe: (r) => 'HTTP ${r.statusCode}, ${r.bodyBytes.length} bytes',
-      );
+      final res = await getWithRetry(uri, trace: trace, label: 'GET $uri');
       if (res.statusCode != 200) {
-        throw Exception('Open-Meteo Marine respondio ${res.statusCode} - ${res.body}');
+        throw Exception(
+          'Open-Meteo Marine respondio ${res.statusCode} - ${res.body}',
+        );
       }
 
       final forecast = trace.stepSync(
@@ -187,11 +192,45 @@ class MarineService {
         ),
         describe: (f) => '${f.hourly.length} horas',
       );
+
+      unawaited(
+        writeCachedBody(
+          _cache,
+          latitude: latitude,
+          longitude: longitude,
+          body: res.body,
+        ),
+      );
+
       trace.done();
       return forecast;
     } catch (error) {
       trace.failed(error);
       rethrow;
+    }
+  }
+
+  /// Último oleaje guardado en disco para esta zona, o `null` si no hay.
+  Future<MarineForecast?> cachedForecast({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final cached = await readCachedBody(
+      _cache,
+      latitude: latitude,
+      longitude: longitude,
+    );
+    if (cached == null) return null;
+
+    try {
+      final forecast = MarineForecast.fromJson(
+        jsonDecode(cached.body) as Map<String, dynamic>,
+      );
+      _log.info('marino recuperado del caché (${cached.savedAt})');
+      return forecast;
+    } catch (error) {
+      _log.failure('caché marino ilegible', error);
+      return null;
     }
   }
 }

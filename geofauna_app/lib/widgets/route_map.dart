@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../services/map_tile_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 
 /// Mapa estático y "bonito" de un recorrido ya grabado: dibuja la ruta completa
 /// como polilínea sobre OpenStreetMap, con marcadores de inicio y fin y la
@@ -53,7 +54,7 @@ class RouteMapPreview extends StatelessWidget {
         ? null
         : CameraFit.bounds(
             bounds: LatLngBounds.fromPoints(validPoints),
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(AppSpacing.space7),
             maxZoom: 17,
           );
 
@@ -141,7 +142,7 @@ class RouteMapPreview extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.route_rounded, color: eco.outline, size: 30),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.space2),
           Text(
             message,
             style: TextStyle(

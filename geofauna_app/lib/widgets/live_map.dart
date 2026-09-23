@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -5,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../services/location_service.dart';
 import '../services/map_tile_service.dart';
+import '../services/weather_store.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 /// Un avistamiento a dibujar sobre el mapa (categoría normalizada + ubicación).
 class MapSighting {
@@ -35,11 +38,11 @@ IconData mapCategoryIcon(String key) {
   };
 }
 
-Color mapCategoryColor(String key) {
+Color mapCategoryColor(AppColors eco, String key) {
   return switch (key) {
     'fauna' => const Color(0xFF16A34A),
     'flora' => const Color(0xFF0D9488),
-    'incident' => const Color(0xFFF59E0B),
+    'incident' => eco.warning,
     'trash' => const Color(0xFF6366F1),
     _ => const Color(0xFF64748B),
   };
@@ -94,10 +97,18 @@ class LiveMap extends StatefulWidget {
 }
 
 class _LiveMapState extends State<LiveMap> {
-  late Future<UserLocation> _future = LocationService().getCurrentLocation();
+  final WeatherStore _store = WeatherStore.instance;
 
-  void _retry() =>
-      setState(() => _future = LocationService().getCurrentLocation());
+  @override
+  void initState() {
+    super.initState();
+    // Comparte la carga con el encabezado del clima en vez de lanzar su propio
+    // GPS: antes el Dashboard pedía la posición dos veces a la vez, con dos
+    // geocodings idénticos detrás.
+    if (widget.location == null) unawaited(_store.ensureLoaded());
+  }
+
+  void _retry() => _store.refresh();
 
   @override
   Widget build(BuildContext context) {
@@ -110,11 +121,13 @@ class _LiveMapState extends State<LiveMap> {
         // directamente centrado en ese punto.
         child: widget.location != null
             ? _map(eco, widget.location!)
-            : FutureBuilder<UserLocation>(
-                future: _future,
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.done &&
-                      snap.hasError) {
+            : ListenableBuilder(
+                listenable: _store,
+                builder: (context, _) {
+                  // Solo la ubicación: el mapa no tiene por qué quedarse en
+                  // blanco porque Open-Meteo no conteste.
+                  final snap = _store.locationSnapshot;
+                  if (snap.hasError) {
                     return _state(
                       eco,
                       icon: Icons.location_off,
@@ -205,7 +218,7 @@ class _LiveMapState extends State<LiveMap> {
     return Container(
       color: eco.surfaceContainerLow,
       alignment: Alignment.center,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.space5),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -213,7 +226,7 @@ class _LiveMapState extends State<LiveMap> {
             child
           else if (icon != null)
             Icon(icon, size: 32, color: eco.outline),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.space3),
           Text(
             message,
             textAlign: TextAlign.center,
@@ -342,7 +355,7 @@ class _SightingMapViewState extends State<SightingMapView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.location_off, size: 32, color: eco.outline),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.space3),
             Text(
               'Ubicación inválida',
               textAlign: TextAlign.center,
@@ -471,7 +484,7 @@ class _CategoryPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = mapCategoryColor(categoryKey);
+    final color = mapCategoryColor(context.eco, categoryKey);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -570,15 +583,18 @@ class _SightingPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eco = context.eco;
-    final color = mapCategoryColor(sighting.categoryKey);
+    final color = mapCategoryColor(eco, sighting.categoryKey);
     final label = mapCategoryLabel(sighting.categoryKey);
     final species = sighting.species;
     return Container(
       constraints: const BoxConstraints(maxWidth: 210),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3,
+        vertical: 9,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.2),
@@ -677,8 +693,8 @@ class _ExpandButton extends StatelessWidget {
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: SizedBox(
-          width: 40,
-          height: 40,
+          width: AppSpacing.space10,
+          height: AppSpacing.space10,
           child: Icon(Icons.fullscreen_rounded, size: 22, color: eco.onSurface),
         ),
       ),
@@ -716,7 +732,7 @@ class _FullscreenSightingMap extends StatelessWidget {
             right: 0,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.space4),
                 child: Row(
                   children: [
                     Material(
@@ -737,7 +753,7 @@ class _FullscreenSightingMap extends StatelessWidget {
                       ),
                     ),
                     if (title != null) ...[
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.space3),
                       _TitlePill(title: title!),
                     ],
                   ],
@@ -760,10 +776,13 @@ class _TitlePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3_5,
+        vertical: 9,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.12),
@@ -774,11 +793,7 @@ class _TitlePill extends StatelessWidget {
       ),
       child: Text(
         title,
-        style: TextStyle(
-          color: eco.onSurface,
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-        ),
+        style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
       ),
     );
   }

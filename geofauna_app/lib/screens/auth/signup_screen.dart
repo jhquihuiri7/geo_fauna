@@ -5,6 +5,8 @@ import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/eco_widgets.dart';
 import '../../widgets/painters.dart';
+import '../../theme/app_text_styles.dart';
+import '../../theme/app_spacing.dart';
 
 /// Signup — port of `SignupScreen` in screens-auth.jsx, wired to Firebase.
 class SignupScreen extends StatefulWidget {
@@ -77,13 +79,17 @@ class _SignupScreenState extends State<SignupScreen> {
             top: 100,
             right: -80,
             child: BlurBlob(
-                color: eco.primary.withValues(alpha: 0.08), size: 220),
+              color: eco.primary.withValues(alpha: 0.08),
+              size: 220,
+            ),
           ),
           Positioned(
             bottom: 80,
             left: -100,
             child: BlurBlob(
-                color: eco.tertiaryContainer.withValues(alpha: 0.30), size: 280),
+              color: eco.tertiaryContainer.withValues(alpha: 0.30),
+              size: 280,
+            ),
           ),
           SafeArea(
             child: Column(
@@ -91,7 +97,12 @@ class _SignupScreenState extends State<SignupScreen> {
               children: [
                 // Top bar
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 12, 20, 12),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.space2,
+                    AppSpacing.space3,
+                    AppSpacing.space5,
+                    AppSpacing.space3,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
@@ -112,13 +123,20 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.space6,
+                      0,
+                      AppSpacing.space6,
+                      AppSpacing.space10,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Hero
                         Container(
-                          padding: const EdgeInsets.only(left: 16),
+                          padding: const EdgeInsets.only(
+                            left: AppSpacing.space4,
+                          ),
                           decoration: BoxDecoration(
                             border: Border(
                               left: BorderSide(color: eco.primary, width: 4),
@@ -129,20 +147,14 @@ class _SignupScreenState extends State<SignupScreen> {
                             children: [
                               Text(
                                 'Registro de\nGuardaparque',
-                                style: TextStyle(
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.05,
-                                  letterSpacing: -1.2,
+                                style: AppTextStyles.headline.copyWith(
                                   color: eco.onSurface,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: AppSpacing.space2),
                               Text(
                                 'Inicie su sesión en el Archivo Orgánico para la preservación del ecosistema de Galápagos.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  height: 1.4,
+                                style: AppTextStyles.body.copyWith(
                                   color: eco.onSurfaceVariant,
                                 ),
                               ),
@@ -153,68 +165,94 @@ class _SignupScreenState extends State<SignupScreen> {
                         // Card
                         EcoCard(
                           radius: 32,
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(AppSpacing.space6),
                           soft: true,
                           child: Column(
                             children: [
-                              _field(eco,
-                                  cap: 'Tipo de Usuario',
-                                  icon: Icons.account_circle,
-                                  child: _select(eco, _userType)),
-                              const SizedBox(height: 20),
-                              _field(eco,
-                                  cap: 'Nombre Completo',
-                                  icon: Icons.person,
-                                  child: _input(eco, _nameCtrl,
-                                      'Ej. Dr. Julián Castro')),
-                              const SizedBox(height: 20),
-                              _field(eco,
-                                  cap: 'Correo Institucional',
-                                  icon: Icons.mail,
-                                  child: _input(eco, _emailCtrl,
-                                      'julian.castro@galapagos.gob.ec',
-                                      keyboard: TextInputType.emailAddress)),
-                              const SizedBox(height: 20),
+                              _field(
+                                eco,
+                                cap: 'Tipo de Usuario',
+                                icon: Icons.account_circle,
+                                child: _select(eco, _userType),
+                              ),
+                              const SizedBox(height: AppSpacing.space5),
+                              _field(
+                                eco,
+                                cap: 'Nombre Completo',
+                                icon: Icons.person,
+                                child: _input(
+                                  eco,
+                                  _nameCtrl,
+                                  'Ej. Dr. Julián Castro',
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.space5),
+                              _field(
+                                eco,
+                                cap: 'Correo Institucional',
+                                icon: Icons.mail,
+                                child: _input(
+                                  eco,
+                                  _emailCtrl,
+                                  'julian.castro@galapagos.gob.ec',
+                                  keyboard: TextInputType.emailAddress,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.space5),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
-                                    child: _field(eco,
-                                        cap: 'ID Guardaparque',
-                                        icon: Icons.badge,
-                                        child: _input(eco, _idCtrl,
-                                            'GNPS-2024-00X')),
+                                    child: _field(
+                                      eco,
+                                      cap: 'ID Guardaparque',
+                                      icon: Icons.badge,
+                                      child: _input(
+                                        eco,
+                                        _idCtrl,
+                                        'GNPS-2024-00X',
+                                      ),
+                                    ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: AppSpacing.space3),
                                   Expanded(
-                                    child: _field(eco,
-                                        cap: 'Especialidad',
-                                        icon: Icons.science,
-                                        child: _select(eco, _specialty)),
+                                    child: _field(
+                                      eco,
+                                      cap: 'Especialidad',
+                                      icon: Icons.science,
+                                      child: _select(eco, _specialty),
+                                    ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 20),
-                              _field(eco,
-                                  cap: 'Contraseña',
-                                  icon: Icons.lock,
-                                  child: _input(eco, _passCtrl, '••••••••••••',
-                                      obscure: true)),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: AppSpacing.space5),
+                              _field(
+                                eco,
+                                cap: 'Contraseña',
+                                icon: Icons.lock,
+                                child: _input(
+                                  eco,
+                                  _passCtrl,
+                                  '••••••••••••',
+                                  obscure: true,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.space5),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   SizedBox(
-                                    width: 24,
-                                    height: 24,
+                                    width: AppSpacing.space6,
+                                    height: AppSpacing.space6,
                                     child: Checkbox(
                                       value: _accepted,
-                                      onChanged: (v) =>
-                                          setState(() => _accepted = v ?? false),
+                                      onChanged: (v) => setState(
+                                        () => _accepted = v ?? false,
+                                      ),
                                       activeColor: eco.primary,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: AppSpacing.space3),
                                   Expanded(
                                     child: Text.rich(
                                       TextSpan(
@@ -234,15 +272,16 @@ class _SignupScreenState extends State<SignupScreen> {
                                             ),
                                           ),
                                           const TextSpan(
-                                              text:
-                                                  ' y los términos de uso para el monitoreo de biodiversidad de la Dirección del Parque Nacional Galápagos.'),
+                                            text:
+                                                ' y los términos de uso para el monitoreo de biodiversidad de la Dirección del Parque Nacional Galápagos.',
+                                          ),
                                         ],
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.space4),
                               GradientButton(
                                 label: 'Crear Cuenta',
                                 trailingIcon: Icons.chevron_right,
@@ -252,7 +291,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpacing.space6),
                         Row(
                           children: [
                             Container(
@@ -263,10 +302,12 @@ class _SignupScreenState extends State<SignupScreen> {
                                 color: eco.secondaryContainer,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Text('🐢',
-                                  style: TextStyle(fontSize: 20)),
+                              child: const Text(
+                                '🐢',
+                                style: TextStyle(fontSize: 20),
+                              ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: AppSpacing.space3),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -292,12 +333,13 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpacing.space6),
                         Center(
                           child: Text.rich(
                             TextSpan(
-                              style: TextStyle(
-                                  fontSize: 14, color: eco.onSurfaceVariant),
+                              style: AppTextStyles.body.copyWith(
+                                color: eco.onSurfaceVariant,
+                              ),
                               children: [
                                 const TextSpan(text: '¿Ya es miembro? '),
                                 TextSpan(
@@ -312,7 +354,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.space2),
                         Center(
                           child: TextButton(
                             onPressed: () => Navigator.pop(context),
@@ -331,24 +373,28 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _field(AppColors eco,
-      {required String cap, required IconData icon, required Widget child}) {
+  Widget _field(
+    AppColors eco, {
+    required String cap,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Cap(cap),
-        const SizedBox(height: 8),
+        Cap(cap, onCard: true),
+        const SizedBox(height: AppSpacing.space2),
         Container(
           height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4_5),
           decoration: BoxDecoration(
             color: eco.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           ),
           child: Row(
             children: [
               Icon(icon, size: 18, color: eco.outline),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.space3),
               Expanded(child: child),
             ],
           ),
@@ -357,18 +403,23 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _input(AppColors eco, TextEditingController ctrl, String hint,
-      {bool obscure = false, TextInputType? keyboard}) {
+  Widget _input(
+    AppColors eco,
+    TextEditingController ctrl,
+    String hint, {
+    bool obscure = false,
+    TextInputType? keyboard,
+  }) {
     return TextField(
       controller: ctrl,
       obscureText: obscure,
       keyboardType: keyboard,
-      style: TextStyle(fontSize: 14, color: eco.onSurface),
+      style: AppTextStyles.body.copyWith(color: eco.onSurface),
       decoration: InputDecoration(
         isCollapsed: true,
         border: InputBorder.none,
         hintText: hint,
-        hintStyle: TextStyle(color: eco.outline, fontSize: 13),
+        hintStyle: AppTextStyles.bodySm.copyWith(color: eco.outline),
       ),
     );
   }
@@ -382,9 +433,10 @@ class _SignupScreenState extends State<SignupScreen> {
             value,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-                fontSize: 14,
-                color: eco.onSurface,
-                fontWeight: FontWeight.w500),
+              fontSize: 14,
+              color: eco.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         Icon(Icons.expand_more, color: eco.outline),

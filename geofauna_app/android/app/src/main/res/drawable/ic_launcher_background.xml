@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EcoGuía organic gradient: primary #006948 -> primary-container #00855D, 135deg -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="315" android:startColor="#006948" android:endColor="#00855D" android:type="linear"/>
+</shape>

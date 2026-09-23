@@ -1,104 +1,112 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-import '../services/app_log.dart';
+import '../services/failures.dart';
 import '../services/location_service.dart';
-import '../services/marine_service.dart';
 import '../services/weather_service.dart';
+import '../services/weather_store.dart';
 import '../theme/app_colors.dart';
 import 'eco_widgets.dart';
+import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
-const _log = AppLog('HEADER');
-
-/// Ubicación + clima actual ya resueltos.
-class WeatherData {
-  const WeatherData(this.location, this.forecast, [this.marineForecast]);
-
-  final UserLocation location;
-  final WeatherForecast forecast;
-  final MarineForecast? marineForecast;
-
-  CurrentWeather get weather => forecast.current;
-}
-
-/// Obtiene una vez la ubicación del dispositivo + el clima actual y reconstruye
-/// mediante [builder], al que entrega el snapshot y un callback `retry`.
-/// Centraliza la lógica para que Dashboard y Agenda compartan la misma fuente.
+/// Suscribe a [WeatherStore] y reconstruye mediante [builder] cada vez que la
+/// ubicación o el clima cambian.
+///
+/// Antes cada instancia guardaba su propio `Future` en un campo `static`, lo
+/// que congelaba el primer fallo para toda la vida del proceso y hacía que
+/// "Reintentar" en el Dashboard no arreglara la Agenda. Ahora el estado vive
+/// en un solo sitio y todas las tarjetas lo ven a la vez.
 class WeatherBuilder extends StatefulWidget {
   const WeatherBuilder({super.key, required this.builder});
 
-  final Widget Function(
-    BuildContext,
-    AsyncSnapshot<WeatherData>,
-    VoidCallback retry,
-  )
-  builder;
+  final Widget Function(BuildContext context, WeatherStore store) builder;
 
   @override
   State<WeatherBuilder> createState() => _WeatherBuilderState();
 }
 
 class _WeatherBuilderState extends State<WeatherBuilder> {
-  static Future<WeatherData>? _cachedFuture;
+  final WeatherStore _store = WeatherStore.instance;
 
-  late Future<WeatherData> _future = _cachedFuture ??= _load();
-
-  Future<WeatherData> _load() async {
-    final trace = _log.trace('cargar ubicación + clima');
-    try {
-      final loc = await trace.step(
-        'ubicación',
-        LocationService().getCurrentLocation,
-        describe: (l) => '${l.title} (${l.latitude}, ${l.longitude})',
-      );
-
-      final weatherFuture = WeatherService().fetchForecast(
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-      );
-      final marineFuture = (() async {
-        try {
-          return await MarineService().fetchForecast(
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-          );
-        } catch (error) {
-          // El pronóstico marino es opcional: su fallo no tumba la tarjeta,
-          // pero deja rastro en lugar de desaparecer en silencio.
-          trace.note('marino no disponible ($error); se sigue sin oleaje');
-          return null;
-        }
-      })();
-
-      final forecast = await trace.step('clima', () => weatherFuture);
-      final marine = await trace.step(
-        'marino',
-        () => marineFuture,
-        describe: (m) => m == null ? 'omitido' : '${m.hourly.length} horas',
-      );
-
-      trace.done();
-      return WeatherData(loc, forecast, marine);
-    } catch (error) {
-      trace.failed(error);
-      rethrow;
-    }
-  }
-
-  void _retry() {
-    _log.info('el usuario pulsó "Reintentar"');
-    setState(() {
-      _cachedFuture = _load();
-      _future = _cachedFuture!;
-    });
+  @override
+  void initState() {
+    super.initState();
+    // El store deduplica: si la otra pantalla ya lo pidió, esto no dispara una
+    // segunda petición de GPS.
+    unawaited(_store.ensureLoaded());
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<WeatherData>(
-      future: _future,
-      builder: (context, snap) => widget.builder(context, snap, _retry),
+    return ListenableBuilder(
+      listenable: _store,
+      builder: (context, _) => widget.builder(context, _store),
     );
   }
+}
+
+/// Fila de error compartida por el encabezado y la tarjeta de la agenda: el
+/// mismo fallo se ve igual en las dos pantallas.
+Widget _errorRow(AppColors eco, Object error, VoidCallback retry) {
+  final hint = weatherErrorHint(error);
+  return Row(
+    children: [
+      Icon(weatherErrorIcon(error), size: 26, color: eco.onSurfaceVariant),
+      const SizedBox(width: AppSpacing.space3_5),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              weatherErrorMessage(error),
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.3,
+                color: eco.onSurfaceVariant,
+              ),
+            ),
+            if (hint != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                hint,
+                style: TextStyle(fontSize: 11, height: 1.3, color: eco.outline),
+              ),
+            ],
+          ],
+        ),
+      ),
+      if (failureKindOf(error) == FailureKind.permissionBlocked)
+        TextButton(
+          onPressed: () => unawaited(openLocationSettings()),
+          child: const Text('Ajustes'),
+        )
+      else
+        TextButton(onPressed: retry, child: const Text('Reintentar')),
+    ],
+  );
+}
+
+/// Aviso de que lo que se ve es el último dato guardado y no el de ahora.
+/// Sin esto, un clima de hace horas se confunde con uno recién pedido.
+Widget _staleBadge(AppColors eco, String age) {
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.cloud_off_rounded, size: 11, color: eco.warning),
+      const SizedBox(width: AppSpacing.space1),
+      Text(
+        'SIN CONEXIÓN · $age',
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.4,
+          color: eco.warning,
+        ),
+      ),
+    ],
+  );
 }
 
 Widget _weatherMetrics(
@@ -128,16 +136,19 @@ Widget _weatherMetrics(
 
 Widget _metric(AppColors eco, IconData icon, String label) {
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.space2,
+      vertical: 5,
+    ),
     decoration: BoxDecoration(
       color: eco.primary.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 12, color: eco.primary),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpacing.space1),
         Text(
           label,
           style: TextStyle(
@@ -180,12 +191,36 @@ String _oneDecimal(double value) {
 }
 
 /// Mensaje de error legible a partir de una excepción.
+///
+/// Los [AppFailure] traen su texto ya redactado; el resto cae al genérico.
 String weatherErrorMessage(Object error) {
   final s = error.toString();
   return s.startsWith('Exception: ')
       ? s.substring(11)
       : 'No se pudo obtener el clima.';
 }
+
+/// Qué puede hacer el usuario ante este error, en una línea.
+///
+/// El mensaje dice qué pasó; esto dice qué hacer, que es distinto en cada
+/// caso: encender el GPS, abrir Ajustes o simplemente esperar a la señal.
+String? weatherErrorHint(Object error) => switch (failureKindOf(error)) {
+  FailureKind.gpsOff => 'Actívala en los ajustes rápidos del teléfono.',
+  FailureKind.permissionBlocked =>
+    'Android ya no deja preguntarlo desde la app.',
+  FailureKind.network => 'Se reintenta solo en cuanto vuelva la señal.',
+  FailureKind.noFix => 'A cielo abierto el GPS fija la posición antes.',
+  _ => null,
+};
+
+/// Icono acorde al tipo de fallo, para distinguirlo de un vistazo.
+IconData weatherErrorIcon(Object error) => switch (failureKindOf(error)) {
+  FailureKind.network => Icons.wifi_off_rounded,
+  FailureKind.gpsOff || FailureKind.noFix => Icons.location_disabled_rounded,
+  FailureKind.permissionDenied ||
+  FailureKind.permissionBlocked => Icons.lock_outline_rounded,
+  _ => Icons.error_outline_rounded,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard — encabezado "Estado del Tiempo"
@@ -198,31 +233,33 @@ class WeatherHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return WeatherBuilder(
-      builder: (context, snap, retry) {
-        final title = switch (snap.connectionState) {
-          ConnectionState.done when snap.hasData => snap.data!.location.title,
-          ConnectionState.done => 'Sin ubicación',
-          _ => 'Localizando…',
-        };
-        final subtitle = snap.hasData
-            ? (snap.data!.location.subtitle ??
-                  '${snap.data!.location.latitude.toStringAsFixed(2)}, '
-                      '${snap.data!.location.longitude.toStringAsFixed(2)}')
-            : 'Obteniendo tu posición actual';
+      builder: (context, store) {
+        final snap = store.snapshot;
+        // La ubicación se publica antes que el clima, así que el nombre del
+        // puerto aparece aunque Open-Meteo siga sin contestar.
+        final location = snap.data?.location ?? store.location;
+
+        final String title;
+        final String subtitle;
+        if (location != null) {
+          title = location.title;
+          subtitle =
+              location.subtitle ??
+              '${location.latitude.toStringAsFixed(2)}, '
+                  '${location.longitude.toStringAsFixed(2)}';
+        } else {
+          title = snap.hasError ? 'Sin ubicación' : 'Localizando…';
+          subtitle = 'Obteniendo tu posición actual';
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'ESTADO DEL TIEMPO',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.8,
-                color: eco.primary,
-              ),
+              style: AppTextStyles.eyebrow.copyWith(color: eco.primary),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.space1),
             Text(
               title,
               style: TextStyle(
@@ -241,13 +278,15 @@ class WeatherHeader extends StatelessWidget {
                 Flexible(
                   child: Text(
                     subtitle,
-                    style: TextStyle(fontSize: 14, color: eco.onSurfaceVariant),
+                    style: AppTextStyles.body.copyWith(
+                      color: eco.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _card(context, eco, snap, retry),
+            const SizedBox(height: AppSpacing.space4),
+            _card(context, eco, snap, store.refresh),
           ],
         );
       },
@@ -260,45 +299,35 @@ class WeatherHeader extends StatelessWidget {
     AsyncSnapshot<WeatherData> snap,
     VoidCallback retry,
   ) {
-    if (snap.connectionState == ConnectionState.done && snap.hasError) {
+    if (snap.hasError) {
       return EcoCard(
         radius: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        child: Row(
-          children: [
-            const Text('📍', style: TextStyle(fontSize: 28)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                weatherErrorMessage(snap.error!),
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.3,
-                  color: eco.onSurfaceVariant,
-                ),
-              ),
-            ),
-            TextButton(onPressed: retry, child: const Text('Reintentar')),
-          ],
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space4_5,
+          vertical: AppSpacing.space4,
         ),
+        child: _errorRow(eco, snap.error!, retry),
       );
     }
 
     if (!snap.hasData) {
       return EcoCard(
         radius: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space4_5,
+          vertical: AppSpacing.space3_5,
+        ),
         child: Row(
           children: [
             SizedBox(
-              width: 28,
-              height: 28,
+              width: AppSpacing.space7,
+              height: AppSpacing.space7,
               child: CircularProgressIndicator(
                 strokeWidth: 2.5,
                 color: eco.primary,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.space4),
             Text(
               'Consultando el clima…',
               style: TextStyle(
@@ -312,17 +341,22 @@ class WeatherHeader extends StatelessWidget {
       );
     }
 
-    final w = snap.data!.weather;
+    final data = snap.data!;
+    final w = data.weather;
     final now = DateTime.now();
-    final wave = snap.data!.marineForecast?.atHour(now);
-    final tide = snap.data!.marineForecast?.tideAt(now);
+    final wave = data.marineForecast?.atHour(now);
+    final tide = data.marineForecast?.tideAt(now);
+    final age = data.ageLabel;
     return EcoCard(
       radius: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4_5,
+        vertical: AppSpacing.space3_5,
+      ),
       child: Row(
         children: [
           Text(w.emoji, style: const TextStyle(fontSize: 32)),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.space4),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +388,7 @@ class WeatherHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.space1),
                 Text(
                   'HUMEDAD ${w.humidity}% · '
                   'VIENTO ${w.windSpeed.round()} KM/H',
@@ -365,8 +399,12 @@ class WeatherHeader extends StatelessWidget {
                     color: eco.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.space2),
                 _weatherMetrics(eco, w),
+                if (age != null) ...[
+                  const SizedBox(height: 6),
+                  _staleBadge(eco, age),
+                ],
                 if (wave != null) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -415,7 +453,8 @@ class AgendaWeatherCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final eco = context.eco;
     return WeatherBuilder(
-      builder: (context, snap, retry) {
+      builder: (context, store) {
+        final snap = store.snapshot;
         return GestureDetector(
           onTap: snap.hasData
               ? () => _openHourlySheet(context, snap.data!)
@@ -423,8 +462,11 @@ class AgendaWeatherCard extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           child: EcoCard(
             radius: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
-            child: _content(eco, snap, retry),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 22,
+              vertical: AppSpacing.space5,
+            ),
+            child: _content(eco, snap, store.refresh),
           ),
         );
       },
@@ -436,38 +478,22 @@ class AgendaWeatherCard extends StatelessWidget {
     AsyncSnapshot<WeatherData> snap,
     VoidCallback retry,
   ) {
-    if (snap.connectionState == ConnectionState.done && snap.hasError) {
-      return Row(
-        children: [
-          const Text('📍', style: TextStyle(fontSize: 28)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              weatherErrorMessage(snap.error!),
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.3,
-                color: eco.onSurfaceVariant,
-              ),
-            ),
-          ),
-          TextButton(onPressed: retry, child: const Text('Reintentar')),
-        ],
-      );
+    if (snap.hasError) {
+      return _errorRow(eco, snap.error!, retry);
     }
 
     if (!snap.hasData) {
       return Row(
         children: [
           SizedBox(
-            width: 28,
-            height: 28,
+            width: AppSpacing.space7,
+            height: AppSpacing.space7,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
               color: eco.primary,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.space4),
           Text(
             'Consultando el clima…',
             style: TextStyle(
@@ -482,16 +508,17 @@ class AgendaWeatherCard extends StatelessWidget {
 
     final data = snap.data!;
     final loc = data.location;
+    final age = data.ageLabel;
     final w = data.forecast.atPhoneHour(selectedDate);
     if (w == null) {
       return Row(
         children: [
           Icon(Icons.cloud_off, color: eco.outline),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Text(
               'No hay pronostico disponible para esta fecha.',
-              style: TextStyle(fontSize: 13, color: eco.onSurfaceVariant),
+              style: AppTextStyles.bodySm.copyWith(color: eco.onSurfaceVariant),
             ),
           ),
         ],
@@ -512,9 +539,7 @@ class AgendaWeatherCard extends StatelessWidget {
                     child: Text(
                       loc.title,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.bodyStrong.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -535,34 +560,37 @@ class AgendaWeatherCard extends StatelessWidget {
                       color: eco.onSurface,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.space2),
                   Flexible(
                     child: Text(
                       w.description,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: AppTextStyles.body.copyWith(
                         color: eco.onSurfaceVariant,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.space3),
               Row(
                 children: [
                   _stat(eco, Icons.water_drop, '${w.humidity}% HUM.'),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.space4),
                   _stat(eco, Icons.air, '${w.windSpeed.round()} KM/H'),
                 ],
               ),
               const SizedBox(height: 10),
               _weatherMetrics(eco, w),
-              const SizedBox(height: 8),
+              if (age != null) ...[
+                const SizedBox(height: 6),
+                _staleBadge(eco, age),
+              ],
+              const SizedBox(height: AppSpacing.space2),
               Row(
                 children: [
                   Icon(Icons.touch_app, size: 13, color: eco.outline),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.space1),
                   Text(
                     'Toca para ver todas las horas',
                     style: TextStyle(
@@ -576,7 +604,7 @@ class AgendaWeatherCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.space3),
         Container(
           width: 72,
           height: 72,
@@ -607,7 +635,12 @@ class AgendaWeatherCard extends StatelessWidget {
           child: SizedBox(
             height: MediaQuery.of(context).size.height * 0.78,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space5,
+                AppSpacing.space3,
+                AppSpacing.space5,
+                AppSpacing.space5,
+              ),
               child: Column(
                 children: [
                   Container(
@@ -615,26 +648,26 @@ class AgendaWeatherCard extends StatelessWidget {
                     height: 4,
                     decoration: BoxDecoration(
                       color: sheetEco.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusFull,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.space4),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           _weatherDateLabel(selectedDate),
-                          style: TextStyle(
+                          style: AppTextStyles.titleMd.copyWith(
                             color: sheetEco.onSurface,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
                       EcoChip('${hours.length} horas', tone: ChipTone.slate),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.space1),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -646,7 +679,7 @@ class AgendaWeatherCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.space3_5),
                   Expanded(
                     child: hours.isEmpty
                         ? Center(
@@ -677,7 +710,7 @@ class AgendaWeatherCard extends StatelessWidget {
 
   Widget _hourRow(AppColors eco, CurrentWeather weather) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.space3_5),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
@@ -702,7 +735,7 @@ class AgendaWeatherCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -713,13 +746,11 @@ class AgendaWeatherCard extends StatelessWidget {
                   children: [
                     Text(
                       '${weather.temperature.round()}°C',
-                      style: TextStyle(
+                      style: AppTextStyles.titleLg.copyWith(
                         color: eco.onSurface,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.space2),
                     Expanded(
                       child: Text(
                         weather.description,
@@ -733,7 +764,7 @@ class AgendaWeatherCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.space2),
                 _weatherMetrics(eco, weather),
               ],
             ),
@@ -747,7 +778,7 @@ class AgendaWeatherCard extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 14, color: eco.primary),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpacing.space1),
         Text(
           label,
           style: TextStyle(

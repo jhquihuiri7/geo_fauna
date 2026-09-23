@@ -15,7 +15,11 @@ class StripePainter extends CustomPainter {
     // 135° stripes, 14px band repeated every 28px.
     final diag = size.width + size.height;
     for (double d = -size.height; d < diag; d += 28) {
-      canvas.drawLine(Offset(d, 0), Offset(d + size.height, size.height), paint);
+      canvas.drawLine(
+        Offset(d, 0),
+        Offset(d + size.height, size.height),
+        paint,
+      );
     }
   }
 
@@ -54,10 +58,7 @@ class QrArtPainter extends CustomPainter {
     for (int r = 0; r < 12; r++) {
       for (int c = 0; c < 12; c++) {
         if (rng.nextBool()) {
-          canvas.drawRect(
-            Rect.fromLTWH(c * cell, r * cell, cell, cell),
-            paint,
-          );
+          canvas.drawRect(Rect.fromLTWH(c * cell, r * cell, cell, cell), paint);
         }
       }
     }
@@ -98,37 +99,37 @@ class TopoMap extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(-0.4, 0.2),
-                    radius: 0.9,
-                    colors: [hi, base.withValues(alpha: 0)],
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(-0.4, 0.2),
+                      radius: 0.9,
+                      colors: [hi, base.withValues(alpha: 0)],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(0.4, -0.2),
-                    radius: 1.0,
-                    colors: [lo, base.withValues(alpha: 0)],
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(0.4, -0.2),
+                      radius: 1.0,
+                      colors: [lo, base.withValues(alpha: 0)],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _ContourPainter(
-                  Colors.white.withValues(alpha: dark ? 0.04 : 0.06),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _ContourPainter(
+                    Colors.white.withValues(alpha: dark ? 0.04 : 0.06),
+                  ),
                 ),
               ),
-            ),
-            ...children,
-          ],
+              ...children,
+            ],
           ),
         ),
       ),
@@ -170,9 +171,7 @@ class BlurBlob extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color, color.withValues(alpha: 0)],
-          ),
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
         ),
       ),
     );

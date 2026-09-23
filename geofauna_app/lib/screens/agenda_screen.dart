@@ -12,6 +12,8 @@ import '../widgets/eco_widgets.dart';
 import '../widgets/route_map.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/weather_header.dart';
+import '../theme/app_text_styles.dart';
+import '../theme/app_spacing.dart';
 
 /// Agenda — daily field logistics: weather, day strip, timeline (screens-main.jsx).
 class AgendaScreen extends StatefulWidget {
@@ -70,28 +72,27 @@ class _AgendaScreenState extends State<AgendaScreen> {
             trailing: [Icon(Icons.cloud_done, color: eco.primary)],
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space6,
+              AppSpacing.space6,
+              AppSpacing.space6,
+              0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Tu Agenda',
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                    letterSpacing: -1.5,
-                    color: eco.onSurface,
-                  ),
+                  style: AppTextStyles.display.copyWith(color: eco.onSurface),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.space2),
                 Text(
                   'Logística de campo para ${_selectedDateText(_selectedDate)}',
                   style: TextStyle(fontSize: 15, color: eco.onSurfaceVariant),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.space6),
                 AgendaWeatherCard(selectedDate: _selectedDate),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.space6),
               ],
             ),
           ),
@@ -99,7 +100,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
             height: 92,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space6,
+              ),
               children: [
                 for (var i = 0; i < 15; i++)
                   _dayCell(eco, _today.add(Duration(days: i))),
@@ -108,7 +111,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
           ),
           _activeTrackBanner(context, eco),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space6,
+              AppSpacing.space6,
+              AppSpacing.space6,
+              0,
+            ),
             child: _timeline(context, eco, _selectedDate),
           ),
         ],
@@ -125,9 +133,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
         if (session == null) return const SizedBox.shrink();
         final recording = session.isRecording;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space6,
+            AppSpacing.space6,
+            AppSpacing.space6,
+            0,
+          ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -141,13 +154,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
               );
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space4_5,
+                vertical: AppSpacing.space4,
+              ),
               decoration: BoxDecoration(
                 color: eco.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: eco.primary.withValues(alpha: 0.4),
-                ),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                border: Border.all(color: eco.primary.withValues(alpha: 0.4)),
               ),
               child: Row(
                 children: [
@@ -158,7 +172,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     color: recording ? eco.error : eco.primary,
                     size: 22,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.space3),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,10 +228,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
       onTap: () => setState(() => _selectedDate = date),
       child: Container(
         width: 72,
-        margin: const EdgeInsets.only(right: 12),
+        margin: const EdgeInsets.only(right: AppSpacing.space3),
         decoration: BoxDecoration(
           color: active ? eco.primaryContainer : eco.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLogo),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -232,7 +246,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     .withValues(alpha: 0.8),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.space1),
             Text(
               '${date.day}',
               style: TextStyle(
@@ -319,18 +333,21 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Widget _loadingTimeline(AppColors eco) {
     return EcoCard(
       radius: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space5,
+        vertical: AppSpacing.space6,
+      ),
       child: Row(
         children: [
           SizedBox(
-            width: 24,
-            height: 24,
+            width: AppSpacing.space6,
+            height: AppSpacing.space6,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
               color: eco.primary,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.space3_5),
           Text(
             'Cargando actividades...',
             style: TextStyle(
@@ -347,19 +364,18 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Widget _timelineError(AppColors eco, Object error) {
     return EcoCard(
       radius: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space5,
+        vertical: AppSpacing.space6,
+      ),
       child: Row(
         children: [
           Icon(Icons.cloud_off, color: eco.error),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Text(
               'No se pudieron cargar las actividades: $error',
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                color: eco.onSurfaceVariant,
-              ),
+              style: AppTextStyles.bodySm.copyWith(color: eco.onSurfaceVariant),
             ),
           ),
         ],
@@ -370,7 +386,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Widget _emptyTimeline(AppColors eco, DateTime selectedDate) {
     return EcoCard(
       radius: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space5,
+        vertical: 32,
+      ),
       child: Column(
         children: [
           Container(
@@ -383,22 +402,18 @@ class _AgendaScreenState extends State<AgendaScreen> {
             ),
             child: Icon(Icons.event_available, color: eco.primary, size: 28),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.space3_5),
           Text(
             _sameDay(selectedDate, _today)
                 ? 'Sin actividades para hoy'
                 : 'Sin actividades para este día',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: eco.onSurface,
-            ),
+            style: AppTextStyles.titleSm.copyWith(color: eco.onSurface),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.space1),
           Text(
             'Programa una expedición o evento desde la pestaña "Nuevo".',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: eco.onSurfaceVariant),
+            style: AppTextStyles.bodySm.copyWith(color: eco.onSurfaceVariant),
           ),
         ],
       ),
@@ -413,7 +428,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
       onTap: () => _openAgendaDetail(context, item),
       child: EcoCard(
         radius: 28,
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(AppSpacing.space4_5),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -427,7 +442,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
               ),
               child: Icon(item.icon, color: eco.primary, size: 22),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.space3_5),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,7 +460,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.space2),
                       if (canEdit)
                         IconButton(
                           visualDensity: VisualDensity.compact,
@@ -469,11 +484,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   const SizedBox(height: 6),
                   Text(
                     item.timeLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: eco.primary,
-                    ),
+                    style: AppTextStyles.label.copyWith(color: eco.primary),
                   ),
                   if (item.locationLabel != null) ...[
                     const SizedBox(height: 6),
@@ -484,7 +495,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                           size: 14,
                           color: eco.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpacing.space1),
                         Expanded(
                           child: Text(
                             item.locationLabel!,
@@ -499,14 +510,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     ),
                   ],
                   if (item.body != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.space2),
                     Text(
                       item.body!,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.35,
+                      style: AppTextStyles.bodySm.copyWith(
                         color: eco.onSurfaceVariant,
                       ),
                     ),
@@ -753,7 +762,12 @@ class _AgendaDetailSheet extends StatelessWidget {
         !item.pendingSync && item.ownerId == AuthService().currentUser?.uid;
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+        padding: const EdgeInsets.fromLTRB(
+          22,
+          AppSpacing.space3_5,
+          22,
+          AppSpacing.space6,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,11 +778,11 @@ class _AgendaDetailSheet extends StatelessWidget {
                 height: 4,
                 decoration: BoxDecoration(
                   color: eco.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.space4_5),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -782,21 +796,18 @@ class _AgendaDetailSheet extends StatelessWidget {
                   ),
                   child: Icon(item.icon, color: eco.primary, size: 22),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.space3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         item.title,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
+                        style: AppTextStyles.titleLg.copyWith(
                           color: eco.onSurface,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.space2),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -824,7 +835,7 @@ class _AgendaDetailSheet extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.space4_5),
             _detailRow(
               eco,
               icon: Icons.schedule_rounded,
@@ -854,38 +865,24 @@ class _AgendaDetailSheet extends StatelessWidget {
                     : '${item.participantCount} inscritos',
               ),
             if (item.body != null) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               Text(
                 item.kind == _AgendaItemKind.event ? 'OBJETIVOS' : 'NOTAS',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: eco.onSurfaceVariant,
-                ),
+                style: AppTextStyles.chip.copyWith(color: eco.onSurfaceVariant),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.space2),
               Text(
                 item.body!,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.4,
-                  color: eco.onSurface,
-                ),
+                style: AppTextStyles.body.copyWith(color: eco.onSurface),
               ),
             ],
             if (item.kind == _AgendaItemKind.tour) ...[
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpacing.space4_5),
               Text(
                 'RECORRIDO',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: eco.onSurfaceVariant,
-                ),
+                style: AppTextStyles.chip.copyWith(color: eco.onSurfaceVariant),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.space2),
               _TourRouteSection(tourId: item.id),
             ],
             const SizedBox(height: 22),
@@ -926,7 +923,7 @@ class _AgendaDetailSheet extends StatelessWidget {
     required String value,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(top: AppSpacing.space3),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -948,9 +945,7 @@ class _AgendaDetailSheet extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                  style: AppTextStyles.bodyStrong.copyWith(
                     color: eco.onSurface,
                   ),
                 ),
@@ -981,8 +976,10 @@ class _TourRouteSection extends StatelessWidget {
     // en cliente (normalmente solo hay uno, porque sobrescribir reutiliza el id).
     final docs = snap.docs.toList()
       ..sort((a, b) {
-        final aAt = _toDate(a.data()['endedAt']) ?? _toDate(a.data()['createdAt']);
-        final bAt = _toDate(b.data()['endedAt']) ?? _toDate(b.data()['createdAt']);
+        final aAt =
+            _toDate(a.data()['endedAt']) ?? _toDate(a.data()['createdAt']);
+        final bAt =
+            _toDate(b.data()['endedAt']) ?? _toDate(b.data()['createdAt']);
         return (bAt ?? DateTime(1900)).compareTo(aAt ?? DateTime(1900));
       });
     return _pointsFromTrack(docs.first.data());
@@ -1000,7 +997,10 @@ class _TourRouteSection extends StatelessWidget {
             child: SizedBox(
               width: 26,
               height: 26,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: eco.primary),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: eco.primary,
+              ),
             ),
           );
         }
@@ -1024,14 +1024,19 @@ class _TourRouteSection extends StatelessWidget {
     );
   }
 
-  Widget _frame(AppColors eco, {IconData? icon, String? message, Widget? child}) {
+  Widget _frame(
+    AppColors eco, {
+    IconData? icon,
+    String? message,
+    Widget? child,
+  }) {
     return Container(
       height: 160,
       alignment: Alignment.center,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.space5),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1041,7 +1046,7 @@ class _TourRouteSection extends StatelessWidget {
           else if (icon != null)
             Icon(icon, color: eco.outline, size: 30),
           if (message != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.space2),
             Text(
               message,
               textAlign: TextAlign.center,
@@ -1199,7 +1204,12 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
         curve: Curves.easeOut,
         padding: EdgeInsets.only(bottom: bottomInset),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+          padding: const EdgeInsets.fromLTRB(
+            22,
+            AppSpacing.space3_5,
+            22,
+            AppSpacing.space6,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1210,19 +1220,17 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: eco.outlineVariant,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpacing.space4_5),
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       _isEvent ? 'Editar evento' : 'Editar agenda',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
+                      style: AppTextStyles.titleLg.copyWith(
                         color: eco.onSurface,
                       ),
                     ),
@@ -1234,7 +1242,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.space4),
               _sheetField(
                 eco,
                 _isEvent ? 'Titulo' : 'Nombre',
@@ -1244,19 +1252,19 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                   hint: _isEvent ? 'Titulo del evento' : 'Nombre del tour',
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _sheetField(eco, 'Tipo', _typePicker(eco)),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               Row(
                 children: [
                   Expanded(child: _datePicker(eco)),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.space3),
                   Expanded(child: _timePicker(eco, start: true)),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _timePicker(eco, start: false),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _sheetField(
                 eco,
                 'Punto de encuentro',
@@ -1266,7 +1274,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                   hint: 'Lugar de encuentro',
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.space3_5),
               _sheetField(
                 eco,
                 _isEvent ? 'Objetivos' : 'Notas',
@@ -1278,9 +1286,9 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                 ),
               ),
               if (_isEvent) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.space3_5),
                 _publicSwitch(eco),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.space3_5),
                 _participantCounter(eco),
               ],
               const SizedBox(height: 22),
@@ -1303,14 +1311,9 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
       children: [
         Text(
           label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-            color: eco.onSurfaceVariant,
-          ),
+          style: AppTextStyles.chip.copyWith(color: eco.onSurfaceVariant),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.space2),
         child,
       ],
     );
@@ -1323,7 +1326,10 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
     int maxLines = 1,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: 13,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(maxLines > 1 ? 22 : 999),
@@ -1332,12 +1338,12 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
         controller: controller,
         enabled: !_saving,
         maxLines: maxLines,
-        style: TextStyle(fontSize: 14, color: eco.onSurface),
+        style: AppTextStyles.body.copyWith(color: eco.onSurface),
         decoration: InputDecoration(
           isCollapsed: true,
           border: InputBorder.none,
           hintText: hint,
-          hintStyle: TextStyle(color: eco.outline, fontSize: 14),
+          hintStyle: AppTextStyles.body.copyWith(color: eco.outline),
         ),
       ),
     );
@@ -1431,7 +1437,10 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
       borderRadius: BorderRadius.circular(22),
       onTap: _saving ? null : onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space3_5,
+          vertical: AppSpacing.space3,
+        ),
         decoration: BoxDecoration(
           color: eco.surfaceContainerLow,
           borderRadius: BorderRadius.circular(22),
@@ -1446,9 +1455,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                    style: AppTextStyles.cap.copyWith(
                       color: eco.onSurfaceVariant,
                     ),
                   ),
@@ -1472,7 +1479,10 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
 
   Widget _publicSwitch(AppColors eco) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space3,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
@@ -1484,11 +1494,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
           Expanded(
             child: Text(
               'Visibilidad publica',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: eco.onSurface,
-              ),
+              style: AppTextStyles.bodyStrong.copyWith(color: eco.onSurface),
             ),
           ),
           EcoSwitch(
@@ -1507,7 +1513,10 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
     // El cupo no puede bajar de los ya inscritos (el servidor también valida).
     final canDecrease = !_saving && _capacity > enrolled && _capacity > 0;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3_5,
+        vertical: AppSpacing.space3,
+      ),
       decoration: BoxDecoration(
         color: eco.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
@@ -1523,9 +1532,7 @@ class _AgendaEditSheetState extends State<_AgendaEditSheet> {
                   children: [
                     Text(
                       'Cupo máximo',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: AppTextStyles.bodyStrong.copyWith(
                         color: eco.onSurface,
                       ),
                     ),

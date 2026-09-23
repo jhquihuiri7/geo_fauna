@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_text_styles.dart';
 
 /// Global light/dark switch. The Settings screen flips this and the whole app
 /// rebuilds via the [ValueListenableBuilder] in `main.dart`.
-final ValueNotifier<ThemeMode> themeModeNotifier =
-    ValueNotifier<ThemeMode>(ThemeMode.light);
+final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(
+  ThemeMode.light,
+);
 
 class AppTheme {
   AppTheme._();
@@ -48,19 +50,16 @@ class AppTheme {
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: eco.surface,
-      // Inter is the editorial typeface in the design; fall back to the
-      // platform sans (Roboto/SF) when the bundled font isn't present.
-      fontFamily: 'Inter',
+      // Inter is the editorial typeface in the design and now ships in
+      // assets/fonts; the fallbacks cover glyphs it doesn't carry.
+      fontFamily: AppTextStyles.fontFamily,
       fontFamilyFallback: const ['Roboto', 'SF Pro Text', 'system-ui'],
       extensions: <ThemeExtension<dynamic>>[eco],
       splashFactory: InkRipple.splashFactory,
-      textTheme: Typography.material2021(platform: TargetPlatform.android)
-          .black
-          .apply(
-            bodyColor: eco.onSurface,
-            displayColor: eco.onSurface,
-            fontFamily: 'Inter',
-          ),
+      textTheme: AppTextStyles.textTheme.apply(
+        bodyColor: eco.onSurface,
+        displayColor: eco.onSurface,
+      ),
     );
   }
 }

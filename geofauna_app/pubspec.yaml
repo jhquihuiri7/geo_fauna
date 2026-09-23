@@ -75,6 +75,13 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Genera el AppIcon de iOS desde assets/brand/tortuga-topo-ios-1024.png.
+  # Android queda fuera: su icono adaptativo se mantiene a mano.
+  flutter_launcher_icons: ^0.14.4
+
+  # Genera la pantalla de carga nativa (Android, Android 12+ y iOS).
+  flutter_native_splash: ^2.4.4
+
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
@@ -123,3 +130,46 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+  # Inter — la familia del sistema "Organic Archive" (SIL OFL 1.1, ver
+  # assets/fonts/OFL.txt). Sin estos archivos `fontFamily: 'Inter'` caía al
+  # sans de la plataforma (Roboto / SF Pro Text).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Inter-Black.ttf
+          weight: 900
+
+# Ícono de aplicación — logotipo oficial Tortuga-Topo.
+# Solo iOS: en Android conservamos el ícono adaptativo (mipmap-anydpi-v26 +
+# drawable/ic_launcher_background.xml) que ya trae el repositorio.
+flutter_launcher_icons:
+  android: false
+  ios: true
+  image_path_ios: "assets/brand/tortuga-topo-ios-1024.png"
+  remove_alpha_ios: true
+
+# Pantalla de carga nativa — fondo `surface` del sistema Organic Archive y el
+# símbolo Tortuga-Topo centrado. En Android 12+ el sistema dibuja su propio
+# ícono: ahí va la versión del ícono de app sobre `primary`.
+flutter_native_splash:
+  color: "#F7F9FB"
+  color_dark: "#0F1411"
+  image: assets/brand/tortuga-topo-splash-288.png
+  android: true
+  ios: true
+  web: false
+  android_12:
+    color: "#F7F9FB"
+    color_dark: "#0F1411"
+    image: assets/brand/tortuga-topo-splash-android12.png
+    icon_background_color: "#006948"
+    icon_background_color_dark: "#006948"

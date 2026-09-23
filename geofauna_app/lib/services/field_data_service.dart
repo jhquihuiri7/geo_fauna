@@ -1334,7 +1334,10 @@ bool _isValidTrackPoint(Map<String, dynamic> point) {
   if (lat is! num || lng is! num) return false;
   final dLat = lat.toDouble();
   final dLng = lng.toDouble();
-  return dLat.isFinite && dLng.isFinite && dLat.abs() <= 90 && dLng.abs() <= 180;
+  return dLat.isFinite &&
+      dLng.isFinite &&
+      dLat.abs() <= 90 &&
+      dLng.abs() <= 180;
 }
 
 DateTime _dateOnly(DateTime value) =>
