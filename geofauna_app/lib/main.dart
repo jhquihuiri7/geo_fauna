@@ -18,6 +18,7 @@ import 'theme/app_theme.dart';
 import 'app_shell.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/complete_profile_screen.dart';
+import 'screens/permission_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -97,7 +98,6 @@ class AuthWrapper extends StatelessWidget {
         final user = snapshot.data;
         if (user == null) return const LoginScreen();
 
-        NotificationService.instance.syncDeviceToken(user);
         FieldDataService();
         unawaited(OfflineSyncService.instance.retryNow());
 
@@ -110,8 +110,11 @@ class AuthWrapper extends StatelessWidget {
               return const _Loading();
             }
             final complete = auth.isProfileComplete(docSnap.data?.data());
+            // El permiso de ubicación se resuelve antes de entrar: media
+            // app depende de él, y el diálogo del sistema ya no debe saltar
+            // encima de un Dashboard a medio cargar.
             return complete
-                ? const AppShell()
+                ? PermissionGate(user: user, child: const AppShell())
                 : CompleteProfileScreen(user: user);
           },
         );
