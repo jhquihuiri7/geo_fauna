@@ -77,11 +77,12 @@ class DefaultFirebaseOptions {
   );
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAI-GfoYJ37CO5qerGLcUh2sU0VXBX3xtE',
-    appId: '1:272453477913:ios:4bb594b7a29f11c2c7ac88',
+    appId: '1:272453477913:ios:154840068f93464ec7ac88',
     messagingSenderId: '272453477913',
     projectId: 'geofaunagps',
     storageBucket: 'geofaunagps.firebasestorage.app',
-    iosBundleId: 'com.geofauna.app',
+    iosClientId: '272453477913-0ookn5eqrspghnc6gluvtsnbleho1pat.apps.googleusercontent.com',
+    iosBundleId: 'com.logicielapplab.geofauna',
   );
 
 }
