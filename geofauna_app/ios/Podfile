@@ -46,6 +46,14 @@ post_install do |installer|
     # en 13.0 y no podia importar awesome_notifications, cuyo core exige 15.0.
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+
+      # El podspec de IosAwnFcmCore trae SKIP_INSTALL = NO, asi que Xcode lo
+      # instalaba en Products/Library/Frameworks del archive. Un archive con
+      # productos sueltos ademas de la app se degrada a 'Generic Xcode
+      # Archive': se queda sin ApplicationProperties en su Info.plist y
+      # exportArchive rechaza todos los metodos de distribucion de iOS
+      # ('expected one {}'). Ningun pod debe instalarse junto a la app.
+      config.build_settings['SKIP_INSTALL'] = 'YES'
     end
   end
 
