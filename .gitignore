@@ -6,3 +6,7 @@
 # geofauna_app ya cubre los de dentro).
 firebase-debug.log
 *-debug.log
+
+# Metadatos del Finder en la raíz del repo (el .gitignore de geofauna_app ya
+# cubre los de dentro).
+.DS_Store
