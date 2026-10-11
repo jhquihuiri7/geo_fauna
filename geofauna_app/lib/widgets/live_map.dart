@@ -73,7 +73,6 @@ class LiveMap extends StatefulWidget {
     this.sightings = const [],
     this.expandable = false,
     this.fullscreenTitle,
-    this.location,
   });
 
   final double height;
@@ -82,11 +81,6 @@ class LiveMap extends StatefulWidget {
   final bool interactive;
   final List<Widget> overlays;
   final List<MapSighting> sightings;
-
-  /// Ubicación a mostrar/centrar en lugar del GPS. Cuando es `null` el mapa usa
-  /// la posición actual del dispositivo; cuando se provee (p. ej. una ubicación
-  /// editada en el mapa) el marcador se mueve allí y la cámara se recentra.
-  final LatLng? location;
 
   /// Muestra un botón para abrir el mapa a pantalla completa.
   final bool expandable;
@@ -97,84 +91,18 @@ class LiveMap extends StatefulWidget {
 }
 
 class _LiveMapState extends State<LiveMap> {
-  final WeatherStore _store = WeatherStore.instance;
-
-  @override
-  void initState() {
-    super.initState();
-    // Comparte la carga con el encabezado del clima en vez de lanzar su propio
-    // GPS: antes el Dashboard pedía la posición dos veces a la vez, con dos
-    // geocodings idénticos detrás.
-    if (widget.location == null) unawaited(_store.ensureLoaded());
-  }
-
-  void _retry() => _store.refresh();
-
   @override
   Widget build(BuildContext context) {
-    final eco = context.eco;
     return ClipRRect(
       borderRadius: BorderRadius.circular(widget.borderRadius),
       child: SizedBox(
         height: widget.height,
-        // Con una ubicación explícita no necesitamos el GPS: dibujamos el mapa
-        // directamente centrado en ese punto.
-        child: widget.location != null
-            ? _map(eco, widget.location!)
-            : ListenableBuilder(
-                listenable: _store,
-                builder: (context, _) {
-                  // Solo la ubicación: el mapa no tiene por qué quedarse en
-                  // blanco porque Open-Meteo no conteste.
-                  final snap = _store.locationSnapshot;
-                  if (snap.hasError) {
-                    return _state(
-                      eco,
-                      icon: Icons.location_off,
-                      message: _message(snap.error!),
-                      action: TextButton(
-                        onPressed: _retry,
-                        child: const Text('Reintentar'),
-                      ),
-                    );
-                  }
-                  if (!snap.hasData) {
-                    return _state(
-                      eco,
-                      child: SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: eco.primary,
-                        ),
-                      ),
-                      message: 'Centrando el mapa en tu ubicación…',
-                    );
-                  }
-                  final lat = snap.data!.latitude;
-                  final lng = snap.data!.longitude;
-
-                  if (!lat.isFinite || !lng.isFinite) {
-                    return _state(
-                      eco,
-                      icon: Icons.location_off,
-                      message: 'Ubicación inválida. Reinicia el GPS.',
-                      action: TextButton(
-                        onPressed: _retry,
-                        child: const Text('Reintentar'),
-                      ),
-                    );
-                  }
-
-                  return _map(eco, LatLng(lat, lng));
-                },
-              ),
+        child: _GpsGate(builder: _map),
       ),
     );
   }
 
-  Widget _map(AppColors eco, LatLng center) {
+  Widget _map(LatLng center) {
     return Stack(
       children: [
         Positioned.fill(
@@ -205,6 +133,345 @@ class _LiveMapState extends State<LiveMap> {
           title: widget.fullscreenTitle,
         ),
       ),
+    );
+  }
+}
+
+/// Selector de ubicación al estilo Uber: el pin queda fijo en el centro y el
+/// punto se elige arrastrando el mapa por debajo. Arranca en el GPS y muestra
+/// un punto azul en la posición real del dispositivo.
+///
+/// [location] es el punto elegido, o `null` mientras el usuario no arrastre;
+/// al volver a `null` (p. ej. tras guardar) la cámara regresa al GPS.
+class LocationPickerMap extends StatelessWidget {
+  const LocationPickerMap({
+    super.key,
+    required this.onChanged,
+    this.location,
+    this.height = 260,
+    this.borderRadius = 28,
+    this.zoom = 15,
+    this.enabled = true,
+    this.overlays = const [],
+  });
+
+  final LatLng? location;
+  final ValueChanged<LatLng> onChanged;
+  final double height;
+  final double borderRadius;
+  final double zoom;
+  final bool enabled;
+  final List<Widget> overlays;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: SizedBox(
+        height: height,
+        child: _GpsGate(
+          builder: (gps) => Stack(
+            children: [
+              Positioned.fill(
+                child: _CenterPinMap(
+                  gps: gps,
+                  location: location,
+                  zoom: zoom,
+                  enabled: enabled,
+                  onChanged: onChanged,
+                ),
+              ),
+              ...overlays,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CenterPinMap extends StatefulWidget {
+  const _CenterPinMap({
+    required this.gps,
+    required this.location,
+    required this.zoom,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final LatLng gps;
+  final LatLng? location;
+  final double zoom;
+  final bool enabled;
+  final ValueChanged<LatLng> onChanged;
+
+  @override
+  State<_CenterPinMap> createState() => _CenterPinMapState();
+}
+
+class _CenterPinMapState extends State<_CenterPinMap> {
+  final MapController _controller = MapController();
+  bool _lifted = false;
+
+  @override
+  void didUpdateWidget(covariant _CenterPinMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sin un punto elegido (al inicio o tras guardar) el pin sigue al GPS.
+    final followGps =
+        widget.location == null &&
+        (oldWidget.location != null || widget.gps != oldWidget.gps);
+    if (followGps && !_lifted) {
+      _controller.move(widget.gps, _controller.camera.zoom);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onMapEvent(MapEvent event) {
+    if (event is MapEventMove && event.source == MapEventSource.onDrag) {
+      if (!_lifted) setState(() => _lifted = true);
+    } else if (event is MapEventMoveEnd && _lifted) {
+      setState(() => _lifted = false);
+      widget.onChanged(event.camera.center);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: FlutterMap(
+            mapController: _controller,
+            options: MapOptions(
+              initialCenter: widget.location ?? widget.gps,
+              initialZoom: widget.zoom,
+              minZoom: 2,
+              maxZoom: 19,
+              onMapEvent: _onMapEvent,
+              interactionOptions: InteractionOptions(
+                // Sin fling ni pinchMove: el mapa se detiene donde lo sueltas
+                // y el zoom con dos dedos no desplaza el centro elegido.
+                flags: widget.enabled
+                    ? InteractiveFlag.drag | InteractiveFlag.pinchZoom
+                    : InteractiveFlag.none,
+              ),
+            ),
+            children: [
+              MapTileService.baseTileLayer(),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: widget.gps,
+                    width: 22,
+                    height: 22,
+                    child: const _GpsDot(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        IgnorePointer(
+          child: Center(
+            child: _CenterPin(color: eco.primary, lifted: _lifted),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Pin tipo Uber (círculo + palito) cuya punta marca el centro exacto del
+/// mapa. Mientras arrastras se eleva y deja una sombra sobre el punto elegido.
+class _CenterPin extends StatelessWidget {
+  const _CenterPin({required this.color, required this.lifted});
+
+  final Color color;
+  final bool lifted;
+
+  static const _head = 26.0;
+  static const _stick = 16.0;
+  static const _lift = 12.0;
+  static const _duration = Duration(milliseconds: 180);
+
+  @override
+  Widget build(BuildContext context) {
+    const pinHeight = _head + _stick;
+    // El recuadro mide el doble del pin para que su centro, que coincide con
+    // el centro del mapa, sea exactamente la punta del palito.
+    return SizedBox(
+      width: _head * 2,
+      height: pinHeight * 2,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          AnimatedContainer(
+            duration: _duration,
+            width: lifted ? 14 : 8,
+            height: lifted ? 5 : 3,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: lifted ? 0.3 : 0.4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            ),
+          ),
+          AnimatedPositioned(
+            duration: _duration,
+            curve: lifted ? Curves.easeOut : Curves.easeOutBack,
+            bottom: pinHeight + (lifted ? _lift : 0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: _head,
+                  height: _head,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.28),
+                        blurRadius: lifted ? 12 : 8,
+                        offset: Offset(0, lifted ? 6 : 3),
+                      ),
+                    ],
+                  ),
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 3,
+                  height: _stick,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Punto azul del GPS: dónde estás en realidad, aunque el pin esté en otro lado.
+class _GpsDot extends StatelessWidget {
+  const _GpsDot();
+
+  static const _color = Color(0xFF2563EB);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: _color.withValues(alpha: 0.3),
+            blurRadius: 8,
+            spreadRadius: 4,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Espera la ubicación del dispositivo y construye el mapa sobre ella, con sus
+/// propios estados de carga y error.
+class _GpsGate extends StatefulWidget {
+  const _GpsGate({required this.builder});
+
+  final Widget Function(LatLng gps) builder;
+
+  @override
+  State<_GpsGate> createState() => _GpsGateState();
+}
+
+class _GpsGateState extends State<_GpsGate> {
+  final WeatherStore _store = WeatherStore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    // Comparte la carga con el encabezado del clima en vez de lanzar su propio
+    // GPS: antes el Dashboard pedía la posición dos veces a la vez, con dos
+    // geocodings idénticos detrás.
+    unawaited(_store.ensureLoaded());
+  }
+
+  void _retry() => _store.refresh();
+
+  @override
+  Widget build(BuildContext context) {
+    final eco = context.eco;
+    return ListenableBuilder(
+      listenable: _store,
+      builder: (context, _) {
+        // Solo la ubicación: el mapa no tiene por qué quedarse en blanco
+        // porque Open-Meteo no conteste.
+        final snap = _store.locationSnapshot;
+        if (snap.hasError) {
+          return _state(
+            eco,
+            icon: Icons.location_off,
+            message: _message(snap.error!),
+            action: TextButton(
+              onPressed: _retry,
+              child: const Text('Reintentar'),
+            ),
+          );
+        }
+        if (!snap.hasData) {
+          return _state(
+            eco,
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: eco.primary,
+              ),
+            ),
+            message: 'Centrando el mapa en tu ubicación…',
+          );
+        }
+        final lat = snap.data!.latitude;
+        final lng = snap.data!.longitude;
+
+        if (!lat.isFinite || !lng.isFinite) {
+          return _state(
+            eco,
+            icon: Icons.location_off,
+            message: 'Ubicación inválida. Reinicia el GPS.',
+            action: TextButton(
+              onPressed: _retry,
+              child: const Text('Reintentar'),
+            ),
+          );
+        }
+
+        return widget.builder(LatLng(lat, lng));
+      },
     );
   }
 
