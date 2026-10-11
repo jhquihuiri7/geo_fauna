@@ -39,8 +39,6 @@ dependencies:
   cloud_firestore: ^5.0.0
   firebase_storage: ^12.0.0
   awesome_notifications: ^0.10.1
-  awesome_notifications_fcm: ^0.10.1
-
   # Google Sign-In
   google_sign_in: ^6.2.0
 
@@ -70,6 +68,7 @@ dependencies:
   device_calendar: ^4.3.3
   timezone: ^0.9.4
   flutter_timezone: ^3.0.1
+  firebase_messaging: ^15.2.10
 
 dev_dependencies:
   flutter_test:
