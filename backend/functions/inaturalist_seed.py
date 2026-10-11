@@ -182,7 +182,8 @@ def _copy_photo(bucket: Any, row: dict[str, str], record_id: str) -> dict[str, A
         "license": row["photo_license"],
         "attribution": row["observer_name"],
         "sourceUrl": row["observation_url"],
-        "uploadedAt": firestore.SERVER_TIMESTAMP,
+        # Hora concreta, como la app: Firestore no admite SERVER_TIMESTAMP en listas.
+        "uploadedAt": datetime.now(timezone.utc),
     }
 
 
