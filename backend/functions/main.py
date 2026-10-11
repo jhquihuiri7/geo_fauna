@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from firebase_admin import firestore, initialize_app, messaging
-from firebase_functions import https_fn, options
+from firebase_functions import https_fn, options, scheduler_fn
 from firebase_functions.firestore_fn import (
     Event,
     DocumentSnapshot,
@@ -19,6 +19,8 @@ from firebase_functions.firestore_fn import (
 
 
 initialize_app()
+
+import inaturalist_seed  # noqa: E402  (usa firebase_admin ya inicializado)
 
 REGION = "us-central1"
 WALL_CHANNEL_KEY = "wall_channel"
@@ -707,6 +709,17 @@ def on_field_record_created(event: Event[DocumentSnapshot]) -> None:
     # Planned: compute sensitivity, public feed summary and aggregate stats.
 
 
+@scheduler_fn.on_schedule(
+    schedule="0 7,11,14,18 * * *",
+    timezone=scheduler_fn.Timezone("Pacific/Galapagos"),
+    region=REGION,
+    timeout_sec=120,
+)
+def publish_inaturalist_sighting(event: scheduler_fn.ScheduledEvent) -> None:
+    """Publica en el Muro el siguiente avistamiento de iNaturalist (07, 11, 14 y 18 h)."""
+    inaturalist_seed.publish_next()
+
+
 @on_document_created(document="publicFeed/{postId}", region=REGION)
 def on_public_feed_created(event: Event[DocumentSnapshot]) -> None:
     """Notify all other users when a public wall post is created."""
@@ -726,6 +739,10 @@ def on_public_feed_created(event: Event[DocumentSnapshot]) -> None:
     species_name = _string_value(data.get("speciesName"))
     body_preview = _string_value(data.get("bodyPreview"))
     category = _string_value(data.get("category"))
+    if data.get("source") == inaturalist_seed.SOURCE:
+        # Su texto es el crédito y el enlace: el aviso muestra especie y lugar.
+        place = _string_value(data.get("placeLabel"))
+        body_preview = " · ".join(p for p in [species_name, place] if p) or None
     body = body_preview or species_name or f"{author_name} compartio un registro"
 
     content = {
