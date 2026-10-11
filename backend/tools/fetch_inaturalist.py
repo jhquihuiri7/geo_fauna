@@ -1,7 +1,7 @@
 """Descarga avistamientos de Galápagos desde la API pública de iNaturalist.
 
 Genera el CSV que la función `publish_inaturalist_sighting` publica en el Muro,
-dos por día. Solo guarda observaciones de grado investigación, con coordenadas
+cuatro por día. Solo guarda observaciones de grado investigación, con coordenadas
 sin ofuscar y con una foto bajo licencia Creative Commons que permite
 redistribuirla con crédito (sin ND ni "todos los derechos reservados"). Deja una
 observación por especie, la más marcada como favorita.

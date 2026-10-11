@@ -710,13 +710,13 @@ def on_field_record_created(event: Event[DocumentSnapshot]) -> None:
 
 
 @scheduler_fn.on_schedule(
-    schedule="0 7,18 * * *",
+    schedule="0 7,11,14,18 * * *",
     timezone=scheduler_fn.Timezone("Pacific/Galapagos"),
     region=REGION,
     timeout_sec=120,
 )
 def publish_inaturalist_sighting(event: scheduler_fn.ScheduledEvent) -> None:
-    """Publica en el Muro el siguiente avistamiento de iNaturalist (07:00 y 18:00)."""
+    """Publica en el Muro el siguiente avistamiento de iNaturalist (07, 11, 14 y 18 h)."""
     inaturalist_seed.publish_next()
 
 
