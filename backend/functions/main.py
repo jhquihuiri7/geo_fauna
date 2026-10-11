@@ -727,9 +727,6 @@ def on_public_feed_created(event: Event[DocumentSnapshot]) -> None:
         return
 
     data = event.data.to_dict() or {}
-    # Los avistamientos de iNaturalist llegan dos veces al día: no avisan a todos.
-    if data.get("source") == inaturalist_seed.SOURCE:
-        return
     post_id = event.params["postId"]
     author_id = _string_value(data.get("authorId"))
     source_key = _string_value(data.get("sourceRecordId")) or f"publicFeed/{post_id}"
@@ -742,6 +739,10 @@ def on_public_feed_created(event: Event[DocumentSnapshot]) -> None:
     species_name = _string_value(data.get("speciesName"))
     body_preview = _string_value(data.get("bodyPreview"))
     category = _string_value(data.get("category"))
+    if data.get("source") == inaturalist_seed.SOURCE:
+        # Su texto es el crédito y el enlace: el aviso muestra especie y lugar.
+        place = _string_value(data.get("placeLabel"))
+        body_preview = " · ".join(p for p in [species_name, place] if p) or None
     body = body_preview or species_name or f"{author_name} compartio un registro"
 
     content = {
